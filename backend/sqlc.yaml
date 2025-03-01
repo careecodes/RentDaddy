@@ -1,0 +1,13 @@
+---
+# See example: https://github.com/sqlc-dev/sqlc/blob/main/examples/authors/sqlc.yaml
+# See docs: https://docs.sqlc.dev/en/stable/reference/config.html
+version: "2"
+sql:
+  - engine: "sqlite"
+    queries: "internal/db/queries"
+    schema: "internal/db/queries/schema.sql"
+    gen:
+      go:
+        package: "generated"
+        out: "internal/db/generated"
+        sql_package: "database/sql"  # This is default, but wanted to make it clear
