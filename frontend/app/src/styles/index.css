@@ -28,6 +28,12 @@ body {
   place-items: center;
   min-width: 320px;
   min-height: 100vh;
+  --linearPrimarySecondary: linear-gradient(#00674f, #7789f4);
+  --linearPrimaryAccent: linear-gradient(#00674f, #d86364);
+  --linearSecondaryAccent: linear-gradient(#7789f4, #d86364);
+  --radialPrimarySecondary: radial-gradient(#00674f, #7789f4);
+  --radialPrimaryAccent: radial-gradient(#00674f, #d86364);
+  --radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
 }
 
 h1 {

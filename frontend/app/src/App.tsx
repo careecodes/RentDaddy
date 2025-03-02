@@ -1,34 +1,12 @@
-import { Suspense, useState } from "react"
-import reactLogo from "./assets/react.svg"
-import viteLogo from "/vite.svg"
-import "./App.css"
-import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { useMutation } from "@tanstack/react-query"
 
 function App() {
   const [count, setCount] = useState(0)
 
   return (
     <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
+      <h4>RentDaddy</h4>
 
       <Items />
     </>
@@ -127,8 +105,9 @@ function Items() {
   })
 
   return (
-    <div>
+    <div className="flex g-2">
       <button
+        className="btn btn-primary m-2"
         onClick={() => {
           createGet()
         }}
@@ -136,6 +115,7 @@ function Items() {
         GET
       </button>
       <button
+        className="btn btn-secondary  m-2"
         onClick={() => {
           createPost()
         }}
@@ -143,6 +123,7 @@ function Items() {
         Post
       </button>
       <button
+        className="btn btn-warning  m-2"
         onClick={() => {
           createPut()
         }}
@@ -150,6 +131,7 @@ function Items() {
         Put
       </button>
       <button
+        className="btn btn-light  m-2"
         onClick={() => {
           createDelete()
         }}
@@ -157,6 +139,7 @@ function Items() {
         Delete
       </button>
       <button
+        className="btn btn-dark  m-2"
         onClick={() => {
           createPatch()
         }}
