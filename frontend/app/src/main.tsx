@@ -26,6 +26,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import LoginForm from "./components/LoginForm.tsx";
 >>>>>>> feat: Add 404 Error page
 import ErrorNotFound from "./pages/Error404.tsx";
+import LoginForm from "./components/LoginForm.tsx";
 
 const queryClient = new QueryClient();
 
