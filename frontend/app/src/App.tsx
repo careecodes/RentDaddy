@@ -3,9 +3,15 @@ import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Button } from "antd";
 import HeroBanner from "./components/HeroBanner";
+import { SignedIn, SignedOut, SignInButton, SignOutButton, useAuth } from "@clerk/react-router"
+import { UserButton } from "@clerk/react-router"
 
 function App() {
   const [count, setCount] = useState(0);
+
+  const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth()
+
+  console.log(isSignedIn, "isSignedIn", userId, "userId", sessionId, "sessionId")
 
   return (
     <>
@@ -15,10 +21,30 @@ function App() {
         <h4>RentDaddy</h4>
       </Link>
 
+
       <div className="d-flex flex-column">
         <Link to="/reusable-components">
           <Button className="my-2">Checkout the Reusable Components</Button>
         </Link>
+
+
+
+        {/* Clerk Auth Demo */}
+        <div>
+          <SignedIn>
+            <div className="d-flex gap-2">
+              <UserButton />
+              <SignOutButton>
+                <Button className="my-2">
+                  Sign Out
+                </Button>
+              </SignOutButton>
+            </div>
+          </SignedIn>
+          <SignedOut>
+            <SignInButton />
+          </SignedOut>
+        </div>
 
         {/* Login Button */}
         <Link to="/auth/login">
