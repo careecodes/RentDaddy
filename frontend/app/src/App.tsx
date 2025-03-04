@@ -11,6 +11,10 @@ function App() {
 
   const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth()
 
+  if (!isLoaded) {
+    return <div>Loading...</div>
+  }
+
   console.log(isSignedIn, "isSignedIn", userId, "userId", sessionId, "sessionId")
 
   return (
