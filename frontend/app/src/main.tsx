@@ -9,6 +9,7 @@ import ReusableComponents from "./components/ReusableComponents.tsx";
 // Protected Routes to be used for all routes that require authentication
 import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
 import LoginForm from "./components/LoginForm.tsx";
+import ErrorNotFound from "./pages/Error404.tsx";
 
 const queryClient = new QueryClient();
 
@@ -81,7 +82,7 @@ createRoot(document.getElementById("root")!).render(
           </Route>
 
           {/* 404 Route - Always place at the end to catch unmatched routes */}
-          <Route path="*" element={<h1>Page Not Found</h1>} />
+          <Route path="*" element={<ErrorNotFound />}></Route>
         </Routes>
       </BrowserRouter>
     </QueryClientProvider>
