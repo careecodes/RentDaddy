@@ -16,17 +16,12 @@ import { BrowserRouter, Route, Routes } from "react-router";
 
 // Authentication and Layout
 import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
-<<<<<<< HEAD
 import PreAuthedLayout from "./providers/layout/PreAuthedLayout.tsx";
 import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx";
 
 // Tanstack Query Client
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-=======
-import LoginForm from "./components/LoginForm.tsx";
->>>>>>> feat: Add 404 Error page
 import ErrorNotFound from "./pages/Error404.tsx";
-import LoginForm from "./components/LoginForm.tsx";
 
 const queryClient = new QueryClient();
 
