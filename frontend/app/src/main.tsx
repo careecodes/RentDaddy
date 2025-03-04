@@ -8,7 +8,6 @@ import ReusableComponents from "./components/ReusableComponents.tsx";
 
 // Protected Routes to be used for all routes that require authentication
 import ProtectedRoutes from "./providers/ProtectedRoutes.tsx";
-import LoginForm from "./components/LoginForm.tsx";
 import ErrorNotFound from "./pages/Error404.tsx";
 import LoginForm from "./components/LoginForm.tsx";
 
