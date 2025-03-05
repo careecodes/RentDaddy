@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"net/http/httputil"
 	"os"
 	"os/signal"
 	"syscall"
@@ -14,14 +15,19 @@ import (
 
 	// Clerk Auth
 	"github.com/clerk/clerk-sdk-go/v2"
-	// "github.com/clerk/clerk-sdk-go/v2/$resource"
 	"github.com/clerk/clerk-sdk-go/v2/user"
+
+	// "github.com/clerk/clerk-sdk-go/v2/$resource"
 
 	// Chi Router
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+
 	// Load environment variables
+
+	// Load environment variables
+	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -56,14 +62,33 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(updatedItem)
 }
 
+func QuickDump(r *http.Request) {
+	dump, err := httputil.DumpRequest(r, true)
+	if err != nil {
+		http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+		return
+	}
+	fmt.Printf("Request dump: %s\n", dump)
+}
+
 func main() {
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: No .env file found")
+	}
+	
+	// Get the secret key from the environment variable
+	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
+	if clerkSecretKey == "" {
+		log.Fatal("CLERK_SECRET_KEY environment variable is required")
+	}
 	
 	// Initialize Clerk with your secret key
-    clerk.SetKey(os.Getenv("CLERK_SECRET_KEY"))
+	clerk.SetKey(clerkSecretKey)
 	
 	// Each operation requires a context.Context as the first argument.
 	ctx := context.Background()
-
+	
 	// Example usage:
 	// resource represents the Clerk SDK Resource Package that you are using such as user, organization, etc.
 	// // Get
@@ -80,24 +105,26 @@ func main() {
 	// 	log.Fatalf("failed to get user: %v", err)
 	// }
 
-	// CreateClerkUser creates a new user in Clerk with the given parameters
-	func CreateClerkUser(ctx context.Context, email string, firstName string, lastName string, username string, password string) (*clerk.User, error) {
-		resource, err := clerk.Users().Create(ctx, &clerk.CreateUserParams{
-			EmailAddresses: []string{email},
-			FirstName:     firstName,
-			LastName:      lastName,
-			Username: clerk.String(username),
-			Password: clerk.String(password),
-		})
-		if err != nil {
-			return nil, fmt.Errorf("failed to create user: %v", err)
-		}
+	// // CreateClerkUser creates a new user in Clerk with the given parameters
+	// func CreateClerkUser(ctx context.Context, email string, firstName string, lastName string, username string, password string) (*clerk.User, error) {
+	// 	resource, err := clerk.Users().Create(ctx, &clerk.CreateUserParams{
+	// 		EmailAddresses: []string{email},
+	// 		FirstName:     firstName,
+	// 		LastName:      lastName,
+	// 		Username: clerk.String(username),
+	// 		Password: clerk.String(password),
+	// 	})
+	// 	if err != nil {
+	// 		return nil, fmt.Errorf("failed to create user: %v", err)
+	// 	}
 		
-		return resource, nil
-	}
+	// 	return resource, nil
+	// }
 
-	// Call the function to test it, make sure to pass in the correct parameters
-	CreateClerkUser(ctx, "test2@test.com", "John", "Doe", "john-doe2", "crEATEaCRAZYpASSWORDHERE472945!")
+	// // Call the function to test it, make sure to pass in the correct parameters
+	// CreateClerkUser(ctx, "test2@test.com", "John", "Doe", "john-doe2", "crEATEaCRAZYpASSWORDHERE472945!")
+
+
 
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
@@ -186,32 +213,55 @@ func main() {
 			w.Write(body)
 		})
 
-		// Start of Clerk Routes
-		r.Post("/clerk/create-user", func(w http.ResponseWriter, r *http.Request) {
-			// Parse the request body
-			var requestBody struct {
-				Email     string `json:"email"`
-				FirstName string `json:"firstName"`
-				LastName  string `json:"lastName"`
-				Username  string `json:"username"`
-				Password  string `json:"password"`
-			}
+		r.Put("/test/clerk/update-username", func(w http.ResponseWriter, r *http.Request) {
+			// QuickDump(r) // Uncomment to see the request dump
 
+			// Define a struct to parse the incoming JSON
+			type UpdateUsernameRequest struct {
+				ID       string `json:"id"`
+				Username string `json:"username"`
+			}
+			
+			// Set the request body to the struct so that we can parse the request body
+			var updateReq UpdateUsernameRequest
+			
 			// Parse the request body
-			var requestBody requestBody
-			if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
-				http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+			if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
+				log.Printf("Error decoding request body: %v", err)
+				http.Error(w, "Failed to parse request body: "+err.Error(), http.StatusBadRequest)
+				return
+			}
+			
+			// Log the parsed request
+			log.Printf("Received update request - ID: %s, Username: %s", updateReq.ID, updateReq.Username)
+			
+			// Check if ID is provided
+			if updateReq.ID == "" {
+				http.Error(w, "User ID is required", http.StatusBadRequest)
+				return
+			}
+			
+			log.Printf("Updating user with ID: %s", updateReq.ID)
+			
+			// Update the user with the provided ID and username
+			resource, err := user.Update(ctx, updateReq.ID, &user.UpdateParams{
+				Username: clerk.String(updateReq.Username),
+			})
+			
+			if err != nil {
+				log.Printf("Error updating user: %v", err)
+				http.Error(w, "Failed to update user: "+err.Error(), http.StatusInternalServerError)
 				return
 			}
 
-			// Create the user
-			CreateClerkUser(ctx, requestBody.Email, requestBody.FirstName, requestBody.LastName, requestBody.Username, requestBody.Password)
-
+			log.Printf("User updated successfully: %v", resource.ID)
+			
+			// Return the updated user as JSON using the response writer and the resource
+			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("User created successfully"))
-		})
+			json.NewEncoder(w).Encode(resource)
+		})	
 		// End of Clerk Routes	
-		
 	})
 
 	// Server config

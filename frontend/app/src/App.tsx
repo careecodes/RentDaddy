@@ -25,6 +25,10 @@ function App() {
         <h4>RentDaddy</h4>
       </Link>
 
+      <Link to="test-go-backend">
+        <Button className="my-2">Test Go Backend</Button>
+      </Link>
+
 
 
       <div className="d-flex flex-column">
@@ -87,6 +91,7 @@ function App() {
           <Link to="/tenant">
             <Button className="my-2">Tenant</Button>
           </Link>
+        </Link>
       </div>
 
       <Items />
