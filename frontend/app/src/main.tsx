@@ -59,7 +59,7 @@ createRoot(document.getElementById("root")!).render(
 
             {/* Authentication Routes */}
             <Route path="auth">
-              <Route path="login" element={<h1>Login</h1>} />
+              <Route path="login" element={<LoginForm />} />
               <Route path="register" element={<h1>Register</h1>} />
             </Route>
           </Route>
