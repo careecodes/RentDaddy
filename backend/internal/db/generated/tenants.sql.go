@@ -24,7 +24,7 @@ type CreateTenantParams struct {
 }
 
 func (q *Queries) CreateTenant(ctx context.Context, arg CreateTenantParams) (Tenant, error) {
-	row := q.queryRow(ctx, q.createTenantStmt, createTenant, arg.Name, arg.Email)
+	row := q.db.QueryRow(ctx, createTenant, arg.Name, arg.Email)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -41,7 +41,7 @@ WHERE id = $1
 `
 
 func (q *Queries) DeleteTenant(ctx context.Context, id int32) error {
-	_, err := q.exec(ctx, q.deleteTenantStmt, deleteTenant, id)
+	_, err := q.db.Exec(ctx, deleteTenant, id)
 	return err
 }
 
@@ -52,7 +52,7 @@ WHERE id = $1
 `
 
 func (q *Queries) GetTenantByID(ctx context.Context, id int32) (Tenant, error) {
-	row := q.queryRow(ctx, q.getTenantByIDStmt, getTenantByID, id)
+	row := q.db.QueryRow(ctx, getTenantByID, id)
 	var i Tenant
 	err := row.Scan(
 		&i.ID,
@@ -76,7 +76,7 @@ type GetTenantsParams struct {
 }
 
 func (q *Queries) GetTenants(ctx context.Context, arg GetTenantsParams) ([]Tenant, error) {
-	rows, err := q.query(ctx, q.getTenantsStmt, getTenants, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, getTenants, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -93,9 +93,6 @@ func (q *Queries) GetTenants(ctx context.Context, arg GetTenantsParams) ([]Tenan
 			return nil, err
 		}
 		items = append(items, i)
-	}
-	if err := rows.Close(); err != nil {
-		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

@@ -9,9 +9,9 @@ sql:
     gen:
       go:
         package: "generated"
-        out: "internal/db/generaed"
-        sql_package: "database/sql"
+        out: "internal/db/generated"
+        sql_package: "pgx/v5"
         emit_json_tags: true
         emit_prepared_queries: true
-        emit_interface: false  # I made this false because it generates a "Querier" interface in a file not used by any other files. DBTX does this job in `internal/db/generated/db.go`
+        emit_interface: false
         emit_exact_table_names: false
