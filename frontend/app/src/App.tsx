@@ -26,6 +26,7 @@ function App() {
       </Link>
 
 
+
       <div className="d-flex flex-column">
         <Link to="/reusable-components">
           <Button className="my-2">Checkout the Reusable Components</Button>
@@ -50,22 +51,42 @@ function App() {
           </SignedOut>
         </div>
 
+
+
+        {/* Clerk Auth Demo */}
+        <div>
+          <SignedIn>
+            <div className="d-flex gap-2">
+              <UserButton />
+              <SignOutButton>
+                <Button className="my-2">
+                  Sign Out
+                </Button>
+              </SignOutButton>
+            </div>
+          </SignedIn>
+          <SignedOut>
+            <SignInButton />
+          </SignedOut>
+        </div>
+
         {/* Login Button */}
         <Link to="/auth/login">
-          <Button className="my-2">
-            Login
-          </Button>
-        </Link>
+          <Link to="/auth/login">
+            <Button className="my-2">
+              Login
+            </Button>
+          </Link>
 
-        {/* Admin Button */}
-        <Link to="/admin">
-          <Button className="my-2">Admin</Button>
-        </Link>
+          {/* Admin Button */}
+          <Link to="/admin">
+            <Button className="my-2">Admin</Button>
+          </Link>
 
-        {/* Tenant Button */}
-        <Link to="/tenant">
-          <Button className="my-2">Tenant</Button>
-        </Link>
+          {/* Tenant Button */}
+          <Link to="/tenant">
+            <Button className="my-2">Tenant</Button>
+          </Link>
       </div>
 
       <Items />

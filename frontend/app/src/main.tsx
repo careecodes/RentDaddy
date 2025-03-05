@@ -11,6 +11,7 @@ import "./styles/styles.scss"
 import App from "./App.tsx"
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query"
 import { BrowserRouter, Link, Route, Routes } from "react-router";
+import { BrowserRouter, Link, Route, Routes } from "react-router";
 import ReusableComponents from "./components/ReusableComponents.tsx"
 
 // Authentication and Layout
@@ -92,7 +93,24 @@ createRoot(document.getElementById("root")!).render(
                 <Route path="admin-view-and-edit-leases" element={<h1>Admin View & Edit Leases</h1>} />
                 <Route path="admin-view-and-edit-work-orders" element={<h1>Admin View & Edit Work Orders</h1>} />
               </Route>
+              {/* Admin Route Group */}
+              <Route element={<ProtectedRoutes />}>
+                <Route path="admin">
+                  <Route index element={<h1>Admin Dashboard</h1>} />
+                  <Route path="init-apartment-complex" element={<h1>Initial Admin Apartment Complex Setup</h1>} />
+                  <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
+                  <Route path="admin-view-and-edit-leases" element={<h1>Admin View & Edit Leases</h1>} />
+                  <Route path="admin-view-and-edit-work-orders" element={<h1>Admin View & Edit Work Orders</h1>} />
+                </Route>
 
+                {/* Tenant Route Group */}
+                <Route path="tenant">
+                  <Route index element={<h1>Tenant Dashboard</h1>} />
+                  <Route path="guest-parking" element={<h1>Guest Parking</h1>} />
+                  <Route path="digital-documents" element={<h1>Digital Documents</h1>} />
+                  <Route path="work-orders-and-complaints" element={<h1>Work Orders & Complaints</h1>} />
+                </Route>
+              </Route>
               {/* Tenant Route Group */}
               <Route path="tenant">
                 <Route index element={<h1>Tenant Dashboard</h1>} />
@@ -108,5 +126,6 @@ createRoot(document.getElementById("root")!).render(
         </ClerkProvider>
       </BrowserRouter>
     </QueryClientProvider>
+  </StrictMode >
   </StrictMode >
 )
