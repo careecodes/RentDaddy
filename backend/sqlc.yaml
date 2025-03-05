@@ -1,13 +1,27 @@
 ---
 # See example: https://github.com/sqlc-dev/sqlc/blob/main/examples/authors/sqlc.yaml
 # See docs: https://docs.sqlc.dev/en/stable/reference/config.html
+# version: "2"
+# sql:
+#   - engine: "sqlite"
+#     queries: "internal/db/queries"
+#     schema: "internal/db/queries/schema.sql"
+#     gen:
+#       go:
+#         package: "generated"
+#         out: "internal/db/generated"
+#         sql_package: "database/sql"  # This is default, but wanted to make it clear
 version: "2"
 sql:
-  - engine: "sqlite"
+  - engine: "postgresql"
     queries: "internal/db/queries"
-    schema: "internal/db/queries/schema.sql"
+    schema: "internal/db/schema"
     gen:
       go:
         package: "generated"
-        out: "internal/db/generated"
-        sql_package: "database/sql"  # This is default, but wanted to make it clear
+        out: "internal/db/generaed"
+        sql_package: "database/sql"
+        emit_json_tags: true
+        emit_prepared_queries: true
+        emit_interface: false  # I made this false because it generates a "Querier" interface in a file not used by any other files. DBTX does this job in `internal/db/generated/db.go`
+        emit_exact_table_names: false
