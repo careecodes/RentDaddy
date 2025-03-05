@@ -30,18 +30,6 @@ export default function LoginForm() {
         className="container pt-3 pt-md-0 d-flex flex-column align-items-lg-center justify-content-lg-center flex-lg-row"
         style={{ minHeight: "calc(100vh - 3rem)" }}
       >
-        <div className="container d-flex justify-content-end">
-          <img
-            src="https://images.pexels.com/photos/7688073/pexels-photo-7688073.jpeg?auto=compress&cs=tinysrgb"
-            className="img-fluid"
-            alt="Custom Placeholder"
-            style={{
-              width: isMobile ? "100%" : "700px",
-              height: isMobile ? "100%" : "100%",
-              minHeight: isMobile ? "400px" : "700px",
-            }}
-          />
-        </div>
         {/* Login Form */}
         <Form
           name="login form"
@@ -64,7 +52,7 @@ export default function LoginForm() {
               {
                 required: true,
                 min: 5,
-                message: "Please input your username!",
+                message: "Please provide a valide username",
               },
             ]}
           >
@@ -77,7 +65,7 @@ export default function LoginForm() {
               {
                 required: true,
                 min: 8,
-                message: "Please input your password!",
+                message: "Please provide a valide password",
               },
             ]}
           >
@@ -116,6 +104,18 @@ export default function LoginForm() {
             </button>
           </Form.Item>
         </Form>
+        <div className="container d-flex justify-content-end">
+          <img
+            src="https://images.pexels.com/photos/7688073/pexels-photo-7688073.jpeg?auto=compress&cs=tinysrgb"
+            className="img-fluid rounded-2"
+            alt="Custom Placeholder"
+            style={{
+              width: isMobile ? "100%" : "700px",
+              height: isMobile ? "100%" : "100%",
+              minHeight: isMobile ? "400px" : "700px",
+            }}
+          />
+        </div>
       </div>
       {/* Footer Container */}
       <footer style={{ textAlign: "center" }}>
