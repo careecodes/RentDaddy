@@ -24,6 +24,7 @@ import ErrorNotFound from "./pages/Error404.tsx";
 
 // Clerk
 import { ClerkProvider, SignedIn, SignedOut, UserButton, SignInButton, SignIn, SignUp } from '@clerk/react-router'
+import TestLoginComponent from "./pages/TestLoginComponent.tsx";
 
 const queryClient = new QueryClient();
 
@@ -81,7 +82,7 @@ createRoot(document.getElementById("root")!).render(
 
               {/* Authentication Routes */}
               <Route path="auth">
-                <Route path="login" element={<h1>Login</h1>} />
+                <Route path="login" element={<TestLoginComponent />} />
                 <Route path="register" element={<h1>Register</h1>} />
               </Route>
             </Route>

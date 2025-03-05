@@ -25,54 +25,41 @@ function App() {
         <h4>RentDaddy</h4>
       </Link>
 
-      <Link to="test-go-backend">
-        <Button className="my-2">Test Go Backend</Button>
-      </Link>
-
-
-
       <div className="d-flex flex-column">
+
+        {/* Clerk Auth Demo */}
+        <div className="d-flex flex-column justify-content-center align-items-center my-5">
+          {/* Title */}
+          <h4>Clerk Auth Demo</h4>
+          <SignedIn>
+            <div className="d-flex gap-2">
+              <UserButton />
+              <Link to="test-go-backend">
+                <Button className="my-2">Test Go Backend</Button>
+              </Link>
+              <SignOutButton>
+                <Button className="my-2">
+                  Sign Out
+                </Button>
+              </SignOutButton>
+            </div>
+          </SignedIn>
+          <SignedOut>
+            <Link to="/auth/login">
+              <Button className="my-2">
+                Our Login Page
+              </Button>
+            </Link>
+            <SignInButton>
+              Clerk Package Authentication Button
+            </SignInButton>
+          </SignedOut>
+        </div>
+
+
         <Link to="/reusable-components">
           <Button className="my-2">Checkout the Reusable Components</Button>
         </Link>
-
-
-
-        {/* Clerk Auth Demo */}
-        <div>
-          <SignedIn>
-            <div className="d-flex gap-2">
-              <UserButton />
-              <SignOutButton>
-                <Button className="my-2">
-                  Sign Out
-                </Button>
-              </SignOutButton>
-            </div>
-          </SignedIn>
-          <SignedOut>
-            <SignInButton />
-          </SignedOut>
-        </div>
-
-
-
-        {/* Clerk Auth Demo */}
-        <div>
-          <SignedIn>
-            <div className="d-flex gap-2">
-              <UserButton />
-              <SignOutButton>
-                <Button className="my-2">
-                  Sign Out
-                </Button>
-              </SignOutButton>
-            </div>
-          </SignedIn>
-          <SignedOut>
-            <SignInButton />
-          </SignedOut>
-        </div>
 
         {/* Login Button */}
         <Link to="/auth/login">
