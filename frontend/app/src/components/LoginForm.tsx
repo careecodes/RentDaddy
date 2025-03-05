@@ -1,4 +1,4 @@
-import { Divider, FormProps, Input } from "antd";
+import { Divider, Input } from "antd";
 import "../styles/styles.scss";
 import { ArrowLeftOutlined } from "@ant-design/icons";
 import { useNavigate } from "react-router";
@@ -10,20 +10,15 @@ type LoginSchema = {
   password?: string;
 };
 
-const onFinish: FormProps<LoginSchema>["onFinish"] = (values) => {
-  console.log(`form values: ${JSON.stringify(values)}\n`);
-};
-
-const onFinishFailed: FormProps<LoginSchema>["onFinishFailed"] = (
-  errorInfo,
-) => {
-  // show user error
-  console.log(`failed: ${JSON.stringify(errorInfo)}`);
-};
-
 export default function LoginForm() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+
+  function handleSubmit(values: LoginSchema) {
+    console.log(`form values: ${JSON.stringify(values)}\n`);
+    // validate
+    // if error show user
+  }
 
   return (
     <div>
@@ -54,8 +49,7 @@ export default function LoginForm() {
             width: isMobile ? "100%" : "70%",
             margin: "0  auto",
           }}
-          onFinish={onFinish}
-          onFinishFailed={onFinishFailed}
+          onFinish={handleSubmit}
         >
           <Form.Item label={null} className="ms-2">
             <h3 className="pt-5 pt-0-lg fw-bold">Rent Daddy</h3>
