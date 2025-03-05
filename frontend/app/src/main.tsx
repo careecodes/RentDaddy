@@ -22,6 +22,7 @@ import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx";
 // Tanstack Query Client
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ErrorNotFound from "./pages/Error404.tsx";
+import LoginForm from "./pages/LoginForm.tsx";
 
 const queryClient = new QueryClient();
 
