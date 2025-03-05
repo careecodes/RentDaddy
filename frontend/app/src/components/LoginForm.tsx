@@ -10,9 +10,22 @@ type LoginSchema = {
   password?: string;
 };
 
+type ErrorMessageSchema = {
+  userNameErrMsg: string | null;
+  passwordErrMsg: string | null;
+};
+
 export default function LoginForm() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
+  const [alert, setAlert] = useState(false);
+  const [errorMsgs, setErrMsgs] = useState<ErrorMessageSchema>({
+    userNameErrMsg: null,
+    passwordErrMsg: null,
+  });
+  // TODO: throw an alert or error messages if no account found
+  // TODO: if user isAdmin route to admin panel
+  // TODO: Wrap form in card component
 
   function handleSubmit(values: LoginSchema) {
     console.log(`form values: ${JSON.stringify(values)}\n`);
@@ -27,7 +40,7 @@ export default function LoginForm() {
         Back
       </button>
       <div
-        className="container pt-3 pt-md-0 d-flex flex-column align-items-lg-center justify-content-lg-center flex-lg-row"
+        className="container pt-3 pt-md-0 d-flex flex-column-reverse gap-5 gap-lg-0 align-items-lg-center justify-content-lg-center flex-lg-row"
         style={{ minHeight: "calc(100vh - 3rem)" }}
       >
         {/* Login Form */}
@@ -35,49 +48,69 @@ export default function LoginForm() {
           name="login form"
           style={{
             width: isMobile ? "100%" : "70%",
+            minHeight: isMobile ? "calc(100vh - 10rem)" : "auto",
             margin: "0  auto",
           }}
           onFinish={handleSubmit}
         >
-          <Form.Item label={null} className="ms-2">
-            <h3 className="pt-5 pt-0-lg fw-bold">Rent Daddy</h3>
-            <p className="text-muted">
-              Enter your username & password below to login to your account
-            </p>
-          </Form.Item>
+          <img
+            src="/logo.png"
+            alt="Rent Daddy Logo"
+            className="d-none d-md-block logo-image"
+            width={64}
+            height={64}
+            style={{
+              display: "block",
+              margin: "0 auto",
+            }}
+          />
+          <h3 className="pt-5 pt-0-lg fw-bold">Login to your account</h3>
+          <p className="text-muted">
+            Enter your username & password below to login to your account
+          </p>
+          <label htmlFor="username" className="fw-medium">
+            Username
+          </label>
           <Form.Item<LoginSchema>
-            label="Username"
+            label={null}
             name="userName"
             rules={[
               {
                 required: true,
                 min: 5,
-                message: "Please provide a valide username",
+                message:
+                  "Please provide a valid username,minimum of 5 characters",
               },
             ]}
           >
             <Input />
+            {errorMsgs.userNameErrMsg ? (
+              <p className="text-danger">{errorMsgs.userNameErrMsg}</p>
+            ) : null}
           </Form.Item>
+          <label htmlFor="Password" className="fw-medium">
+            Password
+          </label>
           <Form.Item<LoginSchema>
-            label="Password"
+            label={null}
             name="password"
             rules={[
               {
                 required: true,
                 min: 8,
-                message: "Please provide a valide password",
+                message:
+                  "Please provide a valid password, minimum of 8 characters",
               },
             ]}
           >
             <Input.Password />
+            {errorMsgs.passwordErrMsg ? (
+              <p className="text-danger">{errorMsgs.passwordErrMsg}</p>
+            ) : null}
           </Form.Item>
 
-          <Form.Item label={null} className="d-flex justify-content-end">
-            <button
-              type="submit"
-              className="btn btn-primary"
-              style={{ width: isMobile ? "100%" : "auto" }}
-            >
+          <Form.Item label={null} className="container mx-auto">
+            <button type="submit" className={`btn btn-primary w-100`}>
               <svg
                 xmlns="http://www.w3.org/2000/svg"
                 width="18"
@@ -104,15 +137,27 @@ export default function LoginForm() {
             </button>
           </Form.Item>
         </Form>
-        <div className="container d-flex justify-content-end">
+        <div className="container d-block d-md-none justify-content-start">
+          <img
+            src="/logo.png"
+            alt="Rent Daddy Logo"
+            className="logo-image"
+            width={64}
+            height={64}
+            style={{
+              display: "block",
+              margin: "0 auto",
+            }}
+          />
+        </div>
+        <div className="container d-none d-md-flex justify-content-end">
           <img
             src="https://images.pexels.com/photos/7688073/pexels-photo-7688073.jpeg?auto=compress&cs=tinysrgb"
             className="img-fluid rounded-2"
             alt="Custom Placeholder"
             style={{
               width: isMobile ? "100%" : "700px",
-              height: isMobile ? "100%" : "100%",
-              minHeight: isMobile ? "400px" : "700px",
+              minHeight: isMobile ? "300px" : "600px",
             }}
           />
         </div>
