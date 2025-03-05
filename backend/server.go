@@ -21,6 +21,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	// Load environment variables
 )
 
 type Item struct {
@@ -58,26 +59,13 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 func main() {
 	
 	// Initialize Clerk with your secret key
-    clerk.SetKey("sk_test_ptQNkShPd08NdhBKpFHmgUyXTQgjcNOcioGBa9w8jQ")
+    clerk.SetKey(os.Getenv("CLERK_SECRET_KEY"))
 	
 	// Each operation requires a context.Context as the first argument.
 	ctx := context.Background()
 
-	// Create
-	resource, err := user.Create(ctx, &user.CreateParams{
-		EmailAddresses: &[]string{"test@test.com"},
-		FirstName: clerk.String("John"),
-		LastName: clerk.String("Doe"),
-		Username: clerk.String("john-doe"),
-		Password: clerk.String("crEATEaCRAZYpASSWORDHERE472945!"),  // Add a password that meets security requirements
-
-	})
-	if err != nil {
-		log.Fatalf("failed to create user: %v", err)
-	}
-
-	fmt.Printf("%v", resource)
-
+	// Example usage:
+	// resource represents the Clerk SDK Resource Package that you are using such as user, organization, etc.
 	// // Get
 	// resource, err := user.Get(ctx, id)
 
@@ -92,7 +80,24 @@ func main() {
 	// 	log.Fatalf("failed to get user: %v", err)
 	// }
 
-	// fmt.Printf("%v", user)
+	// CreateClerkUser creates a new user in Clerk with the given parameters
+	func CreateClerkUser(ctx context.Context, email string, firstName string, lastName string, username string, password string) (*clerk.User, error) {
+		resource, err := clerk.Users().Create(ctx, &clerk.CreateUserParams{
+			EmailAddresses: []string{email},
+			FirstName:     firstName,
+			LastName:      lastName,
+			Username: clerk.String(username),
+			Password: clerk.String(password),
+		})
+		if err != nil {
+			return nil, fmt.Errorf("failed to create user: %v", err)
+		}
+		
+		return resource, nil
+	}
+
+	// Call the function to test it, make sure to pass in the correct parameters
+	CreateClerkUser(ctx, "test2@test.com", "John", "Doe", "john-doe2", "crEATEaCRAZYpASSWORDHERE472945!")
 
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
@@ -180,6 +185,33 @@ func main() {
 			w.WriteHeader(http.StatusOK)
 			w.Write(body)
 		})
+
+		// Start of Clerk Routes
+		r.Post("/clerk/create-user", func(w http.ResponseWriter, r *http.Request) {
+			// Parse the request body
+			var requestBody struct {
+				Email     string `json:"email"`
+				FirstName string `json:"firstName"`
+				LastName  string `json:"lastName"`
+				Username  string `json:"username"`
+				Password  string `json:"password"`
+			}
+
+			// Parse the request body
+			var requestBody requestBody
+			if err := json.NewDecoder(r.Body).Decode(&requestBody); err != nil {
+				http.Error(w, "Failed to parse request body", http.StatusBadRequest)
+				return
+			}
+
+			// Create the user
+			CreateClerkUser(ctx, requestBody.Email, requestBody.FirstName, requestBody.LastName, requestBody.Username, requestBody.Password)
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("User created successfully"))
+		})
+		// End of Clerk Routes	
+		
 	})
 
 	// Server config
