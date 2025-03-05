@@ -3,13 +3,16 @@ import { useMutation } from "@tanstack/react-query";
 import { Link } from "react-router";
 import { Button } from "antd";
 import HeroBanner from "./components/HeroBanner";
-import { SignedIn, SignedOut, SignInButton, SignOutButton, useAuth } from "@clerk/react-router"
+import { SignedIn, SignedOut, SignInButton, SignOutButton, useAuth, useUser } from "@clerk/react-router"
 import { UserButton } from "@clerk/react-router"
 
 function App() {
   const [count, setCount] = useState(0);
 
-  const { isLoaded, isSignedIn, userId, sessionId, getToken } = useAuth()
+  const { userId, sessionId } = useAuth()
+
+  const { isSignedIn, user, isLoaded } = useUser()
+
 
   if (!isLoaded) {
     return <div>Loading...</div>
@@ -32,27 +35,43 @@ function App() {
           {/* Title */}
           <h4>Clerk Auth Demo</h4>
           <SignedIn>
-            <div className="d-flex gap-2">
+            <div className="d-flex gap-3 align-items-center mb-3">
               <UserButton />
+            </div>
+            <div className="d-flex gap-3 align-items-center mb-3">
               <Link to="test-go-backend">
-                <Button className="my-2">Test Go Backend</Button>
+                <Button type="primary" className="my-2">Test Go Backend</Button>
               </Link>
               <SignOutButton>
-                <Button className="my-2">
+                <Button danger className="my-2">
                   Sign Out
                 </Button>
               </SignOutButton>
             </div>
+            <div className="d-flex flex-column gap-2 text-center">
+              <p className="text-muted mb-1">Name: {user?.fullName}</p>
+              <p className="text-muted mb-1">Email: {user?.emailAddresses[0].emailAddress}</p>
+              <p className="text-muted">Role: {user?.publicMetadata.role}</p>
+            </div>
           </SignedIn>
           <SignedOut>
-            <Link to="/auth/login">
-              <Button className="my-2">
-                Our Login Page
-              </Button>
-            </Link>
-            <SignInButton>
-              Clerk Package Authentication Button
-            </SignInButton>
+            <div className="d-flex gap-3 justify-content-center">
+              <Link to="/auth/login">
+                <Button type="primary" className="my-2">
+                  Our Sign In
+                </Button>
+              </Link>
+              <SignInButton>
+                <Button className="my-2">
+                  Clerk Sign In
+                </Button>
+              </SignInButton>
+              <SignInButton mode="modal">
+                <Button className="my-2">
+                  Clerk Sign In (Modal)
+                </Button>
+              </SignInButton>
+            </div>
           </SignedOut>
         </div>
 
@@ -79,7 +98,7 @@ function App() {
             <Button className="my-2">Tenant</Button>
           </Link>
         </Link>
-      </div>
+      </div >
 
       <Items />
     </>
