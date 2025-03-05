@@ -196,7 +196,7 @@ func main() {
 		}
 	}()
 
-	// Block until we reveive an interrupt signal
+	// Block until we revive an interrupt signal
 	<-sigChan
 	log.Println("shutting down server...")
 
