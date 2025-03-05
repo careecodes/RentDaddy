@@ -12,6 +12,12 @@ import (
 	"syscall"
 	"time"
 
+	// Clerk Auth
+	"github.com/clerk/clerk-sdk-go/v2"
+	// "github.com/clerk/clerk-sdk-go/v2/$resource"
+	"github.com/clerk/clerk-sdk-go/v2/user"
+
+	// Chi Router
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -50,6 +56,44 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 func main() {
+	
+	// Initialize Clerk with your secret key
+    clerk.SetKey("sk_test_ptQNkShPd08NdhBKpFHmgUyXTQgjcNOcioGBa9w8jQ")
+	
+	// Each operation requires a context.Context as the first argument.
+	ctx := context.Background()
+
+	// Create
+	resource, err := user.Create(ctx, &user.CreateParams{
+		EmailAddresses: &[]string{"test@test.com"},
+		FirstName: clerk.String("John"),
+		LastName: clerk.String("Doe"),
+		Username: clerk.String("john-doe"),
+		Password: clerk.String("crEATEaCRAZYpASSWORDHERE472945!"),  // Add a password that meets security requirements
+
+	})
+	if err != nil {
+		log.Fatalf("failed to create user: %v", err)
+	}
+
+	fmt.Printf("%v", resource)
+
+	// // Get
+	// resource, err := user.Get(ctx, id)
+
+	// // Update
+	// resource, err := user.Update(ctx, id, &user.UpdateParams{})
+
+	// // Delete
+	// resource, err := user.Delete(ctx, id)
+
+	// getUser, err := user.Get(ctx, resource.ID)
+	// if err != nil {
+	// 	log.Fatalf("failed to get user: %v", err)
+	// }
+
+	// fmt.Printf("%v", user)
+
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -67,70 +111,75 @@ func main() {
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
 
-	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Success in get"))
-	})
+	// Protected routes group
+	r.Group(func(r chi.Router) {
+		
+		// Your protected routes go here
+		r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Success in get"))
+		})
 
-	// Sample data
-	items["1"] = Item{ID: "1", Value: "initial value"}
+		// Sample data
+		items["1"] = Item{ID: "1", Value: "initial value"}
 
-	r.Post("/test/post", func(w http.ResponseWriter, r *http.Request) {
-		// fmt.Printf("%v",items)
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Failed to read body", http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-		fmt.Printf("%s", body)
-		fmt.Printf("post success")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-		w.Write([]byte("Success in post"))
-	})
+		r.Post("/test/post", func(w http.ResponseWriter, r *http.Request) {
+			// fmt.Printf("%v",items)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+			fmt.Printf("%s", body)
+			fmt.Printf("post success")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+			w.Write([]byte("Success in post"))
+		})
 
-	r.Put("/test/put", func(w http.ResponseWriter, r *http.Request) {
-		// fmt.Printf("%v",items)
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Failed to read body", http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-		fmt.Printf("%s", body)
-		fmt.Printf("put success")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-		w.Write([]byte("Success in put"))
-	})
+		r.Put("/test/put", func(w http.ResponseWriter, r *http.Request) {
+			// fmt.Printf("%v",items)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+			fmt.Printf("%s", body)
+			fmt.Printf("put success")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+			w.Write([]byte("Success in put"))
+		})
 
-	r.Delete("/test/delete", func(w http.ResponseWriter, r *http.Request) {
-		// fmt.Printf("%v",items)
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Failed to read body", http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-		fmt.Printf("%s", body)
-		fmt.Printf("delete success")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
-	})
+		r.Delete("/test/delete", func(w http.ResponseWriter, r *http.Request) {
+			// fmt.Printf("%v",items)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+			fmt.Printf("%s", body)
+			fmt.Printf("delete success")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+		})
 
-	r.Patch("/test/patch", func(w http.ResponseWriter, r *http.Request) {
-		// fmt.Printf("%v",items)
-		body, err := io.ReadAll(r.Body)
-		if err != nil {
-			http.Error(w, "Failed to read body", http.StatusInternalServerError)
-			return
-		}
-		defer r.Body.Close()
-		fmt.Printf("%s", body)
-		fmt.Printf("patch success")
-		w.WriteHeader(http.StatusOK)
-		w.Write(body)
+		r.Patch("/test/patch", func(w http.ResponseWriter, r *http.Request) {
+			// fmt.Printf("%v",items)
+			body, err := io.ReadAll(r.Body)
+			if err != nil {
+				http.Error(w, "Failed to read body", http.StatusInternalServerError)
+				return
+			}
+			defer r.Body.Close()
+			fmt.Printf("%s", body)
+			fmt.Printf("patch success")
+			w.WriteHeader(http.StatusOK)
+			w.Write(body)
+		})
 	})
 
 	// Server config
