@@ -1,4 +1,4 @@
-import { Alert, Card, Divider, Input } from "antd";
+import { Alert, Card, Input } from "antd";
 import "../styles/styles.scss";
 import {
   ArrowLeftOutlined,
@@ -208,12 +208,6 @@ export default function LoginForm() {
           className="col-12 col-md-6 col-xl-6 col-xxl-3"
         />
       ) : null}
-
-      {/* Footer Container */}
-      <footer style={{ textAlign: "center" }}>
-        <Divider className="divider-text border-black" />
-        <p>Rent Daddy ©{new Date().getFullYear()} Created by Rent Daddy</p>
-      </footer>
     </div>
   );
 }
