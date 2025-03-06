@@ -68,7 +68,7 @@ export default function LoginForm() {
         Back
       </button>
       <div
-        className="container mt-3 pt-md-0 d-flex flex-column gap-5 gap-lg-0 justify-content-end align-items-lg-center justify-content-lg-center flex-lg-row"
+        className="container mt-3 pt-md-0 d-flex flex-column gap-5 gap-lg-0 justify-content-start align-items-lg-center justify-content-lg-center flex-lg-row"
         style={{ minHeight: "calc(100vh - 3rem)" }}
       >
         <div className="d-none d-md-flex justify-content-end mx-lg-2">
