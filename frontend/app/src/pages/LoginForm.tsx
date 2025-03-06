@@ -125,7 +125,7 @@ export default function LoginForm() {
             />
             <h3 className="pt-5 pt-0-lg fw-bold">Login to your account</h3>
             <p className="text-muted">
-              Enter your username & password below to login to your account
+              Enter your username & password below to login into your account
             </p>
             <label htmlFor="username" className="fw-medium">
               Username
