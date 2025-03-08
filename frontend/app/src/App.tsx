@@ -1,6 +1,6 @@
-
 import HeroBanner from "./components/HeroBanner";
-import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent"
+import HomePageFAQs from "./components/HomePageFAQs";
+import HomePageFeaturesComponent from "./components/HomePageFeaturesComponent";
 import ClerkAuthDemo from "./components/ClerkAuthDemo";
 import DemoTestingComponent from "./components/DemoTestingComponent";
 import ButtonComponent from "./components/Button";
@@ -12,7 +12,7 @@ function App() {
     <>
       <HeroBanner />
       <HomePageFeaturesComponent />
-
+      <HomePageFAQs />
       {/* Button Component */}
       <div>
         <h1 className="text-center text-2xl font-bold">Button Component</h1>
@@ -55,7 +55,5 @@ function App() {
     </>
   );
 }
-
-
 
 export default App;
