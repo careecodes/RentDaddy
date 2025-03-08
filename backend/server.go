@@ -12,6 +12,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
@@ -63,7 +64,6 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 // }
 
 func main() {
-
 	// Load .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: No .env file found")
@@ -113,6 +113,9 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+
+	// Webhooks
+	r.Post("/webhooks/clerk", handlers.ClerkWebhookHanlder)
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -214,7 +217,6 @@ func main() {
 		resource, err := user.Update(ctx, updateReq.ID, &user.UpdateParams{
 			Username: clerk.String(updateReq.Username),
 		})
-
 		if err != nil {
 			log.Printf("Error updating user: %v", err)
 			http.Error(w, "Failed to update user: "+err.Error(), http.StatusInternalServerError)
@@ -227,8 +229,8 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(resource)
-	})	
-	// End of Clerk Routes	
+	})
+	// End of Clerk Routes
 
 	// Server config
 	server := &http.Server{
