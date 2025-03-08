@@ -7,4 +7,11 @@ export default defineConfig({
     react(),
     // ...,
   ],
+  // These build options make the build more resilient in CI environments
+  build: {
+    // Generate sourcemaps for better debugging
+    sourcemap: true,
+    // Continue build despite warnings
+    reportCompressedSize: false
+  }
 })
