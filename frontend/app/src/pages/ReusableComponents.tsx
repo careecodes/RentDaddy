@@ -17,6 +17,7 @@ import { Link } from "react-router"
 import RegistrationFormExample from "../components/FormExample"
 import TimeRelatedFormExample from "../components/TimeRelatedFormExamples"
 import AlertComponent from "../components/AlertComponent"
+import ModalComponent from "../components/ModalComponent"
 
 const ReusableComponents = () => {
   const [value, setValue] = useState("")
@@ -58,6 +59,26 @@ const ReusableComponents = () => {
         <div className="user-avatar m-5 flex flex-column align-items-center">
           <h2 className="fs-2">User Avatar</h2>
           <Avatar size={64} icon={<UserOutlined />} />
+        </div>
+
+        <Divider />
+
+        <div className="flex flex-column align-items-center m-5 gap-2">
+          <h2 className="fs-2">Modal</h2>
+
+          {/* Documentation for ModalComponent.tsx */}
+          There are 3 types of modals:
+          <ul>
+            <li>Default</li>
+            <li>Smart Locker</li>
+            <li>Guest Parking</li>
+          </ul>
+
+          <ModalComponent type="default" buttonTitle="Confirmation Model" content="This is a confirmation model" handleOkay={() => { }} />
+
+          <ModalComponent type="Smart Locker" buttonTitle="Smart Locker" content="This is a smart locker model" handleOkay={() => { }} />
+
+          <ModalComponent type="Guest Parking" buttonTitle="Guest Parking" content="To register someone in Guest Parking, please fill out the form below." handleOkay={() => { }} />
         </div>
 
         <Divider />
