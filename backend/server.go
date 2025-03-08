@@ -78,9 +78,6 @@ func main() {
 	// Initialize Clerk with your secret key
 	clerk.SetKey(clerkSecretKey)
 
-	// Each operation requires a context.Context as the first argument.
-	ctx := context.Background()
-
 	// Example Clerk usage:
 	// resource represents the Clerk SDK Resource Package that you are using such as user, organization, etc.
 	// // Get
@@ -214,7 +211,7 @@ func main() {
 		log.Printf("Updating user with ID: %s", updateReq.ID)
 
 		// Update the user with the provided ID and username
-		resource, err := user.Update(ctx, updateReq.ID, &user.UpdateParams{
+		resource, err := user.Update(r.Context(), updateReq.ID, &user.UpdateParams{
 			Username: clerk.String(updateReq.Username),
 		})
 		if err != nil {
