@@ -11,12 +11,15 @@ import (
 	svix "github.com/svix/svix-webhooks/go"
 )
 
+type UserMetaData map[string]interface{}
+
 type ClerkUserData struct {
-	ID           string `json:"id"`
-	Email        string `json:"email_address"`
-	FirstName    string `json:"first_name"`
-	LastName     string `json:"last_name"`
-	ProfileImage string `json:"profile_iamge_url"`
+	ID             string       `json:"id"`
+	Email          string       `json:"email_address"`
+	FirstName      string       `json:"first_name"`
+	LastName       string       `json:"last_name"`
+	ProfileImage   string       `json:"profile_image_url"`
+	PublicMetaData UserMetaData `json:"public_metadata"`
 }
 
 type ClerkWebhookPayload struct {
@@ -26,24 +29,24 @@ type ClerkWebhookPayload struct {
 
 func Verify(payload []byte, headers http.Header) bool {
 	if err := godotenv.Load(); err != nil {
-		log.Println("[CLERK WEBHOOK] No .env file found")
+		log.Printf("[CLERK WEBHOOK] No .env file found %v", err)
 		return false
 	}
 
 	webhookSecret := os.Getenv("CLERK_WEBHOOK")
 	if webhookSecret == "" {
-		log.Fatal("[CLERK WEBHOOK] CLERK_SECRET_KEY environment variable is required")
+		log.Println("[CLERK WEBHOOK] Environment variable is required")
 		return false
 	}
 	wh, err := svix.NewWebhook(webhookSecret)
 	if err != nil {
-		log.Printf("[CLERK WEBHOOK] Svix failed initailizing %s", err)
+		log.Printf("[CLERK WEBHOOK] Svix failed initailizing %v", err)
 		return false
 	}
-	// Varify
+
 	err = wh.Verify(payload, headers)
 	if err != nil {
-		log.Printf("Invalid webhook signature: %v", err)
+		log.Printf("[CLERK WEBHOOK]Invalid webhook signature: %v", err)
 		return false
 	}
 
@@ -53,30 +56,28 @@ func Verify(payload []byte, headers http.Header) bool {
 func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Fatal("[CLERK WEBHOOK] failed reading body")
+		log.Println("[CLERK WEBHOOK] Failed reading body")
 		http.Error(w, "Failed reading body", http.StatusBadRequest)
 		return
 	}
 	defer r.Body.Close()
 
-	// Varify
 	if !Verify(body, r.Header) {
-		log.Printf("Invalid webhook signature: %v", err)
+		log.Println("[CLERK WEBHOOK] Invalid webhook signature")
 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
 		return
 	}
 
-	// Parse payload
 	var payload ClerkWebhookPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		log.Fatal("[CLERK WEBHOOK] failed parsing payload")
+		log.Println("[CLERK WEBHOOK] Failed parsing payload")
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
 
 	var clerkUserData ClerkUserData
 	if err := json.Unmarshal(payload.Data, &clerkUserData); err != nil {
-		log.Printf("Failed parsing user data: %v", err)
+		log.Println("[CLERK WEBHOOK] Failed parsing user data")
 		http.Error(w, "Invalid user data", http.StatusBadRequest)
 		return
 	}
@@ -94,7 +95,7 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"received"`))
+	w.Write([]byte(`{"status":"received"}`))
 }
 
 func createUser(w http.ResponseWriter, userData ClerkUserData) {
