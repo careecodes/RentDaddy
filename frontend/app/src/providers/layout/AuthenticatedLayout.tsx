@@ -15,18 +15,20 @@ import type { MenuProps } from 'antd';
 import { Avatar, Divider, Layout, Menu, theme } from 'antd';
 import { Link, Outlet, useLocation } from 'react-router';
 import { SignOutButton, useUser } from '@clerk/react-router';
+import SidebarLinks from '../../components/SidebarLinks';
 
 const { Header, Content, Footer, Sider } = Layout;
 
 const siderStyle: React.CSSProperties = {
     overflow: 'auto',
-    height: '95vh',
+    height: '100vh',
     position: 'sticky',
     insetInlineStart: 0,
     top: 0,
     bottom: 0,
     scrollbarWidth: 'thin',
     scrollbarGutter: 'stable',
+    backgroundColor: '#00674f',
 };
 
 const items: MenuProps['items'] = [
@@ -132,7 +134,7 @@ const AuthenticatedLayout: React.FC = () => {
                         <img
                             src="/logo.png"
                             alt="Rent Daddy Logo"
-                            className="logo-image mx-auto d-block bg-white"
+                            className="logo-image mx-auto d-block bg-white rounded-5"
                             width={64}
                             height={64}
                         />
@@ -141,7 +143,9 @@ const AuthenticatedLayout: React.FC = () => {
                 </div>
 
                 {/* Menu Container */}
-                <Menu theme="dark" mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} />
+                {/* <Menu theme='dark' style={{ backgroundColor: '#7789f4', color: '#000000' }} mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} /> */}
+
+                <SidebarLinks />
 
                 {/* Avatar and Login Container */}
                 <div className="avatar-container d-flex flex-column position-absolute bottom-0 w-100">
@@ -173,6 +177,7 @@ const AuthenticatedLayout: React.FC = () => {
                         style={{
                             padding: 24,
                             textAlign: 'center',
+                            // Consider removing this background color to make it look cleaner
                             background: colorBgContainer,
                             borderRadius: borderRadiusLG,
                         }}
@@ -182,13 +187,18 @@ const AuthenticatedLayout: React.FC = () => {
                 </Content>
                 {/* Footer Container */}
                 <Footer style={{ textAlign: 'center' }}>
-                    <Divider className='divider-text border-black' />
-                    <p>
-                        Rent Daddy © {new Date().getFullYear()} Created by Rent Daddy
+                    <div className="footer-links" style={{ marginBottom: '24px' }}>
+                        <Link to="/about" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>About</Link>
+                        <Link to="/contact" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>Contact</Link>
+                        <Link to="/privacy" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>Privacy Policy</Link>
+                        <Link to="/terms" style={{ padding: '0 16px', color: '#595959', textDecoration: 'none' }}>Terms of Service</Link>
+                    </div>
+                    <p className='footer-text' style={{ margin: 0, color: '#8c8c8c', fontSize: '14px' }}>
+                        Rent Daddy © {new Date().getFullYear()} | All Rights Reserved
                     </p>
                 </Footer>
             </Layout>
-        </Layout>
+        </Layout >
     );
 };
 

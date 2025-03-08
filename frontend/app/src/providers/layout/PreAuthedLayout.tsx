@@ -22,7 +22,7 @@ const PreAuthedLayout: React.FC = () => {
     const items = [
         {
             key: '1',
-            label: user ? <Link to={user.publicMetadata.role === 'admin' ? '/admin' : '/tenant'}>Your Home</Link> : <Link to="/">Home</Link>,
+            label: user ? <Link className='text-white' to={user.publicMetadata.role === 'admin' ? '/admin' : '/tenant'}>Your Home</Link> : <Link className='text-white' to="/">Home</Link>,
         },
         {
             key: '2',
@@ -41,6 +41,7 @@ const PreAuthedLayout: React.FC = () => {
                     width: '100%',
                     display: 'flex',
                     alignItems: 'center',
+                    backgroundColor: '#00674f',
                 }}
             >
                 {/* Left Side Nav */}
@@ -62,7 +63,7 @@ const PreAuthedLayout: React.FC = () => {
                 {/* Right Side Nav */}
                 <div style={{ width: '200px' }}>
                     <Menu
-                        theme="dark"
+                        theme="light"
                         mode="horizontal"
                         inlineCollapsed={false}
                         defaultSelectedKeys={['1']}
