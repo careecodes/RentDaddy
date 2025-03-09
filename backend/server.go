@@ -74,14 +74,13 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Warning: No .env file found")
 	}
+	dbUrl := os.Getenv("PG_URL")
+	if dbUrl == "" {
+		log.Fatal("Error: No DB url")
+	}
 
 	ctx := context.Background()
 
-	postgresUser := os.Getenv("POSTGRES_USER")
-	postgresPassword := os.Getenv("POSTGRES_PASSWORD")
-	postgresDbName := os.Getenv("POSTGRES_DB")
-	postgresPort := os.Getenv("POSTGRES_PORT")
-	dbUrl := fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", postgresUser, postgresPassword, postgresPort, postgresDbName)
 	dbpool, err := pgxpool.New(ctx, dbUrl)
 	if err != nil {
 		log.Fatalf("Unable to connect to database: %v", err)
