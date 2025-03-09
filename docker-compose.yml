@@ -23,12 +23,6 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_USER=${POSTGRES_USER:-appuser}
-      - DB_PASSWORD=${POSTGRES_PASSWORD:-apppassword}
-      - DB_NAME=${POSTGRES_DB:-appdb}
-      - PORT=${PORT:-8080}
       - ENV=${ENV:-development}
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
@@ -36,8 +30,8 @@ services:
     # depends_on:
     #   postgres:
     #     condition: service_healthy
-    # volumes:
-    #   - ./backend:/app
+    env_file:
+      - .env  # Load .env file
     networks:
       - app-network
 
