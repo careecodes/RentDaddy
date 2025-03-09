@@ -18,6 +18,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -54,20 +55,38 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // QuickDump is a function that dumps the request to the console for debugging purposes
-// func QuickDump(r *http.Request) {
-// 	dump, err := httputil.DumpRequest(r, true)
-// 	if err != nil {
-// 		http.Error(w, "Failed to dump request", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	fmt.Printf("Request dump: %s\n", dump)
-// }
+//
+//	func QuickDump(r *http.Request) {
+//		dump, err := httputil.DumpRequest(r, true)
+//		if err != nil {
+//			http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+//			return
+//		}
+//		fmt.Printf("Request dump: %s\n", dump)
+//	}
 
 func main() {
+	// OS signal channel
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
+
 	// Load .env file
 	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: No .env file found")
+		log.Fatal("Warning: No .env file found")
 	}
+
+	ctx := context.Background()
+
+	postgresUser := os.Getenv("POSTGRES_USER")
+	postgresPassword := os.Getenv("POSTGRES_PASSWORD")
+	postgresDbName := os.Getenv("POSTGRES_DB")
+	postgresPort := os.Getenv("POSTGRES_PORT")
+	dbUrl := fmt.Sprintf("postgres://%s:%s@localhost:%s/%s?sslmode=disable", postgresUser, postgresPassword, postgresPort, postgresDbName)
+	dbpool, err := pgxpool.New(ctx, dbUrl)
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v", err)
+	}
+	defer dbpool.Close()
 
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
@@ -94,10 +113,6 @@ func main() {
 	// 	log.Fatalf("failed to get user: %v", err)
 	// }
 
-	// OS signal channel
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
@@ -112,7 +127,9 @@ func main() {
 	}))
 
 	// Webhooks
-	r.Post("/webhooks/clerk", handlers.ClerkWebhookHanlder)
+	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ClerkWebhookHanlder(w, r, dbpool)
+	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)

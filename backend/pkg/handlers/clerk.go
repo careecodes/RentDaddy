@@ -58,7 +58,7 @@ func Verify(payload []byte, headers http.Header) bool {
 	return true
 }
 
-func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request) {
+func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed reading body")
@@ -90,7 +90,7 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request) {
 	// Subscribed events
 	switch payload.Type {
 	case "user.created":
-		createUser(w, r, clerkUserData)
+		createUser(w, r, clerkUserData, pool)
 	case "user.updated":
 		updateUser(w, clerkUserData)
 	case "user.deleted":
@@ -103,15 +103,9 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(`{"status":"received"}`))
 }
 
-func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData) {
+func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, pool *pgxpool.Pool) {
 	// Insert new user in DB
-	dbpool, err := pgxpool.New(r.Context(), "postgres://user:password@localhost:5432/dbname?sslmode=disable")
-	if err != nil {
-		log.Fatalf("Unable to connect to database: %v", err)
-	}
-	defer dbpool.Close()
-
-	queies := generated.New(dbpool)
+	queies := generated.New(pool)
 
 	res, err := queies.CreateTenant(r.Context(), generated.CreateTenantParams{
 		Name:  fmt.Sprintf("%s %s", userData.FirstName, userData.LastName),
