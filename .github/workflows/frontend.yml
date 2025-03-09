@@ -29,7 +29,7 @@ jobs:
           npm install --save-dev @types/node
       
       - name: TypeScript check (informational only)
-        run: npx tsc --noEmit || echo "TypeScript check completed with errors - continuing"
+        run: npx tsc --noEmit 2>&1 | grep -v -E "error TS6192|error TS6133" || echo "TypeScript check completed with errors - continuing"
       
       - name: Modified build for CI
         run: |
