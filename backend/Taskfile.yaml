@@ -1,6 +1,10 @@
 version: '3'
 
-dotenv: ['.env']
+dotenv: ['../.env']
+
+vars:
+      MPATH: "internal/db/migrations/"
+      PG_URL: postgresql://{{.POSTGRES_USER}}:{{POSTGRES_PASSWORD}}@localhost:{{POSTGRES_PORT}}/{{POSTGRES_DB}}?sslmode=disable
 
 tasks:
   build:
@@ -12,18 +16,41 @@ tasks:
     cmds:
       - air -c .air.toml
 
-  migrate-up:
-    desc: "Pull schema changes into local database"
-    cmds:
-      - migrate -path internal/db/migrations/ -database $PG_URL -verbose up
-      - echo "Migrating up!"
-
-  migrate-down:
-    cmds:
-      - migrate -path internal/db/migrations/ -database $PG_URL -verbose down
-
   make-migration:
     desc: "Create a new migration set with a user provided name. ie: task make-migration -- <name-input>"
     cmds:
       - migrate create -ext sql -dir internal/db/migrations -seq {{.CLI_ARGS}}
       - echo 'New migration generated! Make sure to verify new files in internal/db/migrations'
+
+  migrate:up:
+    desc: "Pull schema changes into local database"
+    cmds:
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
+      - echo "Migrating up!"
+
+  migrate:down:
+    cmds:
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
+      - echo "Migrating down 1 version.."
+
+  migrate:version:
+    cmds:
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
+
+  migrate:status:
+    desc: "Check migration version and if database is dirty"
+    cmds:
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
+
+  migrate:fix-dirty:
+    desc: "Fix a dirty database state by forcing last successful version"
+    cmds:
+      - echo "Checking migration status..."
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
+      - echo "Database migration state reset!"
+
+  migrate:reset:
+    desc: "Reset database (wipe all data and re-run migrations)"
+    cmds:
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
