@@ -46,6 +46,8 @@ services:
       - /app/node_modules
     networks:
       - app-network
+    env_file:
+      - .env  # Load .env file
 
 networks:
   app-network:
