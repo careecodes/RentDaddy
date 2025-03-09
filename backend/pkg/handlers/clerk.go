@@ -2,13 +2,16 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
 	"time"
 
+	"github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	svix "github.com/svix/svix-webhooks/go"
 )
@@ -102,13 +105,30 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request) {
 
 func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData) {
 	// Insert new user in DB
+	dbpool, err := pgxpool.New(r.Context(), "postgres://user:password@localhost:5432/dbname?sslmode=disable")
+	if err != nil {
+		log.Fatalf("Unable to connect to database: %v", err)
+	}
+	defer dbpool.Close()
+
+	queies := generated.New(dbpool)
+
+	res, err := queies.CreateTenant(r.Context(), generated.CreateTenantParams{
+		Name:  fmt.Sprintf("%s %s", userData.FirstName, userData.LastName),
+		Email: userData.Email,
+	})
+	if err != nil {
+		log.Println("[CLERK_WEBHOOK] Failed inserting user in DB")
+		http.Error(w, "Error inserting user", http.StatusInternalServerError)
+	}
 
 	// Update clerk user metadata with DB ID, role, ect.
 	dummyMetadata := &ClerkUserPublicMetaData{
-		"dbID": 1,
+		"dbID": res.ID,
 		"role": "tenant",
 	}
 
+	// Convert metadata to raw json
 	metadataBytes, err := json.Marshal(dummyMetadata)
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Error updating user with db credintials: %v", err)
@@ -116,6 +136,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData) 
 	}
 	metadata := json.RawMessage(metadataBytes)
 
+	// Update metadata
 	maxRetries := 3
 	for i := 0; i < maxRetries; i++ {
 		_, err = user.Update(r.Context(), userData.ID, &user.UpdateParams{
@@ -131,9 +152,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData) 
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Error could not update user metadata: %v", err)
 		// Currently not erroring out
-
-		//    w.WriteHeader(http.StatusInternalServerError)
-		// return
 	}
 
 	log.Printf("[CLERK_WEBHOOK] New user created: %s (%s)", userData.ID, userData.Email)
