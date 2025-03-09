@@ -11,7 +11,6 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2/user"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	svix "github.com/svix/svix-webhooks/go"
 )
@@ -58,7 +57,7 @@ func Verify(payload []byte, headers http.Header) bool {
 	return true
 }
 
-func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool) {
+func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *generated.Queries) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed reading body")
@@ -90,7 +89,7 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	// Subscribed events
 	switch payload.Type {
 	case "user.created":
-		createUser(w, r, clerkUserData, pool)
+		createUser(w, r, clerkUserData, queries)
 	case "user.updated":
 		updateUser(w, clerkUserData)
 	case "user.deleted":
@@ -103,11 +102,8 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	w.Write([]byte(`{"status":"received"}`))
 }
 
-func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, pool *pgxpool.Pool) {
-	// Insert new user in DB
-	queies := generated.New(pool)
-
-	res, err := queies.CreateTenant(r.Context(), generated.CreateTenantParams{
+func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
+	res, err := queries.CreateTenant(r.Context(), generated.CreateTenantParams{
 		Name:  fmt.Sprintf("%s %s", userData.FirstName, userData.LastName),
 		Email: userData.Email,
 	})

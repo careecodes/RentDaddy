@@ -12,13 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/careecodes/RentDaddy/internal/db"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 )
 
@@ -74,18 +74,18 @@ func main() {
 	if err := godotenv.Load(); err != nil {
 		log.Fatal("Warning: No .env file found")
 	}
-	dbUrl := os.Getenv("PG_URL")
+	dbUrl := os.Getenv("PG_URL_LOCAL")
 	if dbUrl == "" {
 		log.Fatal("Error: No DB url")
 	}
 
 	ctx := context.Background()
 
-	dbpool, err := pgxpool.New(ctx, dbUrl)
+	queries, pool, err := db.ConnectDB(ctx, dbUrl)
 	if err != nil {
-		log.Fatalf("Unable to connect to database: %v", err)
+		log.Fatalf("[DB] failed initializing: %v", err)
 	}
-	defer dbpool.Close()
+	defer pool.Close()
 
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
@@ -127,7 +127,7 @@ func main() {
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ClerkWebhookHanlder(w, r, dbpool)
+		handlers.ClerkWebhookHanlder(w, r, queries)
 	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
