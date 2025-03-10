@@ -27,6 +27,7 @@ import LoginForm from "./pages/LoginForm.tsx";
 // Clerk
 import { ClerkProvider } from "@clerk/react-router";
 import TestGoBackend from "./components/TestGoBackend.tsx";
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -107,7 +108,7 @@ createRoot(document.getElementById("root")!).render(
                   <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
                   <Route
                     path="admin-view-and-edit-leases"
-                    element={<h1>Admin View & Edit Leases</h1>}
+                    element={<AdminViewEditLeases />}
                   />
                   <Route
                     path="admin-view-and-edit-work-orders-and-complaints"
