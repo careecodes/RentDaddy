@@ -10,11 +10,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
       - ./backend/internal/db/schema/tenant.sql:/docker-entrypoint-initdb.d/01-schema.sql
-    # healthcheck:
-    #   test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser}"]
-    #   interval: 5s
-    #   timeout: 5s
-    #   retries: 5
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
 
@@ -23,6 +23,12 @@ services:
       context: ./backend
       dockerfile: Dockerfile
     environment:
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_USER=${POSTGRES_USER:-appuser}
+      - DB_PASSWORD=${POSTGRES_PASSWORD:-apppassword}
+      - DB_NAME=${POSTGRES_DB:-appdb}
+      - PORT=${PORT:-8080}
       - ENV=${ENV:-development}
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
@@ -30,8 +36,8 @@ services:
     # depends_on:
     #   postgres:
     #     condition: service_healthy
-    env_file:
-      - .env  # Load .env file
+    # volumes:
+    #   - ./backend:/app
     networks:
       - app-network
 
@@ -46,8 +52,6 @@ services:
       - /app/node_modules
     networks:
       - app-network
-    env_file:
-      - .env  # Load .env file
 
 networks:
   app-network:

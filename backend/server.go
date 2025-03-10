@@ -17,6 +17,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
+	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -63,10 +64,10 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	// // Load .env file
-	// if err := godotenv.Load(); err != nil {
-	// 	log.Println("Warning: No .env file found")
-	// }
+	// Load .env file
+	if err := godotenv.Load(); err != nil {
+		log.Println("Warning: No .env file found")
+	}
 
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
@@ -226,19 +227,18 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(resource)
-	})
-	// End of Clerk Routes
+	})	
+	// End of Clerk Routes	
 
 	// Server config
-	port := os.Getenv("PORT")
 	server := &http.Server{
-		Addr:    ":" + port,
+		Addr:    ":3069",
 		Handler: r,
 	}
 
 	// Start server
 	go func() {
-		log.Printf("Server is running on port %s....\n", port)
+		log.Println("Server is running on port 3069....")
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
@@ -254,5 +254,4 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("server shutdown failed: %v", err)
 	}
-
 }
