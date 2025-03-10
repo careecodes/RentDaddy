@@ -7,7 +7,6 @@ import (
 	"log"
 	"net/http"
 	"os"
-	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2/user"
@@ -15,7 +14,17 @@ import (
 	svix "github.com/svix/svix-webhooks/go"
 )
 
-type ClerkUserPublicMetaData map[string]interface{}
+type Role string
+
+const (
+	ADMIN  Role = "admin"
+	TENANT Role = "tenant"
+)
+
+type ClerkUserPublicMetaData struct {
+	DbId int32 `json:"db_id"`
+	Role Role  `json:"role"`
+}
 
 type ClerkUserData struct {
 	ID             string          `json:"id"`
@@ -86,20 +95,26 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *genera
 		return
 	}
 
+	if queries == nil {
+		log.Println("[CLERK_WEBHOOK] Database queries instance is nil")
+		http.Error(w, "Internal server error", http.StatusInternalServerError)
+		return
+	}
+
 	// Subscribed events
 	switch payload.Type {
 	case "user.created":
 		createUser(w, r, clerkUserData, queries)
 	case "user.updated":
-		updateUser(w, clerkUserData)
+		updateUser(w, r, clerkUserData, queries)
 	case "user.deleted":
-		deleteUser(w, clerkUserData)
+		deleteUser(w, r, clerkUserData, queries)
 	default:
 		log.Printf("Unhandled event: %s", payload.Type)
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte(`{"status":"received"}`))
+		return
 	}
-
-	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"received"}`))
 }
 
 func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
@@ -110,12 +125,13 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed inserting user in DB")
 		http.Error(w, "Error inserting user", http.StatusInternalServerError)
+		return
 	}
 
 	// Update clerk user metadata with DB ID, role, ect.
 	dummyMetadata := &ClerkUserPublicMetaData{
-		"dbID": res.ID,
-		"role": "tenant",
+		DbId: res.ID,
+		Role: "tenant",
 	}
 
 	// Convert metadata to raw json
@@ -126,19 +142,9 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	}
 	metadata := json.RawMessage(metadataBytes)
 
-	// Update metadata
-	maxRetries := 3
-	for i := 0; i < maxRetries; i++ {
-		_, err = user.Update(r.Context(), userData.ID, &user.UpdateParams{
-			PublicMetadata: &metadata,
-		})
-		if err == nil {
-			break
-		}
-
-		log.Printf("[CLERK_WEBHOOK] Retry %d/%d Failed updating user %s metadata Error: %v", i+1, maxRetries, userData.ID, err)
-		time.Sleep(time.Duration(i+1) * time.Second)
-	}
+	_, err = user.Update(r.Context(), userData.ID, &user.UpdateParams{
+		PublicMetadata: &metadata,
+	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Error could not update user metadata: %v", err)
 		// Currently not erroring out
@@ -148,15 +154,68 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func updateUser(w http.ResponseWriter, userData ClerkUserData) {
-	// Query user from DB
+func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
+	// Querying clerk user data for DB ID
+	clerkUserDataRaw, err := user.Get(r.Context(), userData.ID)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed querying clerk user: %s", userData.ID)
+		http.Error(w, "Error deleting user", http.StatusInternalServerError)
+		return
+	}
+
+	var userMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(clerkUserDataRaw.PublicMetadata, &userMetadata)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed to unmarshal public metadata for user %v: %v", userData.ID, err)
+		http.Error(w, "Error processing user data", http.StatusInternalServerError)
+		return
+
+	}
+	res, err := queries.GetTenantByID(r.Context(), userMetadata.DbId)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed querying for user %s: %v", userData.ID, err)
+		http.Error(w, "Error processing user data", http.StatusInternalServerError)
+		return
+	}
+
 	// Compare email, ect.
+	if res.Email != userData.Email {
+		// update DB
+	}
+
+	if res.Name != fmt.Sprintf("%s %s", userData.FirstName, userData.LastName) {
+		// update DB
+	}
+
 	log.Printf("[CLERK_WEBHOOK] User updated: %s (%s)", userData.ID, userData.Email)
 	w.WriteHeader(http.StatusOK)
 }
 
-func deleteUser(w http.ResponseWriter, userData ClerkUserData) {
+func deleteUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
 	// Delete user from DB
+	clerkUserDataRaw, err := user.Get(r.Context(), userData.ID)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed querying clerk user: %s", userData.ID)
+		http.Error(w, "Error deleting user", http.StatusInternalServerError)
+		return
+	}
+
+	var userMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(clerkUserDataRaw.PublicMetadata, &userMetadata)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed to unmarshal public metadata for user %v: %v", userData.ID, err)
+		http.Error(w, "Error processing user data", http.StatusInternalServerError)
+		return
+
+	}
+
+	err = queries.DeleteTenant(r.Context(), userMetadata.DbId)
+	if err != nil {
+		log.Println("[CLERK_WEBHOOK] Failed deleting user in DB")
+		http.Error(w, "Error inserting user", http.StatusInternalServerError)
+		return
+	}
+
 	log.Printf("[CLERK_WEBHOOK] User deleted: %s", userData.ID)
 	w.WriteHeader(http.StatusOK)
 }
