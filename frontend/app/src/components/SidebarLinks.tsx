@@ -92,22 +92,22 @@ const SidebarLinks = () => {
                         Dashboard
                     </Link>
                     <Link
-                        to="/guest-parking"
+                        to="/tenant/guest-parking"
                         className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
                         Guest Parking
                     </Link>
                     <Link
-                        to="/tenant-view-and-edit-leases"
+                        to="/tenant/tenant-view-and-edit-leases"
                         className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
                         View Digital Leases
                     </Link>
                     <Link
-                        to="/tenant-work-orders-and-complaints"
+                        to="/tenant/tenant-work-orders-and-complaints"
                         className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
                         Work Orders & Complaints
                     </Link>
                     <Link
-                        to="/components/settings"
+                        to="/tenant/settings"
                         className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
                         Settings
                     </Link>
