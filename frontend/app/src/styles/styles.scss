@@ -158,6 +158,15 @@ body {
     background: $warning95;
 }
 
+
+.table {
+  background: $secondary5;
+}
+
+$sass-options: (
+  enable-deprecation-warnings: false
+);
+
 // Text Sizes
 // H1 Page Titles
 // H2 Section Titles
@@ -170,3 +179,4 @@ body {
 
 // Potentially
 // Tooltip
+

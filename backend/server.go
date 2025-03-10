@@ -64,7 +64,7 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 
 func main() {
 
-	// Load .env file
+	// // Load .env file
 	if err := godotenv.Load(); err != nil {
 		log.Println("Warning: No .env file found")
 	}
@@ -227,18 +227,19 @@ func main() {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusOK)
 		json.NewEncoder(w).Encode(resource)
-	})	
-	// End of Clerk Routes	
+	})
+	// End of Clerk Routes
 
 	// Server config
+	port := os.Getenv("PORT")
 	server := &http.Server{
-		Addr:    ":3069",
+		Addr:    ":" + port,
 		Handler: r,
 	}
 
 	// Start server
 	go func() {
-		log.Println("Server is running on port 3069....")
+		log.Printf("Server is running on port %s....\n", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
@@ -254,4 +255,5 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("server shutdown failed: %v", err)
 	}
+
 }

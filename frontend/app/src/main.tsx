@@ -25,9 +25,6 @@ import LoginForm from "./pages/LoginForm.tsx"
 import { ConfigProvider } from "antd"
 
 // Clerk
-import { ClerkProvider } from "@clerk/react-router"
-import TestGoBackend from "./components/TestGoBackend.tsx"
-
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
 if (!CLERK_PUBLISHABLE_KEY) {
@@ -91,19 +88,6 @@ createRoot(document.getElementById("root")!).render(
               <Route element={<PreAuthedLayout />}>
                 {/* Landing Page */}
                 <Route index element={<App />} />
-
-                {/* Reusable Components Route */}
-                <Route
-                  path="reusable-components"
-                  element={<ReusableComponents />}
-                />
-
-                {/* Authentication Routes */}
-                <Route path="auth">
-                  <Route path="login" element={<LoginForm />} />
-
-                  {/* We probably don't need a register route, but I'll leave it here for now */}
-                  <Route path="register" element={<h1>Register</h1>} />
                 </Route>
 
                 {/* Testing Routes */}
