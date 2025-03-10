@@ -170,3 +170,10 @@ body {
 
 // Potentially
 // Tooltip
+.table {
+    background: $secondary5;
+}
+
+$sass-options: (
+    enable-deprecation-warnings: false
+);
