@@ -8,6 +8,7 @@ interface CardComponentProps {
     icon?: any;
     button?: any;
     hoverable: boolean;
+    value?: number;
 }
 
 //pass in button like this
@@ -27,13 +28,15 @@ export const CardComponent = (props: CardComponentProps) => {
                 //TODO: JJ make these styles better
                 hoverable={props.hoverable}
                 className="h-100 text-center"
-                style={{ minHeight: "280px" }}>
+                style={{ minHeight: "280px", minWidth: "280px" }}>
                 <div className="d-flex flex-column align-items-center">
                     {props.icon}
 
                     <h4 className="mb-3">{props.title}</h4>
 
                     <p className="text-muted">{props.description}</p>
+
+                    <p className="text-muted fs-1">{props.value}</p>
 
                     {props.button}
                 </div>

@@ -8,7 +8,7 @@ export interface ButtonComponentProps {
     disabled?: boolean;
     icon?: React.ReactNode;
     size?: string; // default, small, large
-    onClick?: () => void; //should just be able to post the referce to the function so for example onClick={myFunc} NOT onClick={myFunc()}
+    onClick?: () => void; //should just be able to post the reference to the function so for example onClick={myFunc} NOT onClick={myFunc()}
 }
 
 const ButtonComponent = (props: ButtonComponentProps) => {
