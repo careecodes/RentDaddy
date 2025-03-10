@@ -70,27 +70,31 @@ func main() {
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
-	// Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Fatal("Warning: No .env file found")
+	if os.Getenv("ENV") != "production" {
+		// Load .env file in development only
+		if err := godotenv.Load("../.env"); err != nil {
+			log.Fatal("[ENV] Error: No .env file found")
+		}
 	}
+
+	// dbUrl := os.Getenv("PG_URL")
 	dbUrl := os.Getenv("PG_URL_LOCAL")
 	if dbUrl == "" {
-		log.Fatal("Error: No DB url")
+		log.Fatal("[ENV] Error: No Database url")
 	}
 
 	ctx := context.Background()
 
 	queries, pool, err := db.ConnectDB(ctx, dbUrl)
 	if err != nil {
-		log.Fatalf("[DB] failed initializing: %v", err)
+		log.Fatalf("[DB] Failed initializing: %v", err)
 	}
 	defer pool.Close()
 
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
 	if clerkSecretKey == "" {
-		log.Fatal("CLERK_SECRET_KEY environment variable is required")
+		log.Fatal("[ENV] CLERK_SECRET_KEY environment variable is required")
 	}
 
 	// Initialize Clerk with your secret key
