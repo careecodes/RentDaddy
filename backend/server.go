@@ -77,8 +77,7 @@ func main() {
 		}
 	}
 
-	// dbUrl := os.Getenv("PG_URL")
-	dbUrl := os.Getenv("PG_URL_LOCAL")
+	dbUrl := os.Getenv("PG_URL")
 	if dbUrl == "" {
 		log.Fatal("[ENV] Error: No Database url")
 	}
