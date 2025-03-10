@@ -12,26 +12,45 @@ $offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
 // Customize some defaults
 $text: #00050a;
 $background: #ffffff;
+
+// Colors
+
+// Primary
 $primary: #00674f;
+$primary5: hsl(166, 100%, 20%, 5%);
+$primary50: hsl(166, 100%, 20%, 50%);
+$primary95: hsl(166, 100%, 20%, 95%);
+
+// Secondary
 $secondary: #7789f4;
-$accent: #d86364;
+$secondary5: hsl(231, 85%, 71%, 5%);
+$secondary50: hsl(231, 85%, 71%, 50%);
+$secondary95: hsl(231, 85%, 71%, 95%);
+
+// Warning / Cancel
+$warning: #d86364;
+$warning5: hsl(359, 60%, 62%, 5%);
+$warning50: hsl(359, 60%, 62%, 50%);
+$warning95: hsl(359, 60%, 62%, 95%);
+
+// Info
+$info: #f3f3f3;
+
+// Text Contrast
 $text-contrast: #64d97b;
+
+// Background Contrast
 $bg-contrast: #64d97b;
 $primary-contrast: #ffdd00;
 $secondary-contrast: #ffdd00;
 $accent-contrast: #ffdd00;
+
+// Text
 $text5: hsl(210, 100%, 2%, 5%);
 $text50: hsl(210, 100%, 2%, 50%);
 $text95: hsl(210, 100%, 2%, 95%);
-$primary5: hsl(166, 100%, 20%, 5%);
-$primary50: hsl(166, 100%, 20%, 50%);
-$primary95: hsl(166, 100%, 20%, 95%);
-$secondary5: hsl(231, 85%, 71%, 5%);
-$secondary50: hsl(231, 85%, 71%, 50%);
-$secondary95: hsl(231, 85%, 71%, 95%);
-$accent5: hsl(359, 60%, 62%, 5%);
-$accent50: hsl(359, 60%, 62%, 50%);
-$accent95: hsl(359, 60%, 62%, 95%);
+
+// Gradients
 $linearPrimarySecondary: linear-gradient(#00674f, #7789f4);
 $linearPrimaryAccent: linear-gradient(#00674f, #d86364);
 $linearSecondaryAccent: linear-gradient(#7789f4, #d86364);
@@ -89,36 +108,56 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
 //
 
 :root {
-  font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
-  line-height: 1.5;
-  font-weight: 400;
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
 
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
 }
 
 body {
-  margin: 0;
+    margin: 0;
 }
 
 //add more commonly used classes here to be able to write them quicker
 .flex {
-  display: flex;
+    display: flex;
 }
 
+// Ant Design Covers the Styling for Tables Well Enough
+// If we want / need more, we can add it here
+.table {
+    background: $secondary5;
+}
+
+// Buttons
+// Primary Actions
+// Secondary Actions
+// Tertiary (If needed)
+// Cancel Buttons
+// Info
+// Loading
+// Disabled
+
+// Cards
+// Card-base
+// Consider using props
+// Card-dashboard
 .card-primary {
-  background: $primary5;
+    background: $primary5;
 }
 
 .card-secondary {
-  background: $secondary50;
+    background: $secondary50;
 }
 
 .card-accent {
-  background: $accent95;
+    background: $warning95;
 }
+
 
 .table {
   background: $secondary5;
@@ -127,3 +166,17 @@ body {
 $sass-options: (
   enable-deprecation-warnings: false
 );
+
+// Text Sizes
+// H1 Page Titles
+// H2 Section Titles
+// H3 Section Subtitles
+// Regular Text = Size 16 <p>
+
+// Fonts
+// Poppins
+// Fallback System Font
+
+// Potentially
+// Tooltip
+
