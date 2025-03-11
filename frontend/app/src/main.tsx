@@ -27,6 +27,7 @@ import { ConfigProvider } from "antd"
 // Clerk
 import { ClerkProvider } from "@clerk/react-router"
 import TestGoBackend from "./components/TestGoBackend.tsx"
+import AdminDashboard from "./pages/AdminDashboard.tsx"
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -53,6 +54,9 @@ createRoot(document.getElementById("root")!).render(
         components: {
           Card: {
             colorBgBase: "hsl(166, 100%, 20%, 5%)",
+          },
+          Modal: {
+            colorBgElevated: "white",
           },
         },
       }}
@@ -122,7 +126,7 @@ createRoot(document.getElementById("root")!).render(
                 <Route element={<AuthenticatedLayout />}>
                   {/* Admin Route Group */}
                   <Route path="admin">
-                    <Route index element={<h1>Admin Dashboard</h1>} />
+                    <Route index element={<AdminDashboard />} />
                     <Route
                       path="init-apartment-complex"
                       element={<h1>Initial Admin Apartment Complex Setup</h1>}
