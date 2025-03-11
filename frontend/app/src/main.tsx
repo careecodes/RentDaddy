@@ -4,7 +4,8 @@ import { createRoot } from "react-dom/client"
 
 // Styles
 import "./styles/styles.scss"
-import "@fontsource/poppins"
+import "@fontsource/poppins/400.css";
+
 
 // Pages &Components
 import App from "./App.tsx"
@@ -27,7 +28,12 @@ import { ConfigProvider } from "antd"
 // Clerk
 import { ClerkProvider } from "@clerk/react-router"
 import TestGoBackend from "./components/TestGoBackend.tsx"
+
 import AdminDashboard from "./pages/AdminDashboard.tsx"
+import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
+
+import ComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx"
+import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx"
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY
 
@@ -105,17 +111,13 @@ createRoot(document.getElementById("root")!).render(
                 {/* Authentication Routes */}
                 <Route path="auth">
                   <Route path="login" element={<LoginForm />} />
-
                   {/* We probably don't need a register route, but I'll leave it here for now */}
                   <Route path="register" element={<h1>Register</h1>} />
                 </Route>
 
                 {/* Testing Routes */}
                 <Route path="test">
-                  <Route
-                    path="test-clerk-go-backend"
-                    element={<TestGoBackend />}
-                  />
+                  <Route path="test-clerk-go-backend" element={<TestGoBackend />} />
                 </Route>
               </Route>
               {/* End of Pre-authentication Layout Group */}
@@ -134,13 +136,11 @@ createRoot(document.getElementById("root")!).render(
                     <Route path="add-tenant" element={<h1>Add Tenant</h1>} />
                     <Route
                       path="admin-view-and-edit-leases"
-                      element={<h1>Admin View & Edit Leases</h1>}
+                      element={<AdminViewEditLeases />}
                     />
                     <Route
                       path="admin-view-and-edit-work-orders-and-complaints"
-                      element={
-                        <h1>Admin View & Edit Work Orders & Complaints</h1>
-                      }
+                      element={<h1>Admin View & Edit Work Orders & Complaints</h1>}
                     />
                   </Route>
 
@@ -157,7 +157,7 @@ createRoot(document.getElementById("root")!).render(
                     />
                     <Route
                       path="tenant-work-orders-and-complaints"
-                      element={<h1>Work Orders & Complaints</h1>}
+                      element={<TenantComplaintsAndWorkOrders />}
                     />
                   </Route>
                 </Route>

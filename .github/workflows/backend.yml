@@ -3,8 +3,8 @@ name: Backend CI
 on:
   pull_request:
     paths:
-      - 'backend/**'
-      - '.github/workflows/backend.yml'
+      - "backend/**"
+      - ".github/workflows/backend.yml"
 
 jobs:
   build:
@@ -12,30 +12,25 @@ jobs:
     defaults:
       run:
         working-directory: ./backend
-    
+
     steps:
       - uses: actions/checkout@v4
-      
+
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: '1.22'
-      
+          go-version: "1.23"
+
       - name: Install dependencies
         run: go mod download
-      
+
       - name: Verify server.go exists
         run: |
           ls -la
           if [ -f server.go ]; then echo "server.go exists"; else echo "server.go does not exist!" && exit 1; fi
-      
+
       - name: Build server
         run: go build -v -o server server.go
-      
-      # - name: Test
-      #   run: go test -v ./...
-      
-      # - name: Docker build test
-      #   run: |
-      #     docker build -t backend-test .
-      #     docker image inspect backend-test
+
+      - name: Test
+        run: go test -v ./...
