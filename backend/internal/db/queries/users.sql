@@ -4,24 +4,25 @@ INSERT INTO users (
     first_name,
     last_name,
     email,
+    phone,
     role,
     status,
     last_login,
     updated_at,
     created_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
-) RETURNING id, clerk_id, first_name, last_name, email, role, created_at;
+    $1, $2, $3, $4, $5, $6, $7, $8, $9,$10
+) RETURNING id, clerk_id, first_name, last_name, email, phone,role, created_at;
 
 -- name: UpdateUserRole :exec
 UPDATE users
-SET role = $1
-WHERE clerk_id = $2;
+SET role = $2
+WHERE clerk_id = $1;
 
 -- name: UpdateUserCredentials :exec
 UPDATE users
-SET first_name = $1, last_name = $2, email = $3
-WHERE clerk_id = $4;
+SET first_name = $2, last_name = $3, email = $4
+WHERE clerk_id = $1;
 
 -- name: GetUserByClerkID :one
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
@@ -43,7 +44,7 @@ SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, cr
 FROM users
 WHERE clerk_id = $1 AND role = 'tenant';
 
--- name: GetAllTenants : many
+-- name: GetAllTenants :many
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1 AND role = 'tenant'

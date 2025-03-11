@@ -81,6 +81,11 @@ func main() {
 	if dbUrl == "" {
 		log.Fatal("[ENV] Error: No Database url")
 	}
+	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
+	webhookSecret := os.Getenv("CLERK_WEBHOOK")
+	if clerkSecretKey == "" || webhookSecret == "" {
+		log.Fatal("[ENV] CLERK_SECRETS environment vars are required")
+	}
 
 	ctx := context.Background()
 
@@ -89,13 +94,6 @@ func main() {
 		log.Fatalf("[DB] Failed initializing: %v", err)
 	}
 	defer pool.Close()
-
-	// Get the secret key from the environment variable
-	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
-	webhookSecret := os.Getenv("CLERK_WEBHOOK")
-	if clerkSecretKey == "" || webhookSecret == "" {
-		log.Fatal("[ENV] CLERK_SECRETS environment variables are required")
-	}
 
 	// Initialize Clerk with your secret key
 	clerk.SetKey(clerkSecretKey)

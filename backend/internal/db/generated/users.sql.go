@@ -17,14 +17,15 @@ INSERT INTO users (
     first_name,
     last_name,
     email,
+    phone,
     role,
     status,
     last_login,
     updated_at,
     created_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
-) RETURNING id, clerk_id, first_name, last_name, email, role, created_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9,$10
+) RETURNING id, clerk_id, first_name, last_name, email, phone,role, created_at
 `
 
 type CreateUserParams struct {
@@ -32,6 +33,7 @@ type CreateUserParams struct {
 	FirstName string           `json:"first_name"`
 	LastName  string           `json:"last_name"`
 	Email     string           `json:"email"`
+	Phone     pgtype.Text      `json:"phone"`
 	Role      Role             `json:"role"`
 	Status    AccountStatus    `json:"status"`
 	LastLogin pgtype.Timestamp `json:"last_login"`
@@ -45,6 +47,7 @@ type CreateUserRow struct {
 	FirstName string           `json:"first_name"`
 	LastName  string           `json:"last_name"`
 	Email     string           `json:"email"`
+	Phone     pgtype.Text      `json:"phone"`
 	Role      Role             `json:"role"`
 	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
@@ -55,6 +58,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.FirstName,
 		arg.LastName,
 		arg.Email,
+		arg.Phone,
 		arg.Role,
 		arg.Status,
 		arg.LastLogin,
@@ -68,6 +72,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
+		&i.Phone,
 		&i.Role,
 		&i.CreatedAt,
 	)
@@ -117,6 +122,61 @@ func (q *Queries) GetAdminByClerkID(ctx context.Context, clerkID string) (GetAdm
 		&i.CreatedAt,
 	)
 	return i, err
+}
+
+const getAllTenants = `-- name: GetAllTenants :many
+SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+FROM users
+WHERE clerk_id = $1 AND role = 'tenant'
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2
+`
+
+type GetAllTenantsParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type GetAllTenantsRow struct {
+	ID         int64            `json:"id"`
+	ClerkID    string           `json:"clerk_id"`
+	FirstName  string           `json:"first_name"`
+	LastName   string           `json:"last_name"`
+	Email      string           `json:"email"`
+	Role       Role             `json:"role"`
+	UnitNumber pgtype.Int2      `json:"unit_number"`
+	Status     AccountStatus    `json:"status"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetAllTenants(ctx context.Context, arg GetAllTenantsParams) ([]GetAllTenantsRow, error) {
+	rows, err := q.db.Query(ctx, getAllTenants, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetAllTenantsRow
+	for rows.Next() {
+		var i GetAllTenantsRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClerkID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.Role,
+			&i.UnitNumber,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
 const getTenantByClerkID = `-- name: GetTenantByClerkID :one
@@ -245,39 +305,39 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]GetUsersR
 
 const updateUserCredentials = `-- name: UpdateUserCredentials :exec
 UPDATE users
-SET first_name = $1, last_name = $2, email = $3
-WHERE clerk_id = $4
+SET first_name = $2, last_name = $3, email = $4
+WHERE clerk_id = $1
 `
 
 type UpdateUserCredentialsParams struct {
+	ClerkID   string `json:"clerk_id"`
 	FirstName string `json:"first_name"`
 	LastName  string `json:"last_name"`
 	Email     string `json:"email"`
-	ClerkID   string `json:"clerk_id"`
 }
 
 func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCredentialsParams) error {
 	_, err := q.db.Exec(ctx, updateUserCredentials,
+		arg.ClerkID,
 		arg.FirstName,
 		arg.LastName,
 		arg.Email,
-		arg.ClerkID,
 	)
 	return err
 }
 
 const updateUserRole = `-- name: UpdateUserRole :exec
 UPDATE users
-SET role = $1
-WHERE clerk_id = $2
+SET role = $2
+WHERE clerk_id = $1
 `
 
 type UpdateUserRoleParams struct {
-	Role    Role   `json:"role"`
 	ClerkID string `json:"clerk_id"`
+	Role    Role   `json:"role"`
 }
 
 func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error {
-	_, err := q.db.Exec(ctx, updateUserRole, arg.Role, arg.ClerkID)
+	_, err := q.db.Exec(ctx, updateUserRole, arg.ClerkID, arg.Role)
 	return err
 }

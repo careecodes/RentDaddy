@@ -9,6 +9,7 @@ import (
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/jackc/pgx/v5/pgtype"
 	svix "github.com/svix/svix-webhooks/go"
@@ -19,13 +20,26 @@ type ClerkUserPublicMetaData struct {
 	Role db.Role `json:"role"`
 }
 
+type EmailVerification struct {
+	Status   string `json:"verified"`
+	Strategy string `json:"strategy"`
+}
+
+type EmailEntry struct {
+	Id           string            `json:"id"`
+	EmailAddress string            `json:"email_address"`
+	Verification EmailVerification `json:"verification"`
+}
+
 type ClerkUserData struct {
-	ID             string          `json:"id"`
-	Email          string          `json:"email_address"`
-	FirstName      string          `json:"first_name"`
-	LastName       string          `json:"last_name"`
-	ProfileImage   string          `json:"profile_image_url"`
-	PublicMetaData json.RawMessage `json:"public_metadata"`
+	ID                    string          `json:"id"`
+	PrimaryEmailAddressId string          `json:"primary_email_address_id"`
+	EmailAddresses        []EmailEntry    `json:"email_addresses"`
+	FirstName             string          `json:"first_name"`
+	LastName              string          `json:"last_name"`
+	ProfileImage          string          `json:"profile_image_url"`
+	LastSignInAt          int64           `json:"last_sign_in_at"`
+	PublicMetaData        json.RawMessage `json:"public_metadata"`
 }
 
 type ClerkWebhookPayload struct {
@@ -119,19 +133,34 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		userRole = db.RoleAdmin
 	}
 
+	var primaryUserEmail string
+	for _, entry := range userData.EmailAddresses {
+		if entry.Id == userData.PrimaryEmailAddressId {
+			primaryUserEmail = entry.EmailAddress
+			break
+		}
+	}
+	if primaryUserEmail == "" {
+		primaryUserEmail = userData.EmailAddresses[0].EmailAddress
+	}
+
 	res, err := queries.CreateUser(r.Context(), db.CreateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
+		Email:     primaryUserEmail,
+		// Phone numbers are paid tier
+		// Create a phone number generator
+		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:      userRole,
 		Status:    db.AccountStatusActive,
-		LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
 		//
-		// This should be automatically made from the database
-		// right now it the insert only works if I have these included
+		// This should be automatically be made from the database
+		// right now insert only works if I have these included
 		//
-		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
-		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
@@ -161,15 +190,16 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		// Currently not erroring out
 	}
 
-	log.Printf("[CLERK_WEBHOOK] New user created: %s (%s)", userData.ID, userData.Email)
+	log.Printf("[CLERK_WEBHOOK] New user created: %s (%s)", userData.ID, primaryUserEmail)
 	w.WriteHeader(http.StatusCreated)
 }
 
 func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+	primaryUserEmail := userData.EmailAddresses[0].EmailAddress
 	if err := queries.UpdateUserCredentials(r.Context(), db.UpdateUserCredentialsParams{
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
-		Email:     userData.Email,
+		Email:     primaryUserEmail,
 		ClerkID:   userData.ID,
 	}); err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed updating user %s: %v", userData.ID, err)
@@ -177,7 +207,7 @@ func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		return
 	}
 
-	log.Printf("[CLERK_WEBHOOK] User updated: %s (%s)", userData.ID, userData.Email)
+	log.Printf("[CLERK_WEBHOOK] User updated: %s (%s)", userData.ID, primaryUserEmail)
 	w.WriteHeader(http.StatusOK)
 }
 
