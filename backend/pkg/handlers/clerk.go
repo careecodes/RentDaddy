@@ -9,7 +9,7 @@ import (
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/careecodes/RentDaddy/utils"
+	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/jackc/pgx/v5/pgtype"
 	svix "github.com/svix/svix-webhooks/go"
