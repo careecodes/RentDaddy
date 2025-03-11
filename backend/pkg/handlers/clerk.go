@@ -47,7 +47,7 @@ type ClerkWebhookPayload struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func ClerkWebhookHandlder(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed reading body")
