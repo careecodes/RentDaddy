@@ -2,28 +2,22 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
 	"os"
+	"time"
 
-	"github.com/careecodes/RentDaddy/internal/db/generated"
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/joho/godotenv"
 	svix "github.com/svix/svix-webhooks/go"
 )
 
-type Role string
-
-const (
-	ADMIN  Role = "admin"
-	TENANT Role = "tenant"
-)
-
 type ClerkUserPublicMetaData struct {
-	DbId int32 `json:"db_id"`
-	Role Role  `json:"role"`
+	DbId int32   `json:"db_id"`
+	Role db.Role `json:"role"`
 }
 
 type ClerkUserData struct {
@@ -40,33 +34,7 @@ type ClerkWebhookPayload struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func Verify(payload []byte, headers http.Header) bool {
-	if err := godotenv.Load(); err != nil {
-		log.Printf("[CLERK WEBHOOK] No .env file found %v", err)
-		return false
-	}
-
-	webhookSecret := os.Getenv("CLERK_WEBHOOK")
-	if webhookSecret == "" {
-		log.Println("[CLERK_WEBHOOK] Environment variable is required")
-		return false
-	}
-	wh, err := svix.NewWebhook(webhookSecret)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Svix failed initailizing %v", err)
-		return false
-	}
-
-	err = wh.Verify(payload, headers)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK]Invalid webhook signature: %v", err)
-		return false
-	}
-
-	return true
-}
-
-func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *generated.Queries) {
+func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed reading body")
@@ -117,20 +85,52 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *genera
 	}
 }
 
-func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
-	res, err := queries.CreateTenant(r.Context(), generated.CreateTenantParams{
-		Name:  fmt.Sprintf("%s %s", userData.FirstName, userData.LastName),
-		Email: userData.Email,
+func Verify(payload []byte, headers http.Header) bool {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("[CLERK WEBHOOK] No .env file found %v", err)
+		return false
+	}
+
+	webhookSecret := os.Getenv("CLERK_WEBHOOK")
+	if webhookSecret == "" {
+		log.Println("[CLERK_WEBHOOK] Environment variable is required")
+		return false
+	}
+	wh, err := svix.NewWebhook(webhookSecret)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Svix failed initailizing %v", err)
+		return false
+	}
+
+	err = wh.Verify(payload, headers)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK]Invalid webhook signature: %v", err)
+		return false
+	}
+
+	return true
+}
+
+func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+	res, err := queries.CreateUser(r.Context(), db.CreateUserParams{
+		ClerkID:   userData.ID,
+		FirstName: userData.FirstName,
+		LastName:  userData.LastName,
+		Role:      db.RoleAdmin, // This will need an update
+		Status:    db.AccountStatusActive,
+		LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 	})
 	if err != nil {
-		log.Println("[CLERK_WEBHOOK] Failed inserting user in DB")
+		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
 		http.Error(w, "Error inserting user", http.StatusInternalServerError)
 		return
 	}
 
 	// Update clerk user metadata with DB ID, role, ect.
 	dummyMetadata := &ClerkUserPublicMetaData{
-		DbId: res.ID,
+		DbId: int32(res.ID),
 		Role: "tenant",
 	}
 
@@ -154,66 +154,28 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	w.WriteHeader(http.StatusCreated)
 }
 
-func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
-	// Querying clerk user data for DB ID
-	clerkUserDataRaw, err := user.Get(r.Context(), userData.ID)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed querying clerk user: %s", userData.ID)
-		http.Error(w, "Error deleting user", http.StatusInternalServerError)
+func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+	if err := queries.UpdateUserCredentials(r.Context(), db.UpdateUserCredentialsParams{
+		FirstName: userData.FirstName,
+		LastName:  userData.LastName,
+		Email:     userData.Email,
+		ClerkID:   userData.ID,
+	}); err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed updating user %s: %v", userData.ID, err)
+		http.Error(w, "Error updating user data", http.StatusInternalServerError)
 		return
-	}
-
-	var userMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(clerkUserDataRaw.PublicMetadata, &userMetadata)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed to unmarshal public metadata for user %v: %v", userData.ID, err)
-		http.Error(w, "Error processing user data", http.StatusInternalServerError)
-		return
-
-	}
-	res, err := queries.GetTenantByID(r.Context(), userMetadata.DbId)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed querying for user %s: %v", userData.ID, err)
-		http.Error(w, "Error processing user data", http.StatusInternalServerError)
-		return
-	}
-
-	// Compare email, ect.
-	if res.Email != userData.Email {
-		// update DB
-	}
-
-	if res.Name != fmt.Sprintf("%s %s", userData.FirstName, userData.LastName) {
-		// update DB
 	}
 
 	log.Printf("[CLERK_WEBHOOK] User updated: %s (%s)", userData.ID, userData.Email)
 	w.WriteHeader(http.StatusOK)
 }
 
-func deleteUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *generated.Queries) {
-	// Delete user from DB
-	clerkUserDataRaw, err := user.Get(r.Context(), userData.ID)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed querying clerk user: %s", userData.ID)
-		http.Error(w, "Error deleting user", http.StatusInternalServerError)
-		return
-	}
-
-	var userMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(clerkUserDataRaw.PublicMetadata, &userMetadata)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed to unmarshal public metadata for user %v: %v", userData.ID, err)
-		http.Error(w, "Error processing user data", http.StatusInternalServerError)
+func deleteUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+	if err := queries.DeleteUserByClerkID(r.Context(), userData.ID); err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed deleting user %s: %v", userData.ID, err)
+		http.Error(w, "Error deleting user data", http.StatusInternalServerError)
 		return
 
-	}
-
-	err = queries.DeleteTenant(r.Context(), userMetadata.DbId)
-	if err != nil {
-		log.Println("[CLERK_WEBHOOK] Failed deleting user in DB")
-		http.Error(w, "Error inserting user", http.StatusInternalServerError)
-		return
 	}
 
 	log.Printf("[CLERK_WEBHOOK] User deleted: %s", userData.ID)
