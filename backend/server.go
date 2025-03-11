@@ -249,14 +249,15 @@ func main() {
 	// End of Clerk Routes
 
 	// Server config
+	port := os.Getenv("PORT")
 	server := &http.Server{
-		Addr:    ":3069",
+		Addr:    ":" + port,
 		Handler: r,
 	}
 
 	// Start server
 	go func() {
-		log.Println("Server is running on port 3069....")
+		log.Printf("Server is running on port %s....\n", port)
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("server error: %v", err)
 		}
