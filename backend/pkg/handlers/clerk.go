@@ -78,7 +78,7 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *db.Que
 	case "user.deleted":
 		deleteUser(w, r, clerkUserData, queries)
 	default:
-		log.Printf("Unhandled event: %s", payload.Type)
+		log.Printf("[CLERK_WEBHOOK] Unhandled event: %s", payload.Type)
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte(`{"status":"received"}`))
 		return
@@ -104,7 +104,7 @@ func Verify(payload []byte, headers http.Header) bool {
 
 	err = wh.Verify(payload, headers)
 	if err != nil {
-		log.Printf("[CLERK_WEBHOOK]Invalid webhook signature: %v", err)
+		log.Printf("[CLERK_WEBHOOK] Invalid webhook signature: %v", err)
 		return false
 	}
 
@@ -112,13 +112,36 @@ func Verify(payload []byte, headers http.Header) bool {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+	if err := godotenv.Load(); err != nil {
+		log.Printf("[CLERK WEBHOOK] No .env file found %v", err)
+		http.Error(w, "Failed to load environment variables", http.StatusInternalServerError)
+		return
+	}
+
+	userRole := db.RoleTenant
+	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
+	AdminLastName := os.Getenv("ADMIN_LAST_NAME")
+	if AdminFirstName == "" || AdminLastName == "" {
+		log.Println("[CLERK_WEBHOOK] Missing admin credentials")
+		http.Error(w, "Missing admin credentials", http.StatusInternalServerError)
+		return
+	}
+
+	if userData.FirstName == AdminFirstName && userData.LastName == AdminLastName {
+		userRole = db.RoleAdmin
+	}
+
 	res, err := queries.CreateUser(r.Context(), db.CreateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
-		Role:      db.RoleAdmin, // This will need an update
+		Role:      userRole,
 		Status:    db.AccountStatusActive,
 		LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
+		//
+		// This should be automatically made from the database
+		// right now it the insert only works if I have these included
+		//
 		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 	})
@@ -129,21 +152,21 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	}
 
 	// Update clerk user metadata with DB ID, role, ect.
-	dummyMetadata := &ClerkUserPublicMetaData{
+	metadata := &ClerkUserPublicMetaData{
 		DbId: int32(res.ID),
-		Role: "tenant",
+		Role: res.Role,
 	}
 
 	// Convert metadata to raw json
-	metadataBytes, err := json.Marshal(dummyMetadata)
+	metadataBytes, err := json.Marshal(metadata)
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Error updating user with db credintials: %v", err)
 		metadataBytes = []byte("{}")
 	}
-	metadata := json.RawMessage(metadataBytes)
+	metadataRaw := json.RawMessage(metadataBytes)
 
 	_, err = user.Update(r.Context(), userData.ID, &user.UpdateParams{
-		PublicMetadata: &metadata,
+		PublicMetadata: &metadataRaw,
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Error could not update user metadata: %v", err)

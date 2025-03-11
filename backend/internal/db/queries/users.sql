@@ -43,6 +43,13 @@ SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, cr
 FROM users
 WHERE clerk_id = $1 AND role = 'tenant';
 
+-- name: GetAllTenants : many
+SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+FROM users
+WHERE clerk_id = $1 AND role = 'tenant'
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
+
 -- name: GetAdminByClerkID :one 
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
