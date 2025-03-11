@@ -11,7 +11,6 @@ import (
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/joho/godotenv"
 	svix "github.com/svix/svix-webhooks/go"
 )
 
@@ -86,11 +85,6 @@ func ClerkWebhookHanlder(w http.ResponseWriter, r *http.Request, queries *db.Que
 }
 
 func Verify(payload []byte, headers http.Header) bool {
-	if err := godotenv.Load(); err != nil {
-		log.Printf("[CLERK WEBHOOK] No .env file found %v", err)
-		return false
-	}
-
 	webhookSecret := os.Getenv("CLERK_WEBHOOK")
 	if webhookSecret == "" {
 		log.Println("[CLERK_WEBHOOK] Environment variable is required")
@@ -112,12 +106,6 @@ func Verify(payload []byte, headers http.Header) bool {
 }
 
 func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
-	if err := godotenv.Load(); err != nil {
-		log.Printf("[CLERK WEBHOOK] No .env file found %v", err)
-		http.Error(w, "Failed to load environment variables", http.StatusInternalServerError)
-		return
-	}
-
 	userRole := db.RoleTenant
 	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
 	AdminLastName := os.Getenv("ADMIN_LAST_NAME")

@@ -92,8 +92,9 @@ func main() {
 
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
-	if clerkSecretKey == "" {
-		log.Fatal("[ENV] CLERK_SECRET_KEY environment variable is required")
+	webhookSecret := os.Getenv("CLERK_WEBHOOK")
+	if clerkSecretKey == "" || webhookSecret == "" {
+		log.Fatal("[ENV] CLERK_SECRETS environment variables are required")
 	}
 
 	// Initialize Clerk with your secret key
