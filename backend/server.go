@@ -19,7 +19,6 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -69,13 +68,6 @@ func main() {
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
-	if os.Getenv("ENV") != "production" {
-		// Load .env file in development only
-		if err := godotenv.Load("../.env"); err != nil {
-			log.Fatal("[ENV] Error: No .env file found")
-		}
-	}
 
 	dbUrl := os.Getenv("PG_URL")
 	if dbUrl == "" {
