@@ -122,7 +122,7 @@ func main() {
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
-		handlers.ClerkWebhookHanlder(w, r, queries)
+		handlers.ClerkWebhookHandler(w, r, queries)
 	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
