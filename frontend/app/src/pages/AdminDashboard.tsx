@@ -103,11 +103,20 @@ const AdminDashboard = () => {
             <div className="d-flex gap-4 my-4 w-100">
                 <div className="d-flex flex-column w-50">
                     <h2 className="mb-3">Leases</h2>
-                    <TableComponent columns={columnsLeases} dataSource={dataLeases} icon={<UserOutlined />} />
+                    <TableComponent
+                        columns={columnsLeases}
+                        dataSource={dataLeases}
+                        onChange={() => { }}
+                    />
                 </div>
                 <div className="d-flex flex-column w-50">
-                    <h2 className="mb-3">Work Orders / Complaints</h2>
-                    <TableComponent columns={columnsWorkOrdersAndComplaints} dataSource={dataWorkOrdersAndComplaints} icon={<ToolOutlined />} />
+                    <h2 className="mb-3">Work Order / Complaint</h2>
+                    <TableComponent
+                        columns={columnsWorkOrdersAndComplaints}
+                        dataSource={dataWorkOrdersAndComplaints}
+                        icon={<UserOutlined />}
+                        onChange={() => { }}
+                    />
                 </div>
             </div>
         </div>

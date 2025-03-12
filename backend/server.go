@@ -73,6 +73,7 @@ func main() {
 	if dbUrl == "" {
 		log.Fatal("[ENV] Error: No Database url")
 	}
+	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
 	webhookSecret := os.Getenv("CLERK_WEBHOOK")
 	if clerkSecretKey == "" || webhookSecret == "" {

@@ -84,18 +84,13 @@ or testing.
 ## Configuration
 
 Create a `.env` file in the project root to manage environment-specific
-variables. Example:
+variables. The simplest method to do so is running the command below:
 
-```env
-# Server Configuration
-PORT=8080
-
-# Database Configuration
-DATABASE_URL=postgres://user:password@localhost:5432/rentdaddy?sslmode=disable
-
-# Application Environment
-ENV=development
+```bash
+cp .env.example .env
 ```
+
+And then edit it using your favorite text editor.
 
 > **Note:** Replace the placeholder values with your actual configuration.
 
