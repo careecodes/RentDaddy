@@ -39,4 +39,6 @@ jobs:
         SMTP_USER: ${{ secrets.SMTP_USER }}
         SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
         SMTP_TLS_MODE: ${{ vars.SMTP_TLS_MODE }}
+        SMTP_TEST_EMAIL: ${{vars.SMTP_TEST_EMAIL}}
+        SMTP_FROM: ${{vars.SMTP_FROM}}
         run: go test -v ./...
