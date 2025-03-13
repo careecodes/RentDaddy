@@ -32,7 +32,7 @@ jobs:
       - name: Build server
         run: go build -v -o server server.go
       - name: Debug Environment Variables
-        run: env | grep SMTP
+        run: env
       - name: Test
         env:
           SMTP_PORT: ${{ vars.SMTP_PORT }}
