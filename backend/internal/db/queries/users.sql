@@ -38,31 +38,20 @@ LIMIT $1 OFFSET $2;
 DELETE FROM users
 WHERE clerk_id = $1;
 
-
 -- name: UpdateTenantProfile :exec
 UPDATE users 
 SET first_name = $2, last_name = $3, email = $4, phone = $5, unit_number = $6 
 WHERE clerk_id = $1 AND role = 'tenant';
 
--- name: GetTenantsOldUnitNumber :one 
+-- name: GetTenantsUnitNumber :one 
 SELECT unit_number
 FROM users
 WHERE clerk_id = $1;
 
--- name: UpdateTenantsApartment :exec
-UPDATE apartments
-SET unit_number = $1, lease_end_date = $2
--- Needs tenants old unit_number
-WHERE unit_number = (SELECT unit_number FROM apartments WHERE unit_number = $1);
-
--- name: UpdateTenatsLeaseStatus :exec
-UPDATE leases
-SET lease_status = $1
-WHERE apartment_id = (
-    SELECT id
-    FROM apartments
-    WHERE unit_number = (SELECT unit_number FROM apartments WHERE id = $2)
-);
+-- name: UpdateTenantsUnitNumber :exec
+UPDATE users
+SET unit_number = $2
+WHERE clerk_id = $1;
 
 -- name: GetTenantByClerkID :one 
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
@@ -72,7 +61,7 @@ WHERE clerk_id = $1 AND role = 'tenant';
 -- name: GetAllTenants :many
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
-WHERE clerk_id = $1 AND role = 'tenant'
+WHERE  role = 'tenant'
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
@@ -81,3 +70,9 @@ SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, cr
 FROM users
 WHERE clerk_id = $1 AND role = 'admin';
 
+-- name: GetAllAdmins :many
+SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+FROM users
+WHERE  role = 'admin'
+ORDER BY created_at DESC
+LIMIT $1 OFFSET $2;
