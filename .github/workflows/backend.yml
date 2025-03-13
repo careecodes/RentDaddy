@@ -42,11 +42,11 @@ jobs:
           changed_files=$(git diff --name-only origin/main HEAD | grep '\.go$' || true)
           echo "Changed Go files: $changed_files"
           if [ -z "$changed_files" ]; then
-            echo "::set-output name=packages::"
+            echo "packages=" >> $GITHUB_OUTPUT
             exit 0
           fi
           packages=$(echo "$changed_files" | xargs -n1 dirname | sort | uniq)
-          echo "::set-output name=packages::$packages"
+          echo "packages=$packages" >> $GITHUB_OUTPUT
           echo "Packages to test: $packages"
 
       - name: Test Changed Packages
