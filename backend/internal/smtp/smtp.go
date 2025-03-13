@@ -5,6 +5,7 @@ import (
 	"log"
 	"net/smtp"
 	"os"
+  "time"
 )
 
 type SMTPConfig struct {
@@ -71,5 +72,5 @@ func SendEmail(to string, subject string, body string) error {
 		time.Sleep(time.Duration(waitTime) * time.Millisecond)
 	}
 
-	return fmt.ErrorF("Failed to send email to %s after %d attempts: %v", to, maxRetries, sendMailErr)
+	return fmt.Errorf("Failed to send email to %s after %d attempts: %v", to, maxRetries, sendMailErr)
 }
