@@ -1,4 +1,4 @@
-package config
+package smtp
 
 import (
 	"fmt"
@@ -57,11 +57,19 @@ func SendEmail(to string, subject string, body string) error {
 	addr := fmt.Sprintf("%s:%s", smtpConfig.Host, smtpConfig.Port)
 	auth := smtp.PlainAuth("", smtpConfig.User, smtpConfig.Password, smtpConfig.Host)
 
-	send_mail_err := smtp.SendMail(addr, auth, from, []string{to}, msg)
+	var sendMailErr error
+	maxRetries := 3
+	for i := 0; i < maxRetries; i++ {
+		sendMailErr = smtp.SendMail(addr, auth, from, []string{to}, msg)
+		if sendMailErr == nil {
+			return nil
+		}
 
-	if send_mail_err != nil {
-		log.Printf("Failed to send email to %s: %v", to, err)
-		return err
+		log.Printf("Attempt %d: Failed to send email to %s: %v", i+1, to, sendMailErr)
+
+		waitTime := (1 << i) * 500
+		time.Sleep(time.Duration(waitTime) * time.Millisecond)
 	}
-	return nil
+
+	return fmt.ErrorF("Failed to send email to %s after %d attempts: %v", to, maxRetries, sendMailErr)
 }
