@@ -121,43 +121,22 @@ ALTER TABLE "apartments"
 ADD PRIMARY KEY ("id");
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
 CREATE TABLE IF NOT EXISTS "leases" (
-    "id" BIGINT GENERATED ALWAYS AS IDENTITY,
-    "document_name" TEXT NOT NULL,
-    "document_type" "Type" NOT NULL,
-    "file_type" VARCHAR NOT NULL,
-    "file_path" VARCHAR NOT NULL,
-    "file_size" INTEGER NULL,
-    "checksum" TEXT NULL,
-    "content_hash" TEXT NULL,
-    "version_number" TEXT NULL,
-    "is_active" BOOLEAN NOT NULL DEFAULT true,
-    "is_template" BOOLEAN NOT NULL DEFAULT false,
-    "lease_number" bigint NOT NULL,
-    "lease_status" "Lease_Status" NOT NULL DEFAULT "Lease_Status" 'draft',
-    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "effective_date" TIMESTAMP(0) WITHOUT TIME ZONE NULL,
-    "expiration_date" TIMESTAMP(0) WITHOUT TIME ZONE NULL,
-    "created_by" BIGINT NOT NULL,
-    "updated_by" BIGINT NOT NULL,
-    "view_count" INTEGER NOT NULL DEFAULT 0,
-    "download_count" INTEGER NOT NULL DEFAULT 0,
-    "last_viewed_at" TIMESTAMP(0) WITHOUT TIME ZONE NULL,
-    "apartment_id" BIGINT NOT NULL,
-    "landlord" BIGINT NOT NULL,
-    "tags" TEXT NULL,
-    "custom_metadata" jsonb NULL,
-    "is_signed" BOOLEAN NOT NULL DEFAULT false,
-    "signature_metadata" jsonb NULL,
-    "compliance_status" "Compliance_Status" NOT NULL DEFAULT "Compliance_Status" 'pending_review'
+    "document_id" BIGSERIAL PRIMARY KEY,
+    "external_doc_id" TEXT NOT NULL UNIQUE, -- Maps to Documenso's externalId
+    "tenant_id" BIGINT NOT NULL REFERENCES users(id),
+    "landlord_id" BIGINT NOT NULL REFERENCES users(id),
+    "lease_start_date" DATE NOT NULL,
+    "lease_end_date" DATE NOT NULL,
+    "rent_amount" DECIMAL(10,2) NOT NULL,
+    "lease_status" "Lease_Status" NOT NULL DEFAULT 'active',
+    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
+    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
 );
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
 CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
 ALTER TABLE "leases"
 ADD PRIMARY KEY ("id");
-COMMENT ON COLUMN "leases"."document_type" IS 'amendment?';
-COMMENT ON COLUMN "leases"."file_size" IS 'size in Bytes';
-COMMENT ON COLUMN "leases"."tags" IS 'Type: string Array';
+
 CREATE TABLE IF NOT EXISTS "lockers" (
     "id" BIGINT GENERATED ALWAYS AS IDENTITY,
     "access_code" varchar,

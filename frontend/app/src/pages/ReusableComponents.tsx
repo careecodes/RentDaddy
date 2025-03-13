@@ -8,9 +8,9 @@ import { Link } from "react-router";
 import RegistrationFormExample from "../components/reusableComponents/FormExample";
 import TimeRelatedFormExample from "../components/reusableComponents/TimeRelatedFormExamples";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
-import { CardComponent } from "../components/reusableComponents/cardComponent";
+import { CardComponent } from "../components/reusableComponents/CardComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import ModalComponent from "../components/ModalComponent"
+import ModalComponent from "../components/ModalComponent";
 import type { ColumnsType, TableProps } from "antd/es/table";
 import type { DataType } from "../types/types";
 
@@ -90,12 +90,10 @@ const ReusableComponents = () => {
                     />
                 </div>
 
-
                 <Divider />
 
                 <div className="flex flex-column align-items-center m-5 gap-2">
                     <h2 className="fs-2">Modal</h2>
-
                     {/* Documentation for ModalComponent.tsx */}
                     There are 3 types of modals:
                     <ul>
@@ -103,13 +101,27 @@ const ReusableComponents = () => {
                         <li>Smart Locker</li>
                         <li>Guest Parking</li>
                     </ul>
-
-                    <ModalComponent type="default" buttonTitle="Confirmation Model" content="This is a confirmation model" handleOkay={() => { }} />
-
-                    <ModalComponent type="Smart Locker" buttonTitle="Smart Locker" content="This is a smart locker model" handleOkay={() => { }} />
-
-                    <ModalComponent type="Guest Parking" buttonTitle="Guest Parking" content="To register someone in Guest Parking, please fill out the form below." handleOkay={() => { }} />
-
+                    <ModalComponent
+                        type="default"
+                        buttonType="default"
+                        buttonTitle="Confirmation Model"
+                        content="This is a confirmation model"
+                        handleOkay={() => {}}
+                    />
+                    <ModalComponent
+                        type="Smart Locker"
+                        buttonType="primary"
+                        buttonTitle="Smart Locker"
+                        content="This is a smart locker model"
+                        handleOkay={() => {}}
+                    />
+                    <ModalComponent
+                        type="Guest Parking"
+                        buttonType="primary"
+                        buttonTitle="Guest Parking"
+                        content="To register someone in Guest Parking, please fill out the form below."
+                        handleOkay={() => {}}
+                    />
                 </div>
 
                 <Divider />

@@ -1,7 +1,7 @@
 import { Card, Row, Col } from "antd";
 import { LockOutlined, InboxOutlined, CarOutlined, MobileOutlined } from "@ant-design/icons";
 import { StyleConstants } from "../styles/styleConstants";
-import { CardComponent } from "./reusableComponents/cardComponent";
+import { CardComponent } from "./reusableComponents/CardComponent";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
 /**

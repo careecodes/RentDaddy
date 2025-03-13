@@ -405,38 +405,17 @@ type Complaint struct {
 }
 
 type Lease struct {
-	ID           int64  `json:"id"`
-	DocumentName string `json:"document_name"`
-	// amendment?
-	DocumentType Type   `json:"document_type"`
-	FileType     string `json:"file_type"`
-	FilePath     string `json:"file_path"`
-	// size in Bytes
-	FileSize       pgtype.Int4      `json:"file_size"`
-	Checksum       pgtype.Text      `json:"checksum"`
-	ContentHash    pgtype.Text      `json:"content_hash"`
-	VersionNumber  pgtype.Text      `json:"version_number"`
-	IsActive       bool             `json:"is_active"`
-	IsTemplate     bool             `json:"is_template"`
-	LeaseNumber    int64            `json:"lease_number"`
-	LeaseStatus    LeaseStatus      `json:"lease_status"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	DocumentID     int64            `json:"document_id"`
+	ExternalDocID  string           `json:"external_doc_id"`
+	TenantID       int64            `json:"tenant_id"`
+	LandlordID     int64            `json:"landlord_id"`
+	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
+	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
+	RentAmount     pgtype.Numeric   `json:"rent_amount"`
+	PaymentStatus  string           `json:"payment_status"`
+	LeaseStatus    string           `json:"lease_status"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	EffectiveDate  pgtype.Timestamp `json:"effective_date"`
-	ExpirationDate pgtype.Timestamp `json:"expiration_date"`
-	CreatedBy      int64            `json:"created_by"`
-	UpdatedBy      int64            `json:"updated_by"`
-	ViewCount      int32            `json:"view_count"`
-	DownloadCount  int32            `json:"download_count"`
-	LastViewedAt   pgtype.Timestamp `json:"last_viewed_at"`
-	ApartmentID    int64            `json:"apartment_id"`
-	Landlord       int64            `json:"landlord"`
-	// Type: string Array
-	Tags              pgtype.Text      `json:"tags"`
-	CustomMetadata    []byte           `json:"custom_metadata"`
-	IsSigned          bool             `json:"is_signed"`
-	SignatureMetadata []byte           `json:"signature_metadata"`
-	ComplianceStatus  ComplianceStatus `json:"compliance_status"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }
 
 type LeaseTenant struct {

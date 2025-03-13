@@ -1,15 +1,26 @@
-FROM golang:1.23-alpine
+FROM golang:1.23-alpine as builder
 
+# Set working directory
 WORKDIR /app
 
-# Install necessary tools
-RUN apk add --no-cache curl git
+# Install necessary tools using apk (for Alpine)
+RUN apk update && apk add --no-cache curl git postgresql-client
 
-# Copy Go module files first for better caching
-COPY go.* ./
-RUN go mod download || echo "No dependencies to download"
+# Install Task CLI manually
+RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task
+RUN chmod +x /usr/local/bin/task
+RUN task --version
 
-# Copy the rest of the application
+# Install golang-migrate
+RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz && \
+    tar -xvf migrate.tar.gz && \
+    mv migrate /usr/local/bin/migrate && \
+    chmod +x /usr/local/bin/migrate && \
+    migrate --version || echo "Migrate installation failed"
+
+# Copy application files
+COPY go.mod go.sum ./
+RUN go mod download
 COPY . .
 
 # Check if server.go exists and print directory contents
@@ -21,4 +32,9 @@ RUN go build -v -o server server.go || (echo "BUILD FAILED!" && exit 1)
 
 EXPOSE 8080
 
-CMD ["./server"]
+# Copy entrypoint script and make it executable
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
+
+# Run entrypoint
+CMD ["/app/entrypoint.sh"]

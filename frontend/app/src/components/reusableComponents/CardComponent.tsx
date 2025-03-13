@@ -4,7 +4,7 @@ import Card from "antd/es/card/Card";
 
 interface CardComponentProps {
     title: string;
-    description: string;
+    description: any;
     icon?: any;
     button?: any;
     hoverable: boolean;
@@ -26,13 +26,12 @@ export const CardComponent = (props: CardComponentProps) => {
         <>
             <Card
                 //TODO: JJ make these styles better
+                title={props.title}
                 hoverable={props.hoverable}
                 className="h-100 text-center"
                 style={{ minHeight: "280px", minWidth: "280px" }}>
-                <div className="d-flex flex-column align-items-center">
-                    {props.icon}
-
-                    <h4 className="mb-3">{props.title}</h4>
+                <div className="flex flex-column align-items-center">
+                    <span>{props.icon}</span>
 
                     <p className="text-muted">{props.description}</p>
 

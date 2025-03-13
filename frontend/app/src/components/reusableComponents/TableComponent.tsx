@@ -7,7 +7,7 @@ interface TableComponentProps<T> {
     dataSource?: T[];
     onChange?: TableProps<T>["onChange"];
     icon?: React.ReactNode;
-    style: string
+    style?: string;
 }
 
 const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style }: TableComponentProps<T>) => {
