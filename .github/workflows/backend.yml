@@ -33,12 +33,12 @@ jobs:
         run: go build -v -o server server.go
 
       - name: Test
-      env:
-        SMTP_PORT: ${{ vars.SMTP_PORT }}
-        SMTP_ENDPOINT_ADDRESS: ${{ vars.SMTP_ENDPOINT_ADDRESS }}
-        SMTP_USER: ${{ secrets.SMTP_USER }}
-        SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
-        SMTP_TLS_MODE: ${{ vars.SMTP_TLS_MODE }}
-        SMTP_TEST_EMAIL: ${{vars.SMTP_TEST_EMAIL}}
-        SMTP_FROM: ${{vars.SMTP_FROM}}
+        env:
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_ENDPOINT_ADDRESS: ${{ vars.SMTP_ENDPOINT_ADDRESS }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_TLS_MODE: ${{ vars.SMTP_TLS_MODE }}
+          SMTP_TEST_EMAIL: ${{vars.SMTP_TEST_EMAIL}}
+          SMTP_FROM: ${{vars.SMTP_FROM}}
         run: go test -v ./...
