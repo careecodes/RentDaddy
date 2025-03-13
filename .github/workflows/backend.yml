@@ -36,7 +36,7 @@ jobs:
       - name: Check for changed Go files
         id: check_changes
         run: |
-          changed_files=$(git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep '\.go$' || true)
+          changed_files=$(git diff --name-only origin/main...HEAD | grep '\.go$' || true)
           echo "Changed Go files: $changed_files"
           if [ -z "$changed_files" ]; then
             echo "::set-output name=packages::"
