@@ -42,3 +42,6 @@ jobs:
           SMTP_TEST_EMAIL: ${{vars.SMTP_TEST_EMAIL}}
           SMTP_FROM: ${{vars.SMTP_FROM}}
         run: go test -v ./...
+      
+      - name: Debug Environment Variables
+        run: env | grep SMTP
