@@ -62,5 +62,5 @@ jobs:
         run: |
           for pkg in ${{ steps.check_changes.outputs.packages }}; do
             echo "Running tests in package: $pkg"
-            go test -v $pkg/*
+            go test -v $pkg/...
           done
