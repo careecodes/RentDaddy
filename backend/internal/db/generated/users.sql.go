@@ -90,6 +90,7 @@ const getAdminByClerkID = `-- name: GetAdminByClerkID :one
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1 AND role = 'admin'
+LIMIT 1
 `
 
 type GetAdminByClerkIDRow struct {
@@ -235,6 +236,7 @@ const getTenantByClerkID = `-- name: GetTenantByClerkID :one
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1 AND role = 'tenant'
+LIMIT 1
 `
 
 type GetTenantByClerkIDRow struct {
@@ -283,6 +285,7 @@ const getUserByClerkID = `-- name: GetUserByClerkID :one
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1
+LIMIT 1
 `
 
 type GetUserByClerkIDRow struct {

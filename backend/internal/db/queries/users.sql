@@ -26,7 +26,8 @@ WHERE clerk_id = $1;
 -- name: GetUserByClerkID :one
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
-WHERE clerk_id = $1;
+WHERE clerk_id = $1
+LIMIT 1;
 
 -- name: GetUsers :many
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
@@ -56,7 +57,8 @@ WHERE clerk_id = $1;
 -- name: GetTenantByClerkID :one 
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
-WHERE clerk_id = $1 AND role = 'tenant';
+WHERE clerk_id = $1 AND role = 'tenant'
+LIMIT 1;
 
 -- name: GetAllTenants :many
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
@@ -68,7 +70,8 @@ LIMIT $1 OFFSET $2;
 -- name: GetAdminByClerkID :one 
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
-WHERE clerk_id = $1 AND role = 'admin';
+WHERE clerk_id = $1 AND role = 'admin'
+LIMIT 1;
 
 -- name: GetAllAdmins :many
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
