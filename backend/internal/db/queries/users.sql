@@ -20,20 +20,28 @@ WHERE clerk_id = $1;
 
 -- name: UpdateUserCredentials :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4
+SET first_name = $2, last_name = $3, email = $4, phone = $5
 WHERE clerk_id = $1;
 
 -- name: GetUserByClerkID :one
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1
 LIMIT 1;
 
 -- name: GetUsers :many
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
+
+-- name: GetUsersByRole :many
+SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
+FROM users
+WHERE role = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3;
+
 
 -- name: DeleteUserByClerkID :exec
 DELETE FROM users
@@ -60,22 +68,9 @@ FROM users
 WHERE clerk_id = $1 AND role = 'tenant'
 LIMIT 1;
 
--- name: GetAllTenants :many
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
-FROM users
-WHERE  role = 'tenant'
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2;
-
 -- name: GetAdminByClerkID :one 
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1 AND role = 'admin'
 LIMIT 1;
 
--- name: GetAllAdmins :many
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
-FROM users
-WHERE  role = 'admin'
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2;
