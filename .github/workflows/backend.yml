@@ -62,5 +62,6 @@ jobs:
         run: |
           for pkg in ${{ steps.check_changes.outputs.packages }}; do
             echo "Running tests in package: $pkg"
-            go test -v $pkg/...
+            pkg_relative=${pkg#backend/}
+            go test -v ./$pkg_relative/...
           done
