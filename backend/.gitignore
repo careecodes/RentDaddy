@@ -9,6 +9,9 @@
 .env*
 .env.local*
 
+# Ignore todos
+todo.md
+
 # Ignore all sqlite files
 *.sqlite
 

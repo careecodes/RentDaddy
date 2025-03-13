@@ -12,12 +12,13 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/careecodes/RentDaddy/internal/db"
+	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/joho/godotenv"
 )
 
 type Item struct {
@@ -53,33 +54,48 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 }
 
 // QuickDump is a function that dumps the request to the console for debugging purposes
-// func QuickDump(r *http.Request) {
-// 	dump, err := httputil.DumpRequest(r, true)
-// 	if err != nil {
-// 		http.Error(w, "Failed to dump request", http.StatusInternalServerError)
-// 		return
-// 	}
-// 	fmt.Printf("Request dump: %s\n", dump)
-// }
+//
+//	func QuickDump(r *http.Request) {
+//		dump, err := httputil.DumpRequest(r, true)
+//		if err != nil {
+//			http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+//			return
+//		}
+//		fmt.Printf("Request dump: %s\n", dump)
+//	}
 
 func main() {
 
-	// // Load .env file
-	if err := godotenv.Load(); err != nil {
-		log.Println("Warning: No .env file found")
-	}
+	// OS signal channel
+	sigChan := make(chan os.Signal, 1)
+	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
 
+	dbUrl := os.Getenv("PG_URL")
+	if dbUrl == "" {
+		log.Fatal("[ENV] Error: No Database url")
+	}
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")
+
 	if clerkSecretKey == "" {
-		log.Fatal("CLERK_SECRET_KEY environment variable is required")
+		log.Fatal("[ENV] CLERK_SECRET_KEY environment vars are required")
 	}
+	webhookSecret := os.Getenv("CLERK_WEBHOOK")
+
+	if webhookSecret == "" {
+		log.Fatal("[ENV] CLERK_WEBHOOK environment vars are required")
+	}
+
+	ctx := context.Background()
+
+	queries, pool, err := db.ConnectDB(ctx, dbUrl)
+	if err != nil {
+		log.Fatalf("[DB] Failed initializing: %v", err)
+	}
+	defer pool.Close()
 
 	// Initialize Clerk with your secret key
 	clerk.SetKey(clerkSecretKey)
-
-	// Each operation requires a context.Context as the first argument.
-	ctx := context.Background()
 
 	// Example Clerk usage:
 	// resource represents the Clerk SDK Resource Package that you are using such as user, organization, etc.
@@ -97,10 +113,6 @@ func main() {
 	// 	log.Fatalf("failed to get user: %v", err)
 	// }
 
-	// OS signal channel
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
-
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
 
@@ -113,6 +125,11 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+
+	// Webhooks
+	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
+		handlers.ClerkWebhookHandler(w, r, queries)
+	})
 
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
@@ -211,10 +228,9 @@ func main() {
 		log.Printf("Updating user with ID: %s", updateReq.ID)
 
 		// Update the user with the provided ID and username
-		resource, err := user.Update(ctx, updateReq.ID, &user.UpdateParams{
+		resource, err := user.Update(r.Context(), updateReq.ID, &user.UpdateParams{
 			Username: clerk.String(updateReq.Username),
 		})
-
 		if err != nil {
 			log.Printf("Error updating user: %v", err)
 			http.Error(w, "Failed to update user: "+err.Error(), http.StatusInternalServerError)
@@ -255,5 +271,4 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("server shutdown failed: %v", err)
 	}
-
 }
