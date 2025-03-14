@@ -32,12 +32,12 @@ services:
     container_name: rentdaddy-backend
     restart: always
     volumes:
-      - ./backend:/app 
+      - ./backend:/app
       - /app/tmp
     env_file: .env
     networks:
       - app-network
-    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && /app/entrypoint.sh"]
+    command: ["/bin/sh", "-c", "chmod +x ./entrypoint.sh && ./entrypoint.sh"]
 
   frontend:
     build:

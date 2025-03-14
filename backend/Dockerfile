@@ -35,9 +35,8 @@ RUN go build -v -o server server.go || (echo "BUILD FAILED!" && exit 1)
 
 EXPOSE 8080
 
-# Copy entrypoint.sh and set correct permissions
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
+# set correct permissions
+RUN chmod +x ./entrypoint.sh && chown root:root ./entrypoint.sh
 
 # Run entrypoint
-CMD ["/app/entrypoint.sh"]
+CMD ["entrypoint.sh"]

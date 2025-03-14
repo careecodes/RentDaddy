@@ -45,8 +45,8 @@ jobs:
             echo "packages=" >> $GITHUB_OUTPUT
             exit 0
           fi
-          packages=$(echo "$changed_files" | xargs -n1 dirname | sort | uniq)
-          echo "packages=$packages" >> $GITHUB_OUTPUT
+          packages=$(echo "$changed_files" | xargs -n1 dirname | sort | uniq | tr '\n' ' ')
+          echo "packages=$(echo $packages | tr ' ' ',')" >> $GITHUB_OUTPUT
           echo "Packages to test: $packages"
 
       - name: Test Changed Packages
@@ -60,7 +60,8 @@ jobs:
           SMTP_TEST_EMAIL: ${{vars.SMTP_TEST_EMAIL}}
           SMTP_FROM: ${{vars.SMTP_FROM}}
         run: |
-          for pkg in ${{ steps.check_changes.outputs.packages }}; do
+          IFS=',' read -ra pkgs <<< "${{ steps.check_changes.outputs.packages }}"
+          for pkg in "${pkgs[@]}"; do
             echo "Running tests in package: $pkg"
             pkg_relative=${pkg#backend/}
             go test -v ./$pkg_relative/...
