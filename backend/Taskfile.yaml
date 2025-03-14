@@ -34,8 +34,8 @@ tasks:
       #   SELECT '{{.POSTGRES_USER}}' AS current_user,
       #      '{{.POSTGRES_PASSWORD}}' AS current_password,
       #      '{{.POSTGRES_DB}}' AS current_db) SELECT * FROM settings;" > /dev/null 2>&1
-      - psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'"
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
+      - psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'" > /dev/null 2>&1
+      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up > /dev/null 2>&1
       - echo "Migrations applied!"
 
   migrate:down:
