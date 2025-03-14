@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"log"
 	"math/big"
 	"net/http"
@@ -10,7 +9,22 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+// LeaseHandler encapsulates dependencies for lease-related handlers
+type LeaseHandler struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
+
+// NewLeaseHandler initializes a LeaseHandler
+func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
+	return &LeaseHandler{
+		pool:    pool,
+		queries: queries,
+	}
+}
 
 // Convert float64 to pgtype.Numeric
 func floatToPgNumeric(value float64) pgtype.Numeric {
@@ -45,20 +59,20 @@ type CreateLeaseResponse struct {
 	LeaseStatus   string `json:"lease_status"`
 }
 
-func CreateLeaseHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	var req CreateLeaseRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, `{"error": "Invalid JSON"}`, http.StatusBadRequest)
+		h.respondWithError(w, http.StatusBadRequest, "Invalid JSON")
 		return
 	}
 
 	if req.TenantID == 0 || req.LandlordID == 0 || req.StartDate.IsZero() || req.EndDate.IsZero() || req.RentAmount <= 0 || req.CreatedBy == 0 {
-		http.Error(w, `{"error": "Missing or invalid fields"}`, http.StatusBadRequest)
+		h.respondWithError(w, http.StatusBadRequest, "Missing or invalid fields")
 		return
 	}
 
-	leaseID, err := queries.CreateLease(r.Context(), db.CreateLeaseParams{
+	leaseID, err := h.queries.CreateLease(r.Context(), db.CreateLeaseParams{
 		LeaseNumber:    0, // Auto-generated lease number
 		ExternalDocID:  "",
 		TenantID:       req.TenantID,
@@ -72,18 +86,32 @@ func CreateLeaseHandler(w http.ResponseWriter, r *http.Request, queries *db.Quer
 		UpdatedBy:      req.CreatedBy, // Initially same as CreatedBy
 	})
 	if err != nil {
-		log.Printf("Database insert error: %v", err)
-		http.Error(w, fmt.Sprintf(`{"error": "Database insert failed: %v"}`, err), http.StatusInternalServerError)
+		log.Printf("[LEASE_HANDLER] Database insert error: %v", err)
+		h.respondWithError(w, http.StatusInternalServerError, "Database insert failed")
 		return
 	}
 
-	resp := CreateLeaseResponse{
+	h.respondWithJSON(w, http.StatusOK, CreateLeaseResponse{
 		LeaseID:     leaseID,
 		LeaseStatus: "active",
-	}
+	})
+}
 
+// Utility functions for response handling
+func (h *LeaseHandler) respondWithError(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		log.Printf("Failed to encode response: %v", err)
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(map[string]string{"error": message}); err != nil {
+		log.Printf("[LEASE_HANDLER] Failed to encode response: %v", err)
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+	}
+}
+
+func (h *LeaseHandler) respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(code)
+	if err := json.NewEncoder(w).Encode(payload); err != nil {
+		log.Printf("[LEASE_HANDLER] Failed to encode response: %v", err)
+		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
 	}
 }
