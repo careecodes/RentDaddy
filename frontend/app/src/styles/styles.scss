@@ -158,6 +158,11 @@ body {
     background: $warning95;
 }
 
+.icon {
+    font-size: 24px;
+    margin-bottom: 16px;
+}
+
 // Text Sizes
 // H1 Page Titles
 // H2 Section Titles
@@ -170,3 +175,21 @@ body {
 
 // Potentially
 // Tooltip
+
+.lease-table-container {
+    display: flex;
+    align-items: center;
+    gap: 10px; // Adjust spacing as needed
+}
+
+.table-icon {
+    font-size: 24px;
+    color: #1890ff; // Ant Design blue
+}
+
+.ant-table-filter-dropdown {
+    background: #fff !important; // Ensures visibility
+    border: 1px solid #ccc !important; // Adds a visible border
+    padding: 10px !important; // Adds spacing
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); // Adds a slight shadow for contrast
+}
