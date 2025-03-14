@@ -179,7 +179,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		// Create a phone number generator
 		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:      userRole,
-		Status:    db.AccountStatusActive,
 		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
 		//
 		// This should be automatically be made from the database

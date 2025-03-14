@@ -22,6 +22,9 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
+# Install Air inside the backend container
+RUN go install github.com/air-verse/air@latest && \
+    mv /go/bin/air /usr/local/bin/air
 
 # Check if server.go exists and print directory contents
 RUN ls -la
@@ -32,9 +35,8 @@ RUN go build -v -o server server.go || (echo "BUILD FAILED!" && exit 1)
 
 EXPOSE 8080
 
-# Copy entrypoint script and make it executable
-COPY entrypoint.sh /app/entrypoint.sh
-RUN chmod +x /app/entrypoint.sh
+# Copy entrypoint.sh and set correct permissions
+RUN chmod +x ./entrypoint.sh && chown root:root ./entrypoint.sh
 
 # Run entrypoint
-CMD ["/app/entrypoint.sh"]
+CMD ["entrypoint.sh"]

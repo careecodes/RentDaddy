@@ -12,6 +12,9 @@ done
 echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 
+echo "Starting Air for live reloading..."
+exec air
+
 echo "Starting the backend server..."
 
 exec ./server
