@@ -2,7 +2,6 @@ package handlers
 
 import (
 	"encoding/json"
-	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -11,6 +10,7 @@ import (
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/invitation"
 	"github.com/go-chi/chi/v5"
@@ -41,6 +41,7 @@ func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
 }
 
 func (u UserHandler) CreateTenant(w http.ResponseWriter, r *http.Request) {
+	adminClerkId := r.URL.Query().Get("clerk_id")
 	frontendPort := os.Getenv("FRONTEND_PORT")
 	if frontendPort == "" {
 		log.Println("[ENV] No FRONTEND_PORT ENV provided")
@@ -61,17 +62,18 @@ func (u UserHandler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error no valid unit_number", http.StatusBadRequest)
 		return
 	}
+
 	tenantUnitInt, err := strconv.Atoi(tenantUnitNumberStr)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed converting tenants unit number to Int: %v", err)
 		http.Error(w, "Error converting tenants unit number to Int", http.StatusBadRequest)
 		return
 	}
-	publicMetadata := &ClerkUserPublicMetaData{
-		// Role:       db.RoleTenant,
-		UnitNumber: tenantUnitInt,
-	}
 
+	publicMetadata := &ClerkUserPublicMetaData{
+		UnitNumber:   tenantUnitInt,
+		ManagementId: adminClerkId,
+	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed converting tenants metadata to RAW JSON: %v", err)
@@ -84,9 +86,8 @@ func (u UserHandler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 		EmailAddress:   tenantEmail,
 		PublicMetadata: &publicMetadataRawJson,
 		// NOTE: update URL
-		RedirectURL:    clerk.String(fmt.Sprintf("http://localhost:%s/auth/login", frontendPort)),
-		IgnoreExisting: clerk.Bool(true),
-		// ExpiresInDays:  new(int64),
+		RedirectURL:    clerk.String(utils.GetAbsoluteUrl("/auth/login")),
+		IgnoreExisting: clerk.Bool(true), // If pending invite already out will re-invite them
 	})
 
 	if invite.Response.StatusCode == 200 {

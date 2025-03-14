@@ -20,6 +20,8 @@ type ClerkUserPublicMetaData struct {
 	DbId       int32   `json:"db_id"`
 	Role       db.Role `json:"role"`
 	UnitNumber int     `json:"unit_number"`
+	// Admin(clerk_id) inviting tenant
+	ManagementId string `json:"managemant_id"`
 }
 
 type EmailVerification struct {
@@ -165,9 +167,23 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	qtx := queries.WithTx(tx)
 
 	if userMetadata.UnitNumber != 0 {
-		// TODO: Add apartment entry
-		// qtx.createApartment
-		log.Printf("[CLERK_WEBHOOK] Add Aprtment Entry %v", userMetadata)
+		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
+			UnitNumber:     int16(userMetadata.UnitNumber),
+			Price:          pgtype.Numeric{},
+			Size:           0,
+			ManagementID:   0,
+			Availability:   false,
+			LeaseID:        0,
+			LeaseStartDate: pgtype.Date{},
+			LeaseEndDate:   pgtype.Date{},
+			UpdatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+			CreatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+		})
+		if err != nil {
+			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)
+			http.Error(w, "Error inserting apartment", http.StatusInternalServerError)
+			return
+		}
 	}
 
 	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
@@ -180,10 +196,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:      userRole,
 		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
-		//
-		// This should be automatically be made from the database
-		// right now insert only works if I have these included
-		//
 		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})

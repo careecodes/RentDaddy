@@ -79,7 +79,6 @@ func main() {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			userHandler.GetAllUsers(w, r, gen.RoleTenant)
 		})
-		// r.Post("/", userHandler.CreateTenant)
 		r.Get("/{clerk_id}", userHandler.GetTenantByClerkId)
 		r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantCredentials)
 	})
@@ -88,7 +87,7 @@ func main() {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			userHandler.GetAllUsers(w, r, gen.RoleAdmin)
 		})
-		// r.Post("/", userHandler.CreateAdmin)
+		r.Post("/admins/{clerk_id}/invite", userHandler.CreateTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
 	})
 
