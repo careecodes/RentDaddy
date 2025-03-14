@@ -1,20 +1,21 @@
 package db
 
 import (
-	"context"
+	"database/sql"
 	"log"
 
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/mattn/go-sqlite3"
+
+	"github.com/careecodes/RentDaddy/internal/db/generated"
 )
 
-func ConnectDB(ctx context.Context, dbUrl string) (*db.Queries, *pgxpool.Pool, error) {
-	pool, err := pgxpool.New(ctx, dbUrl)
+func ConnectDB(dataSourceName string) (*generated.Queries, *sql.DB, error) {
+	db, err := sql.Open("sqlite3", dataSourceName)
 	if err != nil {
-		log.Fatalf("Cannot connect to DB: %v", err)
+		log.Fatalf("cannot connect to db with %s: %w", dataSourceName, err)
 		return nil, nil, err
 	}
 
-	queries := db.New(pool)
-	return queries, pool, nil
+	queries := generated.New(db)
+	return queries, db, nil
 }

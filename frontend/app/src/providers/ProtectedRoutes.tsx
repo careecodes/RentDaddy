@@ -2,8 +2,8 @@
 // It also checks the user's role and redirects to the correct route based on the role
 // The ProtectedRoutes component is used in the Main.tsx file as a Route element that wraps the Tenant and Admin routes
 
-import { useUser } from "@clerk/react-router";
-import { Navigate, Outlet, useLocation } from "react-router";
+import { useUser } from '@clerk/react-router';
+import { Navigate, Outlet, useLocation } from 'react-router';
 
 const ProtectedRoutes = () => {
     // Get Clerk User to get the user's role
@@ -29,14 +29,14 @@ const ProtectedRoutes = () => {
     const userRole = user?.publicMetadata?.role as string;
 
     // More strict role-based access control
-    if (userRole === "tenant") {
+    if (userRole === 'tenant') {
         // Tenants can ONLY access tenant routes
-        if (!currentPath.startsWith("/tenant")) {
+        if (!currentPath.startsWith('/tenant')) {
             return <Navigate to="/tenant" />;
         }
-    } else if (userRole === "admin") {
+    } else if (userRole === 'admin') {
         // Admins can ONLY access admin routes
-        if (!currentPath.startsWith("/admin")) {
+        if (!currentPath.startsWith('/admin')) {
             return <Navigate to="/admin" />;
         }
     } else {
@@ -46,6 +46,6 @@ const ProtectedRoutes = () => {
 
     // Allow access to the route if the checks above passed
     return <Outlet />;
-};
+}
 
-export default ProtectedRoutes;
+export default ProtectedRoutes

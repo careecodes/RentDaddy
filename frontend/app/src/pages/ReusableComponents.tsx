@@ -1,5 +1,5 @@
-import { Avatar, Button, Card, Col, ConfigProvider, Divider, Input, Row } from "antd";
-import TableComponent from "../components/reusableComponents/TableComponent";
+import { Avatar, Button, Card, Col, ConfigProvider, Divider, Input, Row, TableColumnsType, TableProps } from "antd";
+import { TableComponent } from "../components/reusableComponents/TableComponent";
 import { LockOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
 import TextArea from "antd/es/input/TextArea";
 import { useState } from "react";
@@ -8,23 +8,37 @@ import { Link } from "react-router";
 import RegistrationFormExample from "../components/reusableComponents/FormExample";
 import TimeRelatedFormExample from "../components/reusableComponents/TimeRelatedFormExamples";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
-import { CardComponent } from "../components/reusableComponents/CardComponent";
+import { CardComponent } from "../components/reusableComponents/cardComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import ModalComponent from "../components/ModalComponent";
-import type { ColumnsType, TableProps } from "antd/es/table";
-import type { DataType } from "../types/types";
+import ModalComponent from "../components/ModalComponent"
 
 const ReusableComponents = () => {
     const [value, setValue] = useState("");
 
-    const columns: ColumnsType<DataType> = [
+    interface DataType {
+        key: React.Key;
+        name: string;
+        age: number;
+        address: string;
+    }
+
+    const columns: TableColumnsType = [
         {
             title: "Name",
             dataIndex: "name",
             filters: [
-                { text: "Joe", value: "Joe" },
-                { text: "Category 1", value: "Category 1" },
-                { text: "Category 2", value: "Category 2" },
+                {
+                    text: "Joe",
+                    value: "Joe",
+                },
+                {
+                    text: "Category 1",
+                    value: "Category 1",
+                },
+                {
+                    text: "Category 2",
+                    value: "Category 2",
+                },
             ],
             filterMode: "tree",
             filterSearch: true,
@@ -40,8 +54,14 @@ const ReusableComponents = () => {
             title: "Address",
             dataIndex: "address",
             filters: [
-                { text: "London", value: "London" },
-                { text: "New York", value: "New York" },
+                {
+                    text: "London",
+                    value: "London",
+                },
+                {
+                    text: "New York",
+                    value: "New York",
+                },
             ],
             onFilter: (value, record) => record.address.startsWith(value as string),
             filterSearch: true,
@@ -50,10 +70,30 @@ const ReusableComponents = () => {
     ];
 
     const data: DataType[] = [
-        { key: "1", name: "John Brown", age: 32, address: "New York No. 1 Lake Park" },
-        { key: "2", name: "Jim Green", age: 42, address: "London No. 1 Lake Park" },
-        { key: "3", name: "Joe Black", age: 32, address: "Sydney No. 1 Lake Park" },
-        { key: "4", name: "Jim Red", age: 32, address: "London No. 2 Lake Park" },
+        {
+            key: "1",
+            name: "John Brown",
+            age: 32,
+            address: "New York No. 1 Lake Park",
+        },
+        {
+            key: "2",
+            name: "Jim Green",
+            age: 42,
+            address: "London No. 1 Lake Park",
+        },
+        {
+            key: "3",
+            name: "Joe Black",
+            age: 32,
+            address: "Sydney No. 1 Lake Park",
+        },
+        {
+            key: "4",
+            name: "Jim Red",
+            age: 32,
+            address: "London No. 2 Lake Park",
+        },
     ];
 
     const onChange: TableProps<DataType>["onChange"] = (pagination, filters, sorter, extra) => {
@@ -89,40 +129,28 @@ const ReusableComponents = () => {
                         icon={<UserOutlined />}
                     />
                 </div>
+              
 
                 <Divider />
 
                 <div className="flex flex-column align-items-center m-5 gap-2">
-                    <h2 className="fs-2">Modal</h2>
-                    {/* Documentation for ModalComponent.tsx */}
-                    There are 3 types of modals:
-                    <ul>
-                        <li>Default</li>
-                        <li>Smart Locker</li>
-                        <li>Guest Parking</li>
-                    </ul>
-                    <ModalComponent
-                        type="default"
-                        buttonType="default"
-                        buttonTitle="Confirmation Model"
-                        content="This is a confirmation model"
-                        handleOkay={() => {}}
-                    />
-                    <ModalComponent
-                        type="Smart Locker"
-                        buttonType="primary"
-                        buttonTitle="Smart Locker"
-                        content="This is a smart locker model"
-                        handleOkay={() => {}}
-                    />
-                    <ModalComponent
-                        type="Guest Parking"
-                        buttonType="primary"
-                        buttonTitle="Guest Parking"
-                        content="To register someone in Guest Parking, please fill out the form below."
-                        handleOkay={() => {}}
-                    />
-                </div>
+                  <h2 className="fs-2">Modal</h2>
+
+                  {/* Documentation for ModalComponent.tsx */}
+                  There are 3 types of modals:
+                  <ul>
+                    <li>Default</li>
+                    <li>Smart Locker</li>
+                    <li>Guest Parking</li>
+                  </ul>
+
+                  <ModalComponent type="default" buttonTitle="Confirmation Model" content="This is a confirmation model" handleOkay={() => { }} />
+
+                  <ModalComponent type="Smart Locker" buttonTitle="Smart Locker" content="This is a smart locker model" handleOkay={() => { }} />
+
+                  <ModalComponent type="Guest Parking" buttonTitle="Guest Parking" content="To register someone in Guest Parking, please fill out the form below." handleOkay={() => { }} />
+                  
+                </div>              
 
                 <Divider />
 
@@ -158,7 +186,7 @@ const ReusableComponents = () => {
                     <h2>Table</h2>
                     <TableComponent
                         columns={columns}
-                        dataSource={data}
+                        data={data}
                         onChange={onChange}
                     />
                 </div>
