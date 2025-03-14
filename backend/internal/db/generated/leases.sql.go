@@ -145,7 +145,7 @@ func (q *Queries) ListLeases(ctx context.Context) ([]Lease, error) {
 	return items, nil
 }
 
-const renewLease = `-- name: RenewLease :one
+const renewLease = `-- name: RenewLease :exec
 UPDATE leases
 SET 
     lease_end_date = $1, 
@@ -163,42 +163,12 @@ type RenewLeaseParams struct {
 	ID           int64       `json:"id"`
 }
 
-type RenewLeaseRow struct {
-	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
-	ExternalDocID  string           `json:"external_doc_id"`
-	TenantID       int64            `json:"tenant_id"`
-	LandlordID     int64            `json:"landlord_id"`
-	ApartmentID    pgtype.Int8      `json:"apartment_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	LeaseStatus    LeaseStatus      `json:"lease_status"`
-	UpdatedBy      int64            `json:"updated_by"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+func (q *Queries) RenewLease(ctx context.Context, arg RenewLeaseParams) error {
+	_, err := q.db.Exec(ctx, renewLease, arg.LeaseEndDate, arg.UpdatedBy, arg.ID)
+	return err
 }
 
-func (q *Queries) RenewLease(ctx context.Context, arg RenewLeaseParams) (RenewLeaseRow, error) {
-	row := q.db.QueryRow(ctx, renewLease, arg.LeaseEndDate, arg.UpdatedBy, arg.ID)
-	var i RenewLeaseRow
-	err := row.Scan(
-		&i.ID,
-		&i.LeaseNumber,
-		&i.ExternalDocID,
-		&i.TenantID,
-		&i.LandlordID,
-		&i.ApartmentID,
-		&i.LeaseStartDate,
-		&i.LeaseEndDate,
-		&i.RentAmount,
-		&i.LeaseStatus,
-		&i.UpdatedBy,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const terminateLease = `-- name: TerminateLease :one
+const terminateLease = `-- name: TerminateLease :exec
 UPDATE leases
 SET 
     lease_status = 'terminated', 
@@ -215,42 +185,12 @@ type TerminateLeaseParams struct {
 	ID        int64 `json:"id"`
 }
 
-type TerminateLeaseRow struct {
-	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
-	ExternalDocID  string           `json:"external_doc_id"`
-	TenantID       int64            `json:"tenant_id"`
-	LandlordID     int64            `json:"landlord_id"`
-	ApartmentID    pgtype.Int8      `json:"apartment_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	LeaseStatus    LeaseStatus      `json:"lease_status"`
-	UpdatedBy      int64            `json:"updated_by"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+func (q *Queries) TerminateLease(ctx context.Context, arg TerminateLeaseParams) error {
+	_, err := q.db.Exec(ctx, terminateLease, arg.UpdatedBy, arg.ID)
+	return err
 }
 
-func (q *Queries) TerminateLease(ctx context.Context, arg TerminateLeaseParams) (TerminateLeaseRow, error) {
-	row := q.db.QueryRow(ctx, terminateLease, arg.UpdatedBy, arg.ID)
-	var i TerminateLeaseRow
-	err := row.Scan(
-		&i.ID,
-		&i.LeaseNumber,
-		&i.ExternalDocID,
-		&i.TenantID,
-		&i.LandlordID,
-		&i.ApartmentID,
-		&i.LeaseStartDate,
-		&i.LeaseEndDate,
-		&i.RentAmount,
-		&i.LeaseStatus,
-		&i.UpdatedBy,
-		&i.UpdatedAt,
-	)
-	return i, err
-}
-
-const updateLease = `-- name: UpdateLease :one
+const updateLease = `-- name: UpdateLease :exec
 UPDATE leases
 SET 
     tenant_id = $1,
@@ -274,23 +214,8 @@ type UpdateLeaseParams struct {
 	ID             int64       `json:"id"`
 }
 
-type UpdateLeaseRow struct {
-	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
-	ExternalDocID  string           `json:"external_doc_id"`
-	TenantID       int64            `json:"tenant_id"`
-	LandlordID     int64            `json:"landlord_id"`
-	ApartmentID    pgtype.Int8      `json:"apartment_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	LeaseStatus    LeaseStatus      `json:"lease_status"`
-	UpdatedBy      int64            `json:"updated_by"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-}
-
-func (q *Queries) UpdateLease(ctx context.Context, arg UpdateLeaseParams) (UpdateLeaseRow, error) {
-	row := q.db.QueryRow(ctx, updateLease,
+func (q *Queries) UpdateLease(ctx context.Context, arg UpdateLeaseParams) error {
+	_, err := q.db.Exec(ctx, updateLease,
 		arg.TenantID,
 		arg.LeaseStatus,
 		arg.LeaseStartDate,
@@ -298,20 +223,5 @@ func (q *Queries) UpdateLease(ctx context.Context, arg UpdateLeaseParams) (Updat
 		arg.UpdatedBy,
 		arg.ID,
 	)
-	var i UpdateLeaseRow
-	err := row.Scan(
-		&i.ID,
-		&i.LeaseNumber,
-		&i.ExternalDocID,
-		&i.TenantID,
-		&i.LandlordID,
-		&i.ApartmentID,
-		&i.LeaseStartDate,
-		&i.LeaseEndDate,
-		&i.RentAmount,
-		&i.LeaseStatus,
-		&i.UpdatedBy,
-		&i.UpdatedAt,
-	)
-	return i, err
+	return err
 }

@@ -7,8 +7,7 @@ INSERT INTO leases (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 RETURNING id;
 
-
--- name: RenewLease :one
+-- name: RenewLease :exec
 UPDATE leases
 SET 
     lease_end_date = $1, 
@@ -19,8 +18,7 @@ RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_i
     lease_start_date, lease_end_date, rent_amount, lease_status, 
     updated_by, updated_at;
 
-
--- name: TerminateLease :one
+-- name: TerminateLease :exec
 UPDATE leases
 SET 
     lease_status = 'terminated', 
@@ -31,7 +29,6 @@ RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_i
     lease_start_date, lease_end_date, rent_amount, lease_status, 
      updated_by, updated_at;
 
-
 -- name: ListLeases :many
 SELECT * FROM leases ORDER BY created_at DESC;
 
@@ -41,7 +38,7 @@ SELECT * FROM leases WHERE id = $1 LIMIT 1;
 -- name: GetLeaseByNumber :one
 SELECT * FROM leases WHERE lease_number = $1 LIMIT 1;
 
--- name: UpdateLease :one
+-- name: UpdateLease :exec
 UPDATE leases
 SET 
     tenant_id = $1,
