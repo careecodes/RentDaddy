@@ -5,19 +5,35 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"net/http/httptest"
 	"os"
 	"testing"
 	"time"
 
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	lease_models "github.com/careecodes/RentDaddy/pkg/models"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 )
 
 var testDB *pgxpool.Pool
+var queries *db.Queries
 
+func init() {
+	ctx := context.Background()
+	dbUrl := os.Getenv("PG_URL")
+	if dbUrl == "" {
+		log.Fatal("PG_URL is not set")
+	}
+
+	pool, err := pgxpool.New(ctx, dbUrl)
+	if err != nil {
+		log.Fatalf("Failed to connect to database: %v", err)
+	}
+	queries = db.New(pool)
+}
 func seedTestData(db *pgxpool.Pool) error {
 	ctx := context.Background()
 
@@ -138,7 +154,7 @@ func TestCreateLeaseHandler(t *testing.T) {
 	req.Header.Set("Content-Type", "application/json")
 
 	rr := httptest.NewRecorder()
-	handler := http.HandlerFunc(CreateLeaseHandler)
+	handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { CreateLeaseHandler(w, r, queries) })
 	handler.ServeHTTP(rr, req)
 
 	t.Logf("Response: %v", rr.Body.String())

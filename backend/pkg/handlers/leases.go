@@ -1,35 +1,16 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"log"
 	"math/big"
 	"net/http"
-	"os"
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 )
-
-var queries *db.Queries
-
-func init() {
-	ctx := context.Background()
-	dbUrl := os.Getenv("PG_URL")
-	if dbUrl == "" {
-		log.Fatal("PG_URL is not set")
-	}
-
-	pool, err := pgxpool.New(ctx, dbUrl)
-	if err != nil {
-		log.Fatalf("Failed to connect to database: %v", err)
-	}
-	queries = db.New(pool)
-}
 
 // Convert float64 to pgtype.Numeric
 func floatToPgNumeric(value float64) pgtype.Numeric {
@@ -64,7 +45,7 @@ type CreateLeaseResponse struct {
 	LeaseStatus   string `json:"lease_status"`
 }
 
-func CreateLeaseHandler(w http.ResponseWriter, r *http.Request) {
+func CreateLeaseHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
 	var req CreateLeaseRequest
 
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
