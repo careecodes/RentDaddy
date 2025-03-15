@@ -79,14 +79,17 @@ func TestCreateLeaseHandler(t *testing.T) {
 
 	// Create test request body
 	reqBody, err := json.Marshal(handlers.CreateLeaseRequest{
-		TenantID:      tenantID,
-		LandlordID:    landlordID,
+		Lease: db.Lease{ // Embed Lease fields
+			TenantID:   tenantID,
+			LandlordID: landlordID,
+			CreatedBy:  createdBy,
+		},
 		StartDate:     time.Now(),
 		EndDate:       time.Now().AddDate(1, 0, 0),
 		RentAmount:    1500.00,
 		DocumentTitle: "Test Lease",
-		CreatedBy:     createdBy,
 	})
+
 	assert.NoError(t, err, "Request body should be valid JSON")
 
 	// Create test request

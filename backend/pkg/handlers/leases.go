@@ -42,26 +42,55 @@ func floatToPgNumeric(value float64) pgtype.Numeric {
 	}
 }
 
+// reconcile CreateLeaseRequest and CreateLeaseResponse with db/generated/models Lease struct
 type CreateLeaseRequest struct {
-	TenantID      int64     `json:"tenant_id"`
-	LandlordID    int64     `json:"landlord_id"`
+	db.Lease `json:",inline"` // Embedding Lease struct to inherit fields
+
+	// Overriding fields that we want to expose with simplified types
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
 	RentAmount    float64   `json:"rent_amount"`
 	DocumentTitle string    `json:"document_title"`
-	CreatedBy     int64     `json:"created_by"`
+}
+
+// Convert `CreateLeaseRequest` to `db.CreateLeaseParams`
+func (r *CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
+	return db.CreateLeaseParams{
+		LeaseNumber:    0, // Auto-generated
+		ExternalDocID:  "",
+		TenantID:       r.TenantID,
+		LandlordID:     r.LandlordID,
+		ApartmentID:    pgtype.Int8{Int64: 0, Valid: false}, // Default empty
+		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: true},
+		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: true},
+		RentAmount:     floatToPgNumeric(r.RentAmount),
+		LeaseStatus:    "active",
+		CreatedBy:      r.CreatedBy,
+		UpdatedBy:      r.CreatedBy,
+	}
 }
 
 type CreateLeaseResponse struct {
+	db.Lease `json:",inline"`
+
+	// Explicitly expose only required fields
 	LeaseID       int64  `json:"lease_id"`
 	ExternalDocID string `json:"external_doc_id,omitempty"`
-	DocumensoURL  string `json:"documenso_url,omitempty"`
 	LeaseStatus   string `json:"lease_status"`
+}
+
+// Convert `db.Lease` to `CreateLeaseResponse`
+func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
+	return CreateLeaseResponse{
+		Lease:         lease,
+		LeaseID:       lease.ID,
+		ExternalDocID: lease.ExternalDocID,
+		LeaseStatus:   string(lease.LeaseStatus),
+	}
 }
 
 func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	var req CreateLeaseRequest
-
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "Invalid JSON")
 		return
@@ -72,29 +101,22 @@ func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	leaseID, err := h.queries.CreateLease(r.Context(), db.CreateLeaseParams{
-		LeaseNumber:    0, // Auto-generated lease number
-		ExternalDocID:  "",
-		TenantID:       req.TenantID,
-		LandlordID:     req.LandlordID,
-		ApartmentID:    pgtype.Int8{Int64: 0, Valid: false},
-		LeaseStartDate: pgtype.Date{Time: req.StartDate, Valid: true},
-		LeaseEndDate:   pgtype.Date{Time: req.EndDate, Valid: true},
-		RentAmount:     floatToPgNumeric(req.RentAmount),
-		LeaseStatus:    "active",
-		CreatedBy:      req.CreatedBy,
-		UpdatedBy:      req.CreatedBy, // Initially same as CreatedBy
-	})
+	leaseID, err := h.queries.CreateLease(r.Context(), req.ToCreateLeaseParams())
 	if err != nil {
 		log.Printf("[LEASE_HANDLER] Database insert error: %v", err)
 		h.respondWithError(w, http.StatusInternalServerError, "Database insert failed")
 		return
 	}
 
-	h.respondWithJSON(w, http.StatusOK, CreateLeaseResponse{
-		LeaseID:     leaseID,
-		LeaseStatus: "active",
-	})
+	// Fetch the created lease to return full response
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+	if err != nil {
+		log.Printf("[LEASE_HANDLER] Failed to retrieve created lease: %v", err)
+		h.respondWithError(w, http.StatusInternalServerError, "Failed to retrieve lease")
+		return
+	}
+
+	h.respondWithJSON(w, http.StatusOK, NewCreateLeaseResponse(lease))
 }
 
 // Utility functions for response handling
