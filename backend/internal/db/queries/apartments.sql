@@ -14,6 +14,11 @@ INSERT INTO apartments (
 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 RETURNING *;
 
+-- name: GetApartmentByUnitNumber :one
+SELECT id 
+FROM apartments
+WHERE unit_number = $1;
+
 -- name: GetApartment :one
 SELECT id,
   unit_number,

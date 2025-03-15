@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -11,6 +12,7 @@ import (
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	svix "github.com/svix/svix-webhooks/go"
@@ -163,7 +165,11 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		http.Error(w, "Error connecting to database", http.StatusInternalServerError)
 		return
 	}
-	defer tx.Rollback(r.Context())
+	defer func() {
+		if err != nil {
+			tx.Rollback(r.Context())
+		}
+	}()
 	qtx := queries.WithTx(tx)
 
 	adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
@@ -182,6 +188,19 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	}
 
 	if userMetadata.UnitNumber != 0 {
+		_, err := qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.UnitNumber))
+		// Error out if apartment found
+		if err == nil {
+			log.Printf("[CLERK_WEBHOOK] Failed already existing apartment: %v", err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("[CLERK_WEBHOOK] Error checking database for existing apartment: %v", err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		// Create new apartment entry if no existing apartment with unit_number
 		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
 			UnitNumber:     int16(userMetadata.UnitNumber),
 			Price:          pgtype.Numeric{},
@@ -199,6 +218,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			http.Error(w, "Error inserting apartment", http.StatusInternalServerError)
 			return
 		}
+
 	}
 
 	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{

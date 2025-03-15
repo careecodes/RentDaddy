@@ -87,7 +87,7 @@ func main() {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			userHandler.GetAllUsers(w, r, gen.RoleAdmin)
 		})
-		r.Post("/tenant_invite/{clerk_id}/{tenant_email/{tenant_unit_number}", userHandler.CreateTenant)
+		r.Post("/tenant_invite/{clerk_id}/{tenant_email/{tenant_unit_number}", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
 	})
 

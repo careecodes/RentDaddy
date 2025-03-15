@@ -5,7 +5,6 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strconv"
 	"time"
 
@@ -40,15 +39,8 @@ func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
 	}
 }
 
-func (u UserHandler) CreateTenant(w http.ResponseWriter, r *http.Request) {
+func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 	adminClerkId := r.URL.Query().Get("admin_clerk_id")
-	frontendPort := os.Getenv("FRONTEND_PORT")
-	if frontendPort == "" {
-		log.Println("[ENV] No FRONTEND_PORT ENV provided")
-		http.Error(w, "Error no FRONTEND_PORT provided", http.StatusBadRequest)
-		return
-	}
-
 	tenantEmail := chi.URLParam(r, "tenant_email")
 	tenantUnitNumberStr := chi.URLParam(r, "tenant_unit_number")
 
@@ -90,9 +82,9 @@ func (u UserHandler) CreateTenant(w http.ResponseWriter, r *http.Request) {
 		IgnoreExisting: clerk.Bool(true), // If pending invite already out will re-invite them
 	})
 
-	if invite.Response.StatusCode == 200 {
+	if invite.Response != nil && invite.Response.StatusCode == http.StatusOK {
+		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Success"))
-		w.WriteHeader(200)
 		return
 	}
 
@@ -117,9 +109,9 @@ func (u UserHandler) GetTenantByClerkId(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonRes))
-	w.WriteHeader(200)
 }
 
 func (u UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
@@ -165,9 +157,9 @@ func (u UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request, typeOfU
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonRes))
-	w.WriteHeader(200)
 }
 
 func (u UserHandler) UpdateTenantCredentials(w http.ResponseWriter, r *http.Request) {
@@ -195,7 +187,7 @@ func (u UserHandler) UpdateTenantCredentials(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	w.WriteHeader(200)
+	w.WriteHeader(http.StatusOK)
 }
 
 func (u UserHandler) GetAdminByClerkId(w http.ResponseWriter, r *http.Request) {
@@ -215,9 +207,9 @@ func (u UserHandler) GetAdminByClerkId(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonRes))
-	w.WriteHeader(200)
 }
 
 func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, quries *db.Queries) {
@@ -269,4 +261,6 @@ func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	// updatedUserInfo.LeaseStatus
 	// updatedUserInfo.LeaseEndDate
 	tx.Commit(r.Context())
+
+	// w.WriteHeader(http.StatusOK)
 }

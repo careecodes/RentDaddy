@@ -125,6 +125,19 @@ func (q *Queries) GetApartment(ctx context.Context, id int64) (GetApartmentRow, 
 	return i, err
 }
 
+const getApartmentByUnitNumber = `-- name: GetApartmentByUnitNumber :one
+SELECT id 
+FROM apartments
+WHERE unit_number = $1
+`
+
+func (q *Queries) GetApartmentByUnitNumber(ctx context.Context, unitNumber int16) (int64, error) {
+	row := q.db.QueryRow(ctx, getApartmentByUnitNumber, unitNumber)
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
 const listApartments = `-- name: ListApartments :many
 SELECT id,
   unit_number,
