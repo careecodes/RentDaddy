@@ -54,7 +54,7 @@ type CreateLeaseRequest struct {
 }
 
 // Convert `CreateLeaseRequest` to `db.CreateLeaseParams`
-func (r *CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
+func (r CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
 	return db.CreateLeaseParams{
 		LeaseNumber:    0, // Auto-generated
 		ExternalDocID:  "",
@@ -89,7 +89,7 @@ func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
 	}
 }
 
-func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
+func (h LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	var req CreateLeaseRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.respondWithError(w, http.StatusBadRequest, "Invalid JSON")
@@ -120,7 +120,7 @@ func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 }
 
 // Utility functions for response handling
-func (h *LeaseHandler) respondWithError(w http.ResponseWriter, code int, message string) {
+func (h LeaseHandler) respondWithError(w http.ResponseWriter, code int, message string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(map[string]string{"error": message}); err != nil {
@@ -129,7 +129,7 @@ func (h *LeaseHandler) respondWithError(w http.ResponseWriter, code int, message
 	}
 }
 
-func (h *LeaseHandler) respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
+func (h LeaseHandler) respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(code)
 	if err := json.NewEncoder(w).Encode(payload); err != nil {
