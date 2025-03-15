@@ -166,12 +166,27 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	defer tx.Rollback(r.Context())
 	qtx := queries.WithTx(tx)
 
+	adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed querying managementId: %v", err)
+		http.Error(w, "Error querying managementId", http.StatusInternalServerError)
+		return
+	}
+
+	var managementMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(adminPayload.PublicMetadata, &managementMetadata)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
+		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+		return
+	}
+
 	if userMetadata.UnitNumber != 0 {
 		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
 			UnitNumber:     int16(userMetadata.UnitNumber),
 			Price:          pgtype.Numeric{},
 			Size:           0,
-			ManagementID:   0,
+			ManagementID:   int64(managementMetadata.DbId),
 			Availability:   false,
 			LeaseID:        0,
 			LeaseStartDate: pgtype.Date{},

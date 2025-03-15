@@ -41,7 +41,7 @@ func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
 }
 
 func (u UserHandler) CreateTenant(w http.ResponseWriter, r *http.Request) {
-	adminClerkId := r.URL.Query().Get("clerk_id")
+	adminClerkId := r.URL.Query().Get("admin_clerk_id")
 	frontendPort := os.Getenv("FRONTEND_PORT")
 	if frontendPort == "" {
 		log.Println("[ENV] No FRONTEND_PORT ENV provided")
