@@ -22,6 +22,44 @@ import (
 	"github.com/go-chi/cors"
 )
 
+type Item struct {
+	ID    string `json:"id"`
+	Value string `json:"value"`
+}
+
+var items = make(map[string]Item)
+
+func PutItemHandler(w http.ResponseWriter, r *http.Request) {
+	itemID := chi.URLParam(r, "id")
+	var updatedItem Item
+	if err := json.NewDecoder(r.Body).Decode(&updatedItem); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if itemID != updatedItem.ID {
+		http.Error(w, "ID in path and body do not match", http.StatusBadRequest)
+		return
+	}
+	if _, ok := items[itemID]; !ok {
+		http.Error(w, "Item not found", http.StatusNotFound)
+		return
+	}
+	items[itemID] = updatedItem
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(updatedItem)
+}
+
+// QuickDump is a function that dumps the request to the console for debugging purposes
+//
+//	func QuickDump(r *http.Request) {
+//		dump, err := httputil.DumpRequest(r, true)
+//		if err != nil {
+//			http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+//			return
+//		}
+//		fmt.Printf("Request dump: %s\n", dump)
+//	}
+
 func main() {
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
@@ -87,7 +125,7 @@ func main() {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			userHandler.GetAllUsers(w, r, gen.RoleAdmin)
 		})
-		r.Post("/tenant_invite/{clerk_id}/{tenant_email/{tenant_unit_number}", userHandler.InviteTenant)
+		r.Post("/tenant_invite/{clerk_id}/{tenant_email}/{tenant_unit_number}", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
 	})
 
@@ -95,6 +133,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Success in get"))
 	})
+	// Sample data
+	items["1"] = Item{ID: "1", Value: "initial value"}
 
 	r.Post("/test/post", func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%v",items)

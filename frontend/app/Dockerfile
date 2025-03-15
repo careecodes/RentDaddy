@@ -10,11 +10,19 @@ RUN apk add --no-cache curl bash
 FROM base AS dependencies
 COPY package*.json ./
 
-# Use CI install and ensure POSIX-compatible line endings for Windows compatibility
+
+
+# if package-lock.json exists, run npm i
+# if none exists, run npm ci
 # --no-audit: skips security vulnerability check - if ever used for production, must be removed
 # --no-fund: skips funding messages
-RUN npm ci --no-audit --no-fund && \
+RUN if [ "$(uname -s)" = "Windows_NT" ]; then \
+    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund --unsafe-perm; else npm install --no-audit --no-fund --unsafe-perm; fi; \
+    else \
+    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm i --no-audit --no-fund; fi; \
+    fi && \
     echo "Dependencies installed successfully"
+
 
 # Build layer - uses the dependencies layer
 FROM dependencies AS build
