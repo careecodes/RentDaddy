@@ -212,11 +212,13 @@ func (q *Queries) GetUserByClerkID(ctx context.Context, clerkID string) (GetUser
 const getUsers = `-- name: GetUsers :many
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
+WHERE role = $1
 ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
+LIMIT $2 OFFSET $3
 `
 
 type GetUsersParams struct {
+	Role   Role  `json:"role"`
 	Limit  int32 `json:"limit"`
 	Offset int32 `json:"offset"`
 }
@@ -235,7 +237,7 @@ type GetUsersRow struct {
 }
 
 func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]GetUsersRow, error) {
-	rows, err := q.db.Query(ctx, getUsers, arg.Limit, arg.Offset)
+	rows, err := q.db.Query(ctx, getUsers, arg.Role, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

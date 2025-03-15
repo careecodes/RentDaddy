@@ -208,6 +208,7 @@ RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_i
 type UpdateLeaseParams struct {
 	TenantID       int64       `json:"tenant_id"`
 	LeaseStatus    LeaseStatus `json:"lease_status"`
+	LeaseStatus    LeaseStatus `json:"lease_status"`
 	LeaseStartDate pgtype.Date `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date `json:"lease_end_date"`
 	UpdatedBy      int64       `json:"updated_by"`
