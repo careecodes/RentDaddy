@@ -5,7 +5,7 @@ const AlertComponent = (props: any) => {
     return (
         <>
             <Alert
-                className="text-center"
+                className="flex text-center"
                 message={props.title}
                 description={props.description}
                 type={props.type}

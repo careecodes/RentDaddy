@@ -35,12 +35,12 @@ const AdminDashboard = () => {
         {
             title: "Type",
             dataIndex: "type",
-            render: (type: string) => <Tag color={type === "Work Order" ? "blue" : "red"}>{type}</Tag>,
+            render: (type: string) => <Tag color={type === "Work Order" ? "blue" : "orange"}>{type}</Tag>,
         },
         {
             title: "Status",
             dataIndex: "status",
-            render: (status: string) => <Tag color={status === "Solved" ? "green" : "red"}>{status}</Tag>,
+            render: (status: string) => <Tag color={status === "Solved" ? "green" : "orange"}>{status}</Tag>,
         },
     ];
 
@@ -137,7 +137,6 @@ const AdminDashboard = () => {
                     <TableComponent
                         columns={columnsWorkOrdersAndComplaints}
                         dataSource={dataWorkOrdersAndComplaints}
-                        icon={<UserOutlined />}
                         onChange={() => {}}
                     />
                 </div>
