@@ -9,6 +9,7 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    environment: work-flow-tests
     defaults:
       run:
         working-directory: ./backend
@@ -32,5 +33,36 @@ jobs:
       - name: Build server
         run: go build -v -o server server.go
 
-      - name: Test
-        run: go test -v ./...
+      - name: Fetch main branch
+        run: git fetch origin main
+
+      - name: Check for changed Go files
+        id: check_changes
+        run: |
+          changed_files=$(git diff --name-only origin/main HEAD | grep '\.go$' || true)
+          echo "Changed Go files: $changed_files"
+          if [ -z "$changed_files" ]; then
+            echo "packages=" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+          packages=$(echo "$changed_files" | xargs -n1 dirname | sort | uniq | tr '\n' ' ')
+          echo "packages=$(echo $packages | tr ' ' ',')" >> $GITHUB_OUTPUT
+          echo "Packages to test: $packages"
+
+      - name: Test Changed Packages
+        if: steps.check_changes.outputs.packages != ''
+        env:
+          SMTP_PORT: ${{ vars.SMTP_PORT }}
+          SMTP_ENDPOINT_ADDRESS: ${{ vars.SMTP_ENDPOINT_ADDRESS }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASSWORD: ${{ secrets.SMTP_PASSWORD }}
+          SMTP_TLS_MODE: ${{ vars.SMTP_TLS_MODE }}
+          SMTP_TEST_EMAIL: ${{vars.SMTP_TEST_EMAIL}}
+          SMTP_FROM: ${{vars.SMTP_FROM}}
+        run: |
+          IFS=',' read -ra pkgs <<< "${{ steps.check_changes.outputs.packages }}"
+          for pkg in "${pkgs[@]}"; do
+            echo "Running tests in package: $pkg"
+            pkg_relative=${pkg#backend/}
+            go test -v ./$pkg_relative/...
+          done

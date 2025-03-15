@@ -31,10 +31,13 @@ services:
         condition: service_healthy
     container_name: rentdaddy-backend
     restart: always
+    volumes:
+      - ./backend:/app
+      - /app/tmp
     env_file: .env
     networks:
       - app-network
-    command: ["/bin/sh", "-c", "/app/entrypoint.sh"]
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
 
   frontend:
     build:
