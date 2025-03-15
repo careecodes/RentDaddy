@@ -1,4 +1,6 @@
 #!/bin/sh
+set -e
+
 echo "Waiting for PostgreSQL to be ready..."
 echo "postgres:5432:${POSTGRES_DB}:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > ~/.pgpass
 chmod 600 ~/.pgpass
@@ -12,9 +14,18 @@ done
 echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 
-echo "Starting Air for live reloading..."
-exec air
-
-echo "Starting the backend server..."
-
-exec ./server
+if [ "$DEBUG_MODE" = "true" ]; then
+  echo "Debug mode enabled. Container will stay alive."
+  # Debugging: Show working directory and files
+  echo "Current directory: $(pwd)"
+  ls -lah
+  tail -f /dev/null
+else
+  # Run Air with config file
+  echo "Starting Air..."
+  exec air -c /app/.air.toml
+  # Starting backend server
+  echo "Starting the backend server..."
+  chmod -R 777 /tmp/server
+  exec /tmp/server
+fi

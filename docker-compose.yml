@@ -37,7 +37,7 @@ services:
     env_file: .env
     networks:
       - app-network
-    command: ["/bin/sh", "-c", "chmod +x ./entrypoint.sh && ./entrypoint.sh"]
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
 
   frontend:
     build:
