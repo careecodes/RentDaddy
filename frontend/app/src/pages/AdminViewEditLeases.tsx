@@ -200,7 +200,7 @@ const leaseColumns: ColumnsType<LeaseData> = [
                 )}
                 {record.status === "expires_soon" && (
                     <>
-                        <div className="flex flex-column g-2">
+                        <div className="flex flex-column gap-2">
                             {" "}
                             <ButtonComponent
                                 type="danger"
