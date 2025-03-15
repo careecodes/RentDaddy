@@ -22,6 +22,49 @@ import (
 	"github.com/go-chi/cors"
 )
 
+type Item struct {
+	ID    string `json:"id"`
+	Value string `json:"value"`
+}
+
+var items = make(map[string]Item)
+
+func PutItemHandler(w http.ResponseWriter, r *http.Request) {
+	itemID := chi.URLParam(r, "id")
+
+	var updatedItem Item
+	if err := json.NewDecoder(r.Body).Decode(&updatedItem); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+
+	if itemID != updatedItem.ID {
+		http.Error(w, "ID in path and body do not match", http.StatusBadRequest)
+		return
+	}
+
+	if _, ok := items[itemID]; !ok {
+		http.Error(w, "Item not found", http.StatusNotFound)
+		return
+	}
+
+	items[itemID] = updatedItem
+
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(updatedItem)
+}
+
+// QuickDump is a function that dumps the request to the console for debugging purposes
+//
+//	func QuickDump(r *http.Request) {
+//		dump, err := httputil.DumpRequest(r, true)
+//		if err != nil {
+//			http.Error(w, "Failed to dump request", http.StatusInternalServerError)
+//			return
+//		}
+//		fmt.Printf("Request dump: %s\n", dump)
+//	}
+
 func main() {
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
@@ -53,6 +96,22 @@ func main() {
 
 	// Initialize Clerk with your secret key
 	clerk.SetKey(clerkSecretKey)
+
+	// Example Clerk usage:
+	// resource represents the Clerk SDK Resource Package that you are using such as user, organization, etc.
+	// // Get
+	// resource, err := user.Get(ctx, id)
+
+	// // Update
+	// resource, err := user.Update(ctx, id, &user.UpdateParams{})
+
+	// // Delete
+	// resource, err := user.Delete(ctx, id)
+
+	// getUser, err := user.Get(ctx, resource.ID)
+	// if err != nil {
+	// 	log.Fatalf("failed to get user: %v", err)
+	// }
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
@@ -105,6 +164,8 @@ func main() {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Success in get"))
 	})
+	// Sample data
+	items["1"] = Item{ID: "1", Value: "initial value"}
 
 	r.Post("/test/post", func(w http.ResponseWriter, r *http.Request) {
 		// fmt.Printf("%v",items)
