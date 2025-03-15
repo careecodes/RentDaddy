@@ -13,7 +13,6 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/invitation"
 	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
@@ -252,11 +251,11 @@ func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	}
 	// update lease table
 	// NOTE: Need tenant_id in this
-	_, err = qtx.RenewLease(r.Context(), db.RenewLeaseParams{
-		LeaseEndDate: pgtype.Date{Time: updatedUserInfo.LeaseEndDate, Valid: true},
-		// ???
-		DocumentID: 0,
-	})
+	// _, err = qtx.RenewLease(r.Context(), db.RenewLeaseParams{
+	// 	LeaseEndDate: pgtype.Date{Time: updatedUserInfo.LeaseEndDate, Valid: true},
+	// 	// ???
+	// 	DocumentID: 0,
+	// })
 
 	// updatedUserInfo.LeaseStatus
 	// updatedUserInfo.LeaseEndDate
