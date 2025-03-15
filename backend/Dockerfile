@@ -35,7 +35,7 @@ RUN go build -v -o server server.go || (echo "BUILD FAILED!" && exit 1)
 
 EXPOSE 8080
 
-# Copy entrypoint.sh and set correct permissions
+# set correct permissions
 RUN chmod +x ./entrypoint.sh && chown root:root ./entrypoint.sh
 
 # Run entrypoint

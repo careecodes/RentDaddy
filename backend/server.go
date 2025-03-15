@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
+	gen "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
@@ -65,7 +66,6 @@ func PutItemHandler(w http.ResponseWriter, r *http.Request) {
 //	}
 
 func main() {
-
 	// OS signal channel
 	sigChan := make(chan os.Signal, 1)
 	signal.Notify(sigChan, os.Interrupt, syscall.SIGTERM)
@@ -131,11 +131,39 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, queries)
 	})
 
+	// User Router
+	userHandler := handlers.NewUserHandler(pool, queries)
+
+	// Tenants Routes
+	r.Route("/tenants", func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			userHandler.GetAllUsers(w, r, gen.RoleTenant)
+		})
+		// r.Post("/", userHandler.CreateTenant)
+		r.Get("/{clerk_id}", userHandler.GetTenantByClerkId)
+		r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantCredentials)
+	})
+	// Admin Routes
+	leaseHandler := handlers.NewLeaseHandler(pool, queries)
+	r.Route("/admins", func(r chi.Router) {
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			userHandler.GetAllUsers(w, r, gen.RoleAdmin)
+		})
+		// r.Post("/", userHandler.CreateAdmin)
+		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
+		r.Route("/leases", func(r chi.Router) {
+			r.Post("/", leaseHandler.CreateLease) // Admin creates a lease
+			// Future routes for admin lease management:
+			// r.Get("/{lease_id}", leaseHandler.GetLeaseByID)  // Admin views a lease
+			// r.Patch("/{lease_id}/renew", leaseHandler.RenewLease) // Admin renews a lease
+			// r.Delete("/{lease_id}", leaseHandler.TerminateLease) // Admin terminates a lease
+		})
+	})
+
 	r.Get("/test/get", func(w http.ResponseWriter, r *http.Request) {
 		w.WriteHeader(http.StatusOK)
 		w.Write([]byte("Success in get"))
 	})
-
 	// Sample data
 	items["1"] = Item{ID: "1", Value: "initial value"}
 

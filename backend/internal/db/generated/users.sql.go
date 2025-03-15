@@ -122,116 +122,6 @@ func (q *Queries) GetAdminByClerkID(ctx context.Context, clerkID string) (GetAdm
 	return i, err
 }
 
-const getAllAdmins = `-- name: GetAllAdmins :many
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
-FROM users
-WHERE  role = 'admin'
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
-`
-
-type GetAllAdminsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-type GetAllAdminsRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-}
-
-func (q *Queries) GetAllAdmins(ctx context.Context, arg GetAllAdminsParams) ([]GetAllAdminsRow, error) {
-	rows, err := q.db.Query(ctx, getAllAdmins, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetAllAdminsRow
-	for rows.Next() {
-		var i GetAllAdminsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ClerkID,
-			&i.FirstName,
-			&i.LastName,
-			&i.Email,
-			&i.Role,
-			&i.UnitNumber,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getAllTenants = `-- name: GetAllTenants :many
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
-FROM users
-WHERE  role = 'tenant'
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
-`
-
-type GetAllTenantsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-type GetAllTenantsRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-}
-
-func (q *Queries) GetAllTenants(ctx context.Context, arg GetAllTenantsParams) ([]GetAllTenantsRow, error) {
-	rows, err := q.db.Query(ctx, getAllTenants, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetAllTenantsRow
-	for rows.Next() {
-		var i GetAllTenantsRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ClerkID,
-			&i.FirstName,
-			&i.LastName,
-			&i.Email,
-			&i.Role,
-			&i.UnitNumber,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
 const getTenantByClerkID = `-- name: GetTenantByClerkID :one
 SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
 FROM users
@@ -282,7 +172,7 @@ func (q *Queries) GetTenantsUnitNumber(ctx context.Context, clerkID string) (pgt
 }
 
 const getUserByClerkID = `-- name: GetUserByClerkID :one
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1
 LIMIT 1
@@ -294,6 +184,7 @@ type GetUserByClerkIDRow struct {
 	FirstName  string           `json:"first_name"`
 	LastName   string           `json:"last_name"`
 	Email      string           `json:"email"`
+	Phone      pgtype.Text      `json:"phone"`
 	Role       Role             `json:"role"`
 	UnitNumber pgtype.Int2      `json:"unit_number"`
 	Status     AccountStatus    `json:"status"`
@@ -309,6 +200,7 @@ func (q *Queries) GetUserByClerkID(ctx context.Context, clerkID string) (GetUser
 		&i.FirstName,
 		&i.LastName,
 		&i.Email,
+		&i.Phone,
 		&i.Role,
 		&i.UnitNumber,
 		&i.Status,
@@ -318,7 +210,7 @@ func (q *Queries) GetUserByClerkID(ctx context.Context, clerkID string) (GetUser
 }
 
 const getUsers = `-- name: GetUsers :many
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2
@@ -335,6 +227,7 @@ type GetUsersRow struct {
 	FirstName  string           `json:"first_name"`
 	LastName   string           `json:"last_name"`
 	Email      string           `json:"email"`
+	Phone      pgtype.Text      `json:"phone"`
 	Role       Role             `json:"role"`
 	UnitNumber pgtype.Int2      `json:"unit_number"`
 	Status     AccountStatus    `json:"status"`
@@ -356,6 +249,65 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]GetUsersR
 			&i.FirstName,
 			&i.LastName,
 			&i.Email,
+			&i.Phone,
+			&i.Role,
+			&i.UnitNumber,
+			&i.Status,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getUsersByRole = `-- name: GetUsersByRole :many
+SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
+FROM users
+WHERE role = $1
+ORDER BY created_at DESC
+LIMIT $2 OFFSET $3
+`
+
+type GetUsersByRoleParams struct {
+	Role   Role  `json:"role"`
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type GetUsersByRoleRow struct {
+	ID         int64            `json:"id"`
+	ClerkID    string           `json:"clerk_id"`
+	FirstName  string           `json:"first_name"`
+	LastName   string           `json:"last_name"`
+	Email      string           `json:"email"`
+	Phone      pgtype.Text      `json:"phone"`
+	Role       Role             `json:"role"`
+	UnitNumber pgtype.Int2      `json:"unit_number"`
+	Status     AccountStatus    `json:"status"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetUsersByRole(ctx context.Context, arg GetUsersByRoleParams) ([]GetUsersByRoleRow, error) {
+	rows, err := q.db.Query(ctx, getUsersByRole, arg.Role, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetUsersByRoleRow
+	for rows.Next() {
+		var i GetUsersByRoleRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClerkID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.Phone,
 			&i.Role,
 			&i.UnitNumber,
 			&i.Status,
@@ -416,15 +368,16 @@ func (q *Queries) UpdateTenantsUnitNumber(ctx context.Context, arg UpdateTenants
 
 const updateUserCredentials = `-- name: UpdateUserCredentials :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4
+SET first_name = $2, last_name = $3, email = $4, phone = $5
 WHERE clerk_id = $1
 `
 
 type UpdateUserCredentialsParams struct {
-	ClerkID   string `json:"clerk_id"`
-	FirstName string `json:"first_name"`
-	LastName  string `json:"last_name"`
-	Email     string `json:"email"`
+	ClerkID   string      `json:"clerk_id"`
+	FirstName string      `json:"first_name"`
+	LastName  string      `json:"last_name"`
+	Email     string      `json:"email"`
+	Phone     pgtype.Text `json:"phone"`
 }
 
 func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCredentialsParams) error {
@@ -433,6 +386,7 @@ func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCrede
 		arg.FirstName,
 		arg.LastName,
 		arg.Email,
+		arg.Phone,
 	)
 	return err
 }

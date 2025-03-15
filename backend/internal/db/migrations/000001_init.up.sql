@@ -121,20 +121,24 @@ CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
 CREATE TABLE IF NOT EXISTS "leases" (
-    "document_id" BIGSERIAL PRIMARY KEY,
+    "id" BIGSERIAL PRIMARY KEY,
+    "lease_number" BIGINT UNIQUE NOT NULL, 
     "external_doc_id" TEXT NOT NULL UNIQUE, -- Maps to Documenso's externalId
     "tenant_id" BIGINT NOT NULL REFERENCES users(id),
     "landlord_id" BIGINT NOT NULL REFERENCES users(id),
+    "apartment_id" BIGINT,
     "lease_start_date" DATE NOT NULL,
     "lease_end_date" DATE NOT NULL,
     "rent_amount" DECIMAL(10,2) NOT NULL,
     "lease_status" "Lease_Status" NOT NULL DEFAULT 'active',
+    "created_by" BIGINT NOT NULL,
+    "updated_by" BIGINT NOT NULL,
     "created_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
     "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
-CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
+CREATE INDEX "lease_apartment_id_index" ON "leases" ("id");
 
 CREATE TABLE IF NOT EXISTS "lockers"
 (
@@ -177,4 +181,5 @@ ALTER TABLE "leases"
 ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
-    ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord") REFERENCES "users" ("id");
+    ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
+

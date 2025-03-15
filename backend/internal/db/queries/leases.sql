@@ -1,53 +1,53 @@
--- PLEASE SHRINK THE LEASES TABLE AND MAKE SURE THESE QUERIES ACTUALLY WORK VIA
--- sqlc vet at the backend folder
--- ALSO MAKE SURE baseTables.sql match init.up.sql
 -- name: CreateLease :one
-INSERT INTO leases (external_doc_id, tenant_id, landlord_id, lease_start_date, lease_end_date, rent_amount, lease_status)
-VALUES ($1, $2, $3, $4, $5, $6, 'DRAFT')
-RETURNING document_id;
+INSERT INTO leases (
+    lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status,
+    created_by, updated_by
+)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+RETURNING id;
 
--- name: RenewLease :one
+-- name: RenewLease :exec
 UPDATE leases
-SET lease_end_date = $1, updated_at = now()
-WHERE document_id  = $2 AND lease_status = 'active'
-RETURNING *;
+SET 
+    lease_end_date = $1, 
+    updated_by = $2, 
+    updated_at = now()
+WHERE id = $3 AND lease_status = 'active'
+RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status, 
+    updated_by, updated_at;
 
--- name: TerminateLease :one
+-- name: TerminateLease :exec
 UPDATE leases
-SET lease_status = 'terminated', updated_at = now()
-WHERE document_id  = $1
-RETURNING *;
+SET 
+    lease_status = 'terminated', 
+    updated_by = $1, 
+    updated_at = now()
+WHERE id = $2
+RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status, 
+     updated_by, updated_at;
 
 -- name: ListLeases :many
 SELECT * FROM leases ORDER BY created_at DESC;
 
 -- name: GetLeaseByID :one
-SELECT * FROM leases WHERE document_id = $1 LIMIT 1;
+SELECT * FROM leases WHERE id = $1 LIMIT 1;
 
--- name: UpdateLease :one
+-- name: GetLeaseByNumber :one
+SELECT * FROM leases WHERE lease_number = $1 LIMIT 1;
+
+-- name: UpdateLease :exec
 UPDATE leases
-SET document_id = $1,
-    tenant_id = $2,
-    lease_status = $3,
-    lease_start_date = $4,
-    lease_end_date = $5,
-    updated_at = now()
-WHERE document_id = $6
-RETURNING *;
-
--- name: ListLeases :many
-SELECT * FROM lease ORDER BY created_at DESC;
-
--- name: GetLease :one
-SELECT * FROM lease WHERE id = $1 LIMIT 1;
-
--- name: UpdateLease :one
-UPDATE lease
-SET document_id = $1,
-    user_id = $2,
-    status = $3,
-    start_time = $4,
-    end_time = $5,
+SET 
+    tenant_id = $1,
+    lease_status = $2,
+    lease_start_date = $3,
+    lease_end_date = $4,
+    updated_by = $5,
     updated_at = now()
 WHERE id = $6
-RETURNING *;
+RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status, 
+    updated_by, updated_at;
