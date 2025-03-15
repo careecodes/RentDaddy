@@ -15,17 +15,20 @@ export const CardComponent = (props: CardComponentProps) => {
     return (
         <>
             <Card
-                //TODO: JJ make these styles better
-                title={props.title}
+                title={
+                    <>
+                        <div className="flex flex-row align-items-center">
+                            <span className="me-2 mt-2">{props.icon}</span>
+                            <span>{props.title}</span>
+                        </div>
+                    </>
+                }
                 hoverable={props.hoverable}
-                className="card pb-2">
-                <div className="card-content">
-                    {props.icon && <span>{props.icon}</span>}
-
-                    {props.description && <span className="text-muted py-2">{props.description}</span>}
-                    {props.value && <span className="text-muted fs-1 py-2">{props.value}</span>}
-
-                    {props.button && <span className="pb-2">{props.button}</span>}
+                className="card pb-2"
+                actions={[props.button]}>
+                <div className="flex flex-column">
+                    {props.value && <span className="text-muted fs-1">{props.value}</span>}
+                    {props.description && <span className="text-muted ">{props.description}</span>}
                 </div>
             </Card>
         </>
