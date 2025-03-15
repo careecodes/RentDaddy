@@ -10,10 +10,10 @@ RUN apk add --no-cache curl bash
 FROM base AS dependencies
 COPY package*.json ./
 
-# Use CI install and ensure POSIX-compatible line endings for Windows compatibility
+# If windows-based system, use CI install and ensure POSIX-compatible line endings for Windows compatibility. Else use npm i.
 # --no-audit: skips security vulnerability check - if ever used for production, must be removed
 # --no-fund: skips funding messages
-RUN npm ci --no-audit --no-fund && \
+RUN if [ "$(uname -s)" = "Windows_NT" ]; then npm ci --no-audit --no-fund; else npm i --no-audit --no-fund; fi && \
     echo "Dependencies installed successfully"
 
 # Build layer - uses the dependencies layer
