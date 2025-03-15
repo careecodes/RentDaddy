@@ -1,5 +1,6 @@
 import { HomeOutlined, UserOutlined } from "@ant-design/icons";
-import { Link } from "react-router";
+import { useEffect } from "react";
+import { Link, useLocation } from "react-router";
 
 {
     /* Todo: If the user is on the sidebar link, make the link black */
@@ -8,6 +9,25 @@ import { Link } from "react-router";
     /* Todo: Hover effects, make the text white or something */
 }
 const SidebarLinks = () => {
+    const location = useLocation();
+    const path = location.pathname;
+
+    const getLinkClass = (linkPath: string) => {
+        // Check if current path starts with the link path
+        const isActive = path.startsWith(linkPath);
+
+        // Base classes that are always applied
+        const baseClasses = "text-decoration-none transition-colors";
+
+        // For main menu items
+        if (linkPath === "/") {
+            // Keep incase of mobile sidebar
+            return `${baseClasses} ${isActive ? "text-primary" : "text-white hover:text-primary"}`;
+        } else {
+            return `${baseClasses} ${isActive ? "text-light" : "text-white-50 hover:text-secondary"}`;
+        }
+    };
+
     return (
         <div className="menu-container d-flex flex-column gap-3 mx-auto py-4 px-1">
             {/* Home Menu Item */}
@@ -41,32 +61,32 @@ const SidebarLinks = () => {
                 <div className="mt-2 ps-4 d-flex flex-column gap-2">
                     <Link
                         to="/admin"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-secondary transition-colors">
+                        className={getLinkClass("/admin") + (path === "/admin" ? "" : " text-white-50 hover:text-secondary")}>
                         Dashboard
                     </Link>
                     <Link
                         to="/admin/init-apartment-complex"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-secondary transition-colors">
+                        className={getLinkClass("/admin/init-apartment-complex")}>
                         Apartment Setup
                     </Link>
                     <Link
                         to="/admin/add-tenant"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-secondary transition-colors">
+                        className={getLinkClass("/admin/add-tenant")}>
                         Add Tenant
                     </Link>
                     <Link
                         to="/admin/admin-view-and-edit-leases"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-secondary transition-colors">
+                        className={getLinkClass("/admin/admin-view-and-edit-leases")}>
                         View Digital Leases
                     </Link>
                     <Link
                         to="/admin/admin-view-and-edit-work-orders-and-complaints"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-secondary transition-colors">
+                        className={getLinkClass("/admin/admin-view-and-edit-work-orders-and-complaints")}>
                         Work Orders & Complaints
                     </Link>
                     <Link
                         to="/components/settings"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-secondary transition-colors">
+                        className={getLinkClass("/components/settings")}>
                         Settings
                     </Link>
                 </div>
@@ -88,27 +108,27 @@ const SidebarLinks = () => {
                 <div className="mt-2 ps-4 d-flex flex-column gap-2">
                     <Link
                         to="/tenant"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
+                        className={getLinkClass("/tenant") + (path === "/tenant" ? "" : " text-white-50 hover:text-secondary")}>
                         Dashboard
                     </Link>
                     <Link
                         to="/tenant/guest-parking"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
+                        className={getLinkClass("/tenant/guest-parking")}>
                         Guest Parking
                     </Link>
                     <Link
                         to="/tenant/tenant-view-and-edit-leases"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
+                        className={getLinkClass("/tenant/tenant-view-and-edit-leases")}>
                         View Digital Leases
                     </Link>
                     <Link
                         to="/tenant/tenant-work-orders-and-complaints"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
+                        className={getLinkClass("/tenant/tenant-work-orders-and-complaints")}>
                         Work Orders & Complaints
                     </Link>
                     <Link
                         to="/tenant/settings"
-                        className="submenu-link text-white-50 text-decoration-none hover:text-warning transition-colors">
+                        className={getLinkClass("/tenant/settings")}>
                         Settings
                     </Link>
                 </div>
