@@ -3,19 +3,19 @@
 # Root directory of the project
 root = "."
 
-# Command runs when you call air
-cmd = "go run server.go"
+# Command to run the server
+cmd = "go build -o ./tmp/server server.go && ./tmp/server"
 
 # Watching for file changes
 [watcher]
 include = ["**/*.go"]
-exclude = ["./tmp/*", "_test.go","vendor/*"]
+exclude = ["./tmp/*", "_test.go", "vendor/*"]
 
 # Build settings
 [build]
-bin = "./tmp/server"  # Binary file
+bin = "./tmp/server"                       # Binary file
 cmd = "go build -o ./tmp/server server.go"
-delay = 1000        # Delay in milliseconds before restarting
+delay = 1000                               # Delay in milliseconds before restarting
 kill_signal = "SIGTERM"
 
 # Logging settings
@@ -30,4 +30,3 @@ info = "blue"
 
 # [screen]
 # clear_on_rebuild = false
-
