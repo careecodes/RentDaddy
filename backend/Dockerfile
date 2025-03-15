@@ -44,6 +44,5 @@ RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
 EXPOSE 8080
 
 # Run entrypoint
-CMD ["entrypoint.sh"]
 RUN ls -la
 ENTRYPOINT [ "/app/entrypoint.sh" ]
