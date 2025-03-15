@@ -2,10 +2,10 @@ import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, U
 import { Tag } from "antd";
 import React from "react";
 import { Link } from "react-router";
-import ModalComponent from "./ModalComponent";
-import AlertComponent from "./reusableComponents/AlertComponent";
-import ButtonComponent from "./reusableComponents/ButtonComponent";
-import { CardComponent } from "./reusableComponents/CardComponent";
+import ModalComponent from "../components/ModalComponent";
+import AlertComponent from "../components/reusableComponents/AlertComponent";
+import ButtonComponent from "../components/reusableComponents/ButtonComponent";
+import { CardComponent } from "../components/reusableComponents/CardComponent";
 
 export const TenantDashBoard = () => {
     const handleOpenLocker = () => {
@@ -37,7 +37,7 @@ export const TenantDashBoard = () => {
                         hoverable={true}
                         icon={<ToolOutlined className="icon" />}
                         button={
-                            <Link to="/tenant/tenant-view-and-edit-work-orders-and-complaints">
+                            <Link to="/tenant/tenant-work-orders-and-complaints">
                                 <ButtonComponent
                                     title="View All"
                                     type="primary"
