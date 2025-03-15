@@ -52,6 +52,7 @@ export const TenantDashBoard = () => {
                     button={
                         <ModalComponent
                             type="Smart Locker"
+                            userRole="tenant"
                             buttonTitle="Open Locker"
                             content="Open Locker"
                             buttonType="primary"
@@ -115,7 +116,7 @@ export const TenantDashBoard = () => {
                     button={
                         <ModalComponent
                             type="default"
-                            buttonTitle="View all omplaints"
+                            buttonTitle="View all complaints"
                             content="Complaint should go here"
                             buttonType="primary"
                             handleOkay={() => {}}
