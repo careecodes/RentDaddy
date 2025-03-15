@@ -11,13 +11,13 @@ FROM base AS dependencies
 COPY package*.json ./
 
 
-# If windows-based system, use CI install and ensure POSIX-compatible line endings for Windows compatibility. Else use npm i.
+
 # if package-lock.json exists, run npm i
 # if none exists, run npm ci
 # --no-audit: skips security vulnerability check - if ever used for production, must be removed
 # --no-fund: skips funding messages
 RUN if [ "$(uname -s)" = "Windows_NT" ]; then \
-    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm i --no-audit --no-fund; fi; \
+    if [ -f package-lock.json ]; then npm ci --no-audit --no-fund --unsafe-perm; else npm install --no-audit --no-fund --unsafe-perm; fi; \
     else \
     if [ -f package-lock.json ]; then npm ci --no-audit --no-fund; else npm i --no-audit --no-fund; fi; \
     fi && \
