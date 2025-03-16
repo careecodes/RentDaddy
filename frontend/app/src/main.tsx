@@ -50,7 +50,6 @@ createRoot(document.getElementById("root")!).render(
                 hashed: false,
                 token: {
                     colorPrimary: "#00674f",
-                    colorBgBase: "hsl(166, 100%, 20%, 5%)",
                     colorLink: "#00674f",
                     colorFillSecondary: "#7789f4",
                     colorFillTertiary: "#d86364",
