@@ -92,10 +92,12 @@ CREATE TABLE IF NOT EXISTS "users"
     "last_name"     VARCHAR                        NOT NULL,
     "email"         VARCHAR                        NOT NULL,
     "phone"         VARCHAR                        NULL,
+    "image_url"     TEXT                           NULL, --Avatar picture
     "unit_number"   SMALLINT                       NULL,
     "role"          "Role"                         NOT NULL DEFAULT "Role" 'tenant',
     "status"        "Account_Status"               NOT NULL DEFAULT "Account_Status" 'active',
-    "last_login"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+    -- Can be removed
+    -- "last_login"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     "updated_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     "created_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );

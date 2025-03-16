@@ -159,7 +159,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		return
 	}
 
-	// DB transaction
+	// Transaction
 	tx, err := pool.Begin(r.Context())
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed instablishing a database connection: %v", err)
@@ -171,10 +171,10 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			tx.Rollback(r.Context())
 		}
 	}()
+
 	qtx := queries.WithTx(tx)
 	var apartmentUnitNumber int
-
-	log.Printf("ManagementId: %s Unit Number: %d\n", userMetadata.ManagementId, userMetadata.UnitNumber)
+	// log.Printf("ManagementId: %s Unit Number: %d\n", userMetadata.ManagementId, userMetadata.UnitNumber)
 
 	if userMetadata.ManagementId != "" && userMetadata.UnitNumber != 0 {
 		log.Println("[CLERK_WEBHOOK] Invited user")
@@ -208,6 +208,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 		// Create new apartment entry if no existing apartment with unit_number
 		// NOTE: THis could be failing because not filling in all the way??
+		// TODO: fix this
 		apartmentRes, err := qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
 			UnitNumber:     int16(userMetadata.UnitNumber),
 			Price:          pgtype.Numeric{Int: big.NewInt(350), Valid: true},
@@ -239,9 +240,10 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		},
 		// Phone numbers are paid tier
 		// Create a phone number generator
-		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
-		Role:      userRole,
-		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
+		Phone:    pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
+		Role:     userRole,
+		ImageUrl: pgtype.Text{String: userData.ProfileImage, Valid: true},
+		// LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
 		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
@@ -286,11 +288,12 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
 	primaryUserEmail := userData.EmailAddresses[0].EmailAddress
-	if err := queries.UpdateUserCredentials(r.Context(), db.UpdateUserCredentialsParams{
+	if err := queries.UpdateUser(r.Context(), db.UpdateUserParams{
+		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
-		ClerkID:   userData.ID,
+		ImageUrl:  pgtype.Text{String: userData.ProfileImage, Valid: true},
 	}); err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed updating user %s: %v", userData.ID, err)
 		http.Error(w, "Error updating user data", http.StatusInternalServerError)
@@ -302,7 +305,7 @@ func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 }
 
 func deleteUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
-	if err := queries.DeleteUserByClerkID(r.Context(), userData.ID); err != nil {
+	if err := queries.DeleteUser(r.Context(), userData.ID); err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed deleting user %s: %v", userData.ID, err)
 		http.Error(w, "Error deleting user data", http.StatusInternalServerError)
 		return

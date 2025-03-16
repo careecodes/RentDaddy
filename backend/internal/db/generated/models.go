@@ -450,10 +450,10 @@ type User struct {
 	LastName   string           `json:"last_name"`
 	Email      string           `json:"email"`
 	Phone      pgtype.Text      `json:"phone"`
+	ImageUrl   pgtype.Text      `json:"image_url"`
 	UnitNumber pgtype.Int2      `json:"unit_number"`
 	Role       Role             `json:"role"`
 	Status     AccountStatus    `json:"status"`
-	LastLogin  pgtype.Timestamp `json:"last_login"`
 	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
