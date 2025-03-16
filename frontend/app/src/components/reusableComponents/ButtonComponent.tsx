@@ -28,7 +28,7 @@ const ButtonComponent = (props: ButtonComponentProps) => {
             <Button
                 size={props.size as SizeType}
                 disabled={props.disabled}
-                className={`btn btn-${props.type} flex text-center items-center p-3`}
+                className={`btn btn-${props.type}`}
                 onClick={props.onClick}>
                 {props.icon && <span className="mr-2">{props.icon}</span>}
                 {props.title}
