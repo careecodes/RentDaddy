@@ -7,6 +7,7 @@ import (
 	"net/http"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/invitation"
 	"github.com/clerk/clerk-sdk-go/v2/user"
@@ -66,7 +67,7 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {
-		log.Printf("[USER_HANDLER] Failed converting tenants metadata to RAW JSON: %v", err)
+		log.Printf("[USER_HANDLER] Failed converting tenants metadata to JSON: %v", err)
 		http.Error(w, "Error converting metadata to JSON", http.StatusInternalServerError)
 		return
 	}
@@ -86,6 +87,41 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[USER_HANDLER] Failed inviting tenant: %v", err)
 	http.Error(w, "Error inviting tenant", http.StatusInternalServerError)
+}
+
+func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
+	userCtx := r.Context().Value("user")
+	clerkUser, ok := userCtx.(*clerk.User)
+	if !ok {
+		log.Printf("[USER_HANDLER] No user CTX")
+		http.Error(w, "Error No user CTX", http.StatusInternalServerError)
+		return
+	}
+	if !utils.IsPowerUser(clerkUser) {
+		log.Printf("[USER_HANDLER] Unauthorized")
+		http.Error(w, "Unauthorized", http.StatusInternalServerError)
+		return
+	}
+
+	// TODO: Need to query more data for admin overview page
+
+	tenantData, err := u.queries.GetUsers(r.Context(), db.RoleTenant)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Unauthorized")
+		http.Error(w, "Unauthorized", http.StatusInternalServerError)
+		return
+	}
+
+	jsonRes, err := json.Marshal(tenantData)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying tenants: %v", err)
+		http.Error(w, "Error wuerying tenants", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonRes))
 }
 
 func (u UserHandler) GetUserByClerkId(w http.ResponseWriter, r *http.Request) {

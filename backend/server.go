@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"fmt"
 	"log"
 	"net/http"
 	"os"
@@ -12,10 +11,10 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db"
 	gen "github.com/careecodes/RentDaddy/internal/db/generated"
+	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
-	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -55,7 +54,6 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	r.With(clerkhttp.WithHeaderAuthorization()).Get("/admin", protectedRoute)
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
@@ -78,22 +76,28 @@ func main() {
 
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
-	// Tenant
-	r.Route("/tenants", func(r chi.Router) {
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			userHandler.GetAllTenants(w, r, gen.RoleTenant)
-		})
-		r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
-		r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
-	})
-	// Admin
-	r.Group(func(r chi.Router) {
-		r.Use(clerkhttp.WithHeaderAuthorization()) // clerk middleware
-		// Admin routes
-		r.Route("/admin", func(r chi.Router) {
-			r.Post("/tenant_invite", userHandler.InviteTenant)
+	// Admin Endpoints
+	r.Route("/admin", func(r chi.Router) {
+		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+		r.Use(mymiddleware.IsAdmin)                // Admin middleware
+		r.Get("", userHandler.GetAdminOverview)
+		r.Route("/tenants", func(r chi.Router) {
+			r.Get("", func(w http.ResponseWriter, r *http.Request) {
+				userHandler.GetAllTenants(w, r, gen.RoleTenant)
+			})
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
+			r.Post("/invite", userHandler.InviteTenant)
+			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 		})
+	})
+	// Tenant Endpoints
+	r.Route("/tenant", func(r chi.Router) {
+		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+		r.Post("/{clerk_id}", userHandler.GetUserByClerkId)
+		r.Get("/{clerk_id}/parking", userHandler.GetUserByClerkId)
+		r.Get("/{clerk_id}/documents", userHandler.GetUserByClerkId)
+		r.Get("/{clerk_id}/work_order", userHandler.GetUserByClerkId)
+		r.Get("/{clerk_id}/compaints", userHandler.GetUserByClerkId)
 	})
 
 	// Server config
@@ -121,23 +125,4 @@ func main() {
 	if err := server.Shutdown(shutdownCtx); err != nil {
 		log.Fatalf("server shutdown failed: %v", err)
 	}
-}
-
-func publicRoute(w http.ResponseWriter, r *http.Request) {
-	w.Write([]byte(`{"access": "public"}`))
-}
-
-func protectedRoute(w http.ResponseWriter, r *http.Request) {
-	claims, ok := clerk.SessionClaimsFromContext(r.Context())
-	if !ok {
-		w.WriteHeader(http.StatusUnauthorized)
-		w.Write([]byte(`{"access": "unauthorized"}`))
-		return
-	}
-
-	usr, err := user.Get(r.Context(), claims.Subject)
-	if err != nil {
-		// handle the error
-	}
-	fmt.Fprintf(w, `{"user_id": "%s", "user_banned": "%t"}`, usr.ID, usr.Banned)
 }
