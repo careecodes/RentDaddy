@@ -165,7 +165,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
-	tenants, err := u.queries.GetUsers(r.Context(), db.RoleTenant)
+	tenants, err := u.queries.ListUsersByRole(r.Context(), db.RoleTenant)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed getting tenants: %v", err)
 		http.Error(w, "Failed getting tenants", http.StatusInternalServerError)

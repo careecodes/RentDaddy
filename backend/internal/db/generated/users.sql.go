@@ -129,14 +129,14 @@ func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, erro
 	return i, err
 }
 
-const getUsers = `-- name: GetUsers :many
+const listUsersByRole = `-- name: ListUsersByRole :many
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC
 `
 
-type GetUsersRow struct {
+type ListUsersByRoleRow struct {
 	ID         int64            `json:"id"`
 	ClerkID    string           `json:"clerk_id"`
 	FirstName  string           `json:"first_name"`
@@ -149,15 +149,15 @@ type GetUsersRow struct {
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
-func (q *Queries) GetUsers(ctx context.Context, role Role) ([]GetUsersRow, error) {
-	rows, err := q.db.Query(ctx, getUsers, role)
+func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersByRoleRow, error) {
+	rows, err := q.db.Query(ctx, listUsersByRole, role)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUsersRow
+	var items []ListUsersByRoleRow
 	for rows.Next() {
-		var i GetUsersRow
+		var i ListUsersByRoleRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ClerkID,

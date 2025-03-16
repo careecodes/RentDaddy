@@ -21,7 +21,7 @@ FROM users
 WHERE clerk_id = $1
 LIMIT 1;
 
--- name: GetUsers :many
+-- name: ListUsersByRole :many
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 WHERE role = $1
