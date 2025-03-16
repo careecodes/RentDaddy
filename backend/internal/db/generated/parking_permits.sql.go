@@ -62,6 +62,19 @@ func (q *Queries) DeleteParkingPermit(ctx context.Context, id int64) error {
 	return err
 }
 
+const getNumOfUserParkingPermits = `-- name: GetNumOfUserParkingPermits :one
+SELECT COUNT(*)
+FROM parking_permits
+WHERE created_by = $1
+`
+
+func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getNumOfUserParkingPermits, createdBy)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const getParkingPermit = `-- name: GetParkingPermit :one
 SELECT permit_number, created_by, updated_at, expires_at
 FROM parking_permits

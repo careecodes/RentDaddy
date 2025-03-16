@@ -110,6 +110,13 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 
+	// Permits Routes
+	permitHandler := handlers.NewPermitHandler(pool, queries)
+	r.Route("/parking_permits", func(r chi.Router) {
+		r.Post("/{clerk_id}", permitHandler.CreateParkingPermitHandler)
+	})
+	// End Permits
+
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
 	// Tenants Routes
