@@ -32,7 +32,7 @@ import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import ReusableComponents from "./pages/ReusableComponents.tsx";
 
-import { TenantDashBoard } from "./components/TenantDashBoard.tsx";
+import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
