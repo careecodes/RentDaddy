@@ -13,8 +13,19 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/invitation"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
+
+type InviteTenantPayload struct {
+	Email      string `json:"email"`
+	FirstName  string `json:"first_name"`
+	LastName   string `json:"last_name"`
+	Phone      string `json:"phone"`
+	UnitNumber int    `json:"unit_number"`
+	// Admin clerk id
+	ManagementId string `json:"managment_id"`
+}
 
 type UpdateTenantProfileType struct {
 	ClerkID      string         `json:"clerk_id"`
@@ -39,31 +50,23 @@ func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
 }
 
 func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
-	adminClerkId := r.URL.Query().Get("admin_clerk_id")
-	tenantEmail := chi.URLParam(r, "tenant_email")
-	tenantUnitNumberStr := chi.URLParam(r, "tenant_unit_number")
-
-	if tenantEmail == "" {
-		log.Println("[USER_HANDLER] Provide a valid tenant_email")
-		http.Error(w, "Error no valid tenant email", http.StatusBadRequest)
-		return
-	}
-	if tenantUnitNumberStr == "" {
-		log.Println("[USER_HANDLER] Provide a valid unit_number")
-		http.Error(w, "Error no valid unit_number", http.StatusBadRequest)
-		return
-	}
-
-	tenantUnitInt, err := strconv.Atoi(tenantUnitNumberStr)
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("[USER_HANDLER] Failed converting tenants unit number to Int: %v", err)
-		http.Error(w, "Error converting tenants unit number to Int", http.StatusBadRequest)
+		log.Printf("[USER_HANDLER] Failed reading body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	var tenantPayload InviteTenantPayload
+	if err := json.Unmarshal(body, &tenantPayload); err != nil {
+		log.Printf("[USER_HANDLER] Failed to parse JSON payload: %v", err)
+		http.Error(w, "Error JSON payload", http.StatusBadRequest)
 		return
 	}
 
 	publicMetadata := &ClerkUserPublicMetaData{
-		UnitNumber:   tenantUnitInt,
-		ManagementId: adminClerkId,
+		UnitNumber:   tenantPayload.UnitNumber,   // Corrected typo
+		ManagementId: tenantPayload.ManagementId, // Corrected typo
 	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {
@@ -74,10 +77,10 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
 
 	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
-		EmailAddress:   tenantEmail,
+		EmailAddress:   tenantPayload.Email,
 		PublicMetadata: &publicMetadataRawJson,
 		// NOTE: update URL
-		RedirectURL:    clerk.String(utils.GetAbsoluteUrl("/auth/login")),
+		// RedirectURL:    clerk.String(utils.GetAbsoluteUrl("/auth/login")),
 		IgnoreExisting: clerk.Bool(true), // If pending invite already out will re-invite them
 	})
 
@@ -262,4 +265,26 @@ func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	tx.Commit(r.Context())
 
 	// w.WriteHeader(http.StatusOK)
+}
+
+func (u UserHandler) CreateAdminTest(w http.ResponseWriter, r *http.Request) {
+	clerkId := chi.URLParam(r, "clerk_id")
+	_, err := u.queries.CreateUser(r.Context(), db.CreateUserParams{
+		ClerkID:   clerkId,
+		FirstName: "Rent",
+		LastName:  "Daddy",
+		Email:     "hectorcodes5@gmail.com",
+		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
+		Role:      db.RoleAdmin,
+		LastLogin: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed createing admin: %v", err)
+		http.Error(w, "Error creating admin", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }

@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"log"
+	"math/big"
 	"net/http"
 	"os"
 	"time"
@@ -23,7 +24,7 @@ type ClerkUserPublicMetaData struct {
 	Role       db.Role `json:"role"`
 	UnitNumber int     `json:"unit_number"`
 	// Admin(clerk_id) inviting tenant
-	ManagementId string `json:"managemant_id"`
+	ManagementId string `json:"management_id"`
 }
 
 type EmailVerification struct {
@@ -171,28 +172,32 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		}
 	}()
 	qtx := queries.WithTx(tx)
+	var apartmentUnitNumber int
 
-	adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed querying managementId: %v", err)
-		http.Error(w, "Error querying managementId", http.StatusInternalServerError)
-		return
-	}
+	log.Printf("ManagementId: %s Unit Number: %d\n", userMetadata.ManagementId, userMetadata.UnitNumber)
 
-	var managementMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(adminPayload.PublicMetadata, &managementMetadata)
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
-		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
-		return
-	}
+	if userMetadata.ManagementId != "" && userMetadata.UnitNumber != 0 {
+		log.Println("[CLERK_WEBHOOK] Invited user")
+		adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
+		if err != nil {
+			log.Printf("[CLERK_WEBHOOK] Failed querying for management ID: %v", err)
+			http.Error(w, "Error querying managementId", http.StatusInternalServerError)
+			return
+		}
 
-	if userMetadata.UnitNumber != 0 {
-		_, err := qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.UnitNumber))
+		var managementMetadata ClerkUserPublicMetaData
+		err = json.Unmarshal(adminPayload.PublicMetadata, &managementMetadata)
+		if err != nil {
+			log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
+			http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+			return
+		}
+
+		_, err = qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.UnitNumber))
 		// Error out if apartment found
 		if err == nil {
-			log.Printf("[CLERK_WEBHOOK] Failed already existing apartment: %v", err)
-			http.Error(w, "Database error", http.StatusInternalServerError)
+			log.Printf("[CLERK_WEBHOOK] Apartment already exists with unit number: %d", userMetadata.UnitNumber)
+			http.Error(w, "Database error", http.StatusConflict)
 			return
 		}
 		if !errors.Is(err, pgx.ErrNoRows) {
@@ -200,16 +205,18 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			http.Error(w, "Database error", http.StatusInternalServerError)
 			return
 		}
+
 		// Create new apartment entry if no existing apartment with unit_number
-		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
+		// NOTE: THis could be failing because not filling in all the way??
+		apartmentRes, err := qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
 			UnitNumber:     int16(userMetadata.UnitNumber),
-			Price:          pgtype.Numeric{},
-			Size:           0,
+			Price:          pgtype.Numeric{Int: big.NewInt(350), Valid: true},
+			Size:           2323,
 			ManagementID:   int64(managementMetadata.DbId),
 			Availability:   false,
-			LeaseID:        0,
-			LeaseStartDate: pgtype.Date{},
-			LeaseEndDate:   pgtype.Date{},
+			LeaseID:        2321,
+			LeaseStartDate: pgtype.Date{Time: time.Now(), Valid: true},
+			LeaseEndDate:   pgtype.Date{Time: time.Now(), Valid: true},
 			UpdatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 			CreatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 		})
@@ -218,7 +225,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			http.Error(w, "Error inserting apartment", http.StatusInternalServerError)
 			return
 		}
-
+		apartmentUnitNumber = int(apartmentRes.UnitNumber)
 	}
 
 	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
@@ -226,6 +233,10 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
+		UnitNumber: pgtype.Int2{
+			Int16: int16(userMetadata.UnitNumber),
+			Valid: true,
+		},
 		// Phone numbers are paid tier
 		// Create a phone number generator
 		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
@@ -239,12 +250,18 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		http.Error(w, "Error inserting user", http.StatusInternalServerError)
 		return
 	}
-	tx.Commit(r.Context())
+	err = tx.Commit(r.Context())
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed committing transaction: %v", err)
+		http.Error(w, "Error committing transaction", http.StatusInternalServerError)
+		return
+	}
 
 	// Update clerk user metadata with DB ID, role, ect.
 	metadata := &ClerkUserPublicMetaData{
-		DbId: int32(userRes.ID),
-		Role: userRes.Role,
+		DbId:       int32(userRes.ID),
+		Role:       userRes.Role,
+		UnitNumber: apartmentUnitNumber,
 	}
 
 	// Convert metadata to raw json

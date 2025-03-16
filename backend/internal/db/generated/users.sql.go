@@ -18,36 +18,39 @@ INSERT INTO users (
     last_name,
     email,
     phone,
+    unit_number,
     role,
     last_login,
     updated_at,
     created_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9
-) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at
+    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at
 `
 
 type CreateUserParams struct {
-	ClerkID   string           `json:"clerk_id"`
-	FirstName string           `json:"first_name"`
-	LastName  string           `json:"last_name"`
-	Email     string           `json:"email"`
-	Phone     pgtype.Text      `json:"phone"`
-	Role      Role             `json:"role"`
-	LastLogin pgtype.Timestamp `json:"last_login"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	ClerkID    string           `json:"clerk_id"`
+	FirstName  string           `json:"first_name"`
+	LastName   string           `json:"last_name"`
+	Email      string           `json:"email"`
+	Phone      pgtype.Text      `json:"phone"`
+	UnitNumber pgtype.Int2      `json:"unit_number"`
+	Role       Role             `json:"role"`
+	LastLogin  pgtype.Timestamp `json:"last_login"`
+	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
 type CreateUserRow struct {
-	ID        int64            `json:"id"`
-	ClerkID   string           `json:"clerk_id"`
-	FirstName string           `json:"first_name"`
-	LastName  string           `json:"last_name"`
-	Email     string           `json:"email"`
-	Phone     pgtype.Text      `json:"phone"`
-	Role      Role             `json:"role"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	ID         int64            `json:"id"`
+	ClerkID    string           `json:"clerk_id"`
+	FirstName  string           `json:"first_name"`
+	LastName   string           `json:"last_name"`
+	Email      string           `json:"email"`
+	Phone      pgtype.Text      `json:"phone"`
+	UnitNumber pgtype.Int2      `json:"unit_number"`
+	Role       Role             `json:"role"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -57,6 +60,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
+		arg.UnitNumber,
 		arg.Role,
 		arg.LastLogin,
 		arg.UpdatedAt,
@@ -70,6 +74,7 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.LastName,
 		&i.Email,
 		&i.Phone,
+		&i.UnitNumber,
 		&i.Role,
 		&i.CreatedAt,
 	)

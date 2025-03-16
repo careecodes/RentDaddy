@@ -110,6 +110,10 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 
+	r.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
+		w.Write([]byte("hello world"))
+	})
+
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
 	// Tenants Routes
@@ -121,11 +125,12 @@ func main() {
 		r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantCredentials)
 	})
 	// Admin Routes
+	r.Post("/admin/{clerk_id}/create", userHandler.CreateAdminTest)
 	r.Route("/admins", func(r chi.Router) {
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			userHandler.GetAllUsers(w, r, gen.RoleAdmin)
 		})
-		r.Post("/tenant_invite/{clerk_id}/{tenant_email}/{tenant_unit_number}", userHandler.InviteTenant)
+		r.Post("/tenant_invite", userHandler.InviteTenant)
 		r.Get("/{clerk_id}", userHandler.GetAdminByClerkId)
 	})
 
