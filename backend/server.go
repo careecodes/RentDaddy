@@ -242,6 +242,71 @@ func main() {
 		json.NewEncoder(w).Encode(resource)
 	})
 	// End of Clerk Routes
+	//* work order stuff
+	// workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
+
+	// r.Route("/work_orders", func(r chi.Router) {
+	// 	// Admin route
+	// 	r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	// 		log.Println("List Orders")
+	// 		handlers.ListWorkOrdersHandler(w, queries)
+	// 	})
+
+	// 	// All route
+	// 	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+	// 		log.Println("Post Order")
+	// 		handlers.CreateWorkOrderHandler(w, r, queries)
+	// 	})
+
+	// 	r.Route("/{order_number}", func(r chi.Router) {
+	// 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	// 			log.Println("Get Order")
+	// 			handlers.GetWorkOrderHandler(w, r, queries)
+	// 		})
+	// 		r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+	// 			log.Printf("Update Order")
+	// 			handlers.UpdateWorkOrderHandler(w, r, queries)
+	// 		})
+	// 		r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+	// 			log.Println("Delete Order")
+	// 			handlers.DeleteWorkOrderHandler(w, r, queries)
+	// 		})
+	// 	})
+	// })
+
+	complaintHandler := handlers.NewComplaintHandler(pool, queries)
+
+	r.Route("/complaints", func (r chi.Router) {
+		//admin/test
+		r.Get("/", func(w http.ResponseWriter, r *http.Request){
+			log.Println("List work orders")
+			complaintHandler.ListComplaintsHandler(w,r,queries)
+		})
+
+		//All
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Post Order")
+			complaintHandler.CreateComplaintHandler(w, r, queries)
+		})
+
+		r.Route("/{order_number}", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Get Order")
+				complaintHandler.GetComplaintHandler(w, r, queries)
+			})
+			//TODO: JJ implement these
+			// r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+			// 	log.Printf("Update Order")
+			// 	handlers.UpdateWorkOrderHandler(w, r, queries)
+			// })
+			// r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+			// 	log.Println("Delete Order")
+			// 	handlers.DeleteWorkOrderHandler(w, r, queries)
+			// })
+		})
+	})
+
+
 
 	// Server config
 	port := os.Getenv("PORT")
