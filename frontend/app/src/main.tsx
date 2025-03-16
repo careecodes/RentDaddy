@@ -64,6 +64,7 @@ createRoot(document.getElementById("root")!).render(
                     },
                     Menu: {
                         colorBgContainer: "#00674f",
+                        itemSelectedColor: "white",
                     },
                 },
             }}>
