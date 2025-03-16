@@ -82,3 +82,30 @@ func GetUserCtx(w http.ResponseWriter, r *http.Request) *clerk.User {
 
 	return user
 }
+
+func GetClerkUser(r *http.Request) (*clerk.User, error) {
+	userCtx := r.Context().Value("user")
+	clerkUser, ok := userCtx.(*clerk.User)
+	if !ok {
+		log.Printf("[USER_HANDLER] No user CTX")
+		return nil, http.ErrNoCookie // Use a relevant error
+	}
+	return clerkUser, nil
+}
+
+func IsPowerUser(user *clerk.User) bool {
+	var userMetaData ClerkUserPublicMetaData
+	err := json.Unmarshal(user.PublicMetadata, &userMetaData)
+	if err != nil {
+		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
+		return false
+	}
+
+	if userMetaData.Role == db.RoleTenant {
+		log.Printf("[CLERK_MIDDLEWARE] Unauthorized")
+		return false
+
+	}
+
+	return true
+}

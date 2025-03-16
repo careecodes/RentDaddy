@@ -11,9 +11,12 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db"
 	gen "github.com/careecodes/RentDaddy/internal/db/generated"
-	mymiddleware "github.com/careecodes/RentDaddy/middleware"
+
+	// mymiddleware "github.com/careecodes/RentDaddy/middleware"
+
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
+
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -79,25 +82,32 @@ func main() {
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
-		r.Use(mymiddleware.IsAdmin)                // Admin middleware
-		r.Get("", userHandler.GetAdminOverview)
+		// NOTE: Uncomment this after
+		// r.Use(mymiddleware.IsAdmin)                // Admin middleware
+		r.Get("/", userHandler.GetAdminOverview)
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Hello this is admin test"))
+		})
 		r.Route("/tenants", func(r chi.Router) {
-			r.Get("", func(w http.ResponseWriter, r *http.Request) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				userHandler.GetAllTenants(w, r, gen.RoleTenant)
 			})
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
-			r.Post("/invite", userHandler.InviteTenant)
+			r.Post("/invite/unit_number", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 		})
 	})
 	// Tenant Endpoints
 	r.Route("/tenant", func(r chi.Router) {
 		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("Hello this is tenant test"))
+		})
 		r.Post("/{clerk_id}", userHandler.GetUserByClerkId)
-		r.Get("/{clerk_id}/parking", userHandler.GetUserByClerkId)
-		r.Get("/{clerk_id}/documents", userHandler.GetUserByClerkId)
-		r.Get("/{clerk_id}/work_order", userHandler.GetUserByClerkId)
-		r.Get("/{clerk_id}/compaints", userHandler.GetUserByClerkId)
+		r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
+		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
+		r.Get("/{clerk_id}/work_order", userHandler.GetTenantWorkOrders)
+		r.Get("/{clerk_id}/compaints", userHandler.GetTenantComplaints)
 	})
 
 	// Server config
