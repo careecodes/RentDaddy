@@ -99,7 +99,7 @@ func main() {
 	})
 	// Tenant Endpoints
 	r.Route("/tenant", func(r chi.Router) {
-		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+		// r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Hello this is tenant test"))
 		})

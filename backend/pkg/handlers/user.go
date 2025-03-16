@@ -24,9 +24,8 @@ type AdminOverviewRequest struct {
 
 type InviteUserRequest struct {
 	Email        string `json:"email"`
-	Phone        string `json:"phone"`
 	UnitNumber   int    `json:"unit_number"`
-	ManagementId string `json:"managment_id"` // Amdin clerk_id
+	ManagementId string `json:"management_id"` // Amdin clerk_id
 }
 
 type TenantUpdateProfileRequest struct {
