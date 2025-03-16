@@ -2,7 +2,7 @@
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
 import { Button, Divider, Form, Input, Modal } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
 type Building = {
@@ -237,6 +237,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                     <Button
                         type="primary"
                         onClick={showModal}>
+                        <EditOutlined />
                         {props.buttonTitle}
                     </Button>
                     <Modal
