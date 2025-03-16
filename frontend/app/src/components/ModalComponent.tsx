@@ -5,6 +5,11 @@ import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import { PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
+interface Lease {
+    id: string | number;
+    title: string;
+}
+
 interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
@@ -13,7 +18,7 @@ interface ModalComponentProps {
     handleOkay: () => void;
     modalTitle?: string;
     userRole?: string;
-    leases?;
+    leases?: Lease[];
 }
 
 const ModalComponent = (props: ModalComponentProps) => {
@@ -441,10 +446,15 @@ const ModalComponent = (props: ModalComponentProps) => {
                     >
                         <Form>
                             {/* Pick a Lease */}
-                            <Form.Item name="Pick a Lease">
+                            <Form.Item name="lease-template">
                                 <Select
-                                    placeholder="Pick a Lease"
-                                    options={props.leases}
+                                    placeholder="Select a Lease Template"
+                                    options={
+                                        props.leases?.map((lease) => ({
+                                            label: lease.title,
+                                            value: lease.id,
+                                        })) || []
+                                    }
                                 />
                             </Form.Item>
                             <p>Please go create a template in Documenso.</p>
