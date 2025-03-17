@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -11,13 +12,18 @@ import (
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 	svix "github.com/svix/svix-webhooks/go"
 )
 
 type ClerkUserPublicMetaData struct {
-	DbId int32   `json:"db_id"`
-	Role db.Role `json:"role"`
+	DbId       int32   `json:"db_id"`
+	Role       db.Role `json:"role"`
+	UnitNumber int     `json:"unit_number"`
+	// Admin(clerk_id) inviting tenant
+	ManagementId string `json:"managemant_id"`
 }
 
 type EmailVerification struct {
@@ -47,7 +53,7 @@ type ClerkWebhookPayload struct {
 	Data json.RawMessage `json:"data"`
 }
 
-func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, queries *db.Queries) {
+func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, queries *db.Queries) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Println("[CLERK_WEBHOOK] Failed reading body")
@@ -85,7 +91,7 @@ func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, queries *db.Que
 	// Subscribed events
 	switch payload.Type {
 	case "user.created":
-		createUser(w, r, clerkUserData, queries)
+		createUser(w, r, clerkUserData, pool, queries)
 	case "user.updated":
 		updateUser(w, r, clerkUserData, queries)
 	case "user.deleted":
@@ -119,7 +125,7 @@ func Verify(payload []byte, headers http.Header) bool {
 	return true
 }
 
-func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
+func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, pool *pgxpool.Pool, queries *db.Queries) {
 	userRole := db.RoleTenant
 	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
 	AdminLastName := os.Getenv("ADMIN_LAST_NAME")
@@ -144,7 +150,78 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		primaryUserEmail = userData.EmailAddresses[0].EmailAddress
 	}
 
-	res, err := queries.CreateUser(r.Context(), db.CreateUserParams{
+	var userMetadata ClerkUserPublicMetaData
+	err := json.Unmarshal(userData.PublicMetaData, &userMetadata)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
+		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+		return
+	}
+
+	// DB transaction
+	tx, err := pool.Begin(r.Context())
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed instablishing a database connection: %v", err)
+		http.Error(w, "Error connecting to database", http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		if err != nil {
+			tx.Rollback(r.Context())
+		}
+	}()
+	qtx := queries.WithTx(tx)
+
+	adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed querying managementId: %v", err)
+		http.Error(w, "Error querying managementId", http.StatusInternalServerError)
+		return
+	}
+
+	var managementMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(adminPayload.PublicMetadata, &managementMetadata)
+	if err != nil {
+		log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
+		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+		return
+	}
+
+	if userMetadata.UnitNumber != 0 {
+		_, err := qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.UnitNumber))
+		// Error out if apartment found
+		if err == nil {
+			log.Printf("[CLERK_WEBHOOK] Failed already existing apartment: %v", err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		if !errors.Is(err, pgx.ErrNoRows) {
+			log.Printf("[CLERK_WEBHOOK] Error checking database for existing apartment: %v", err)
+			http.Error(w, "Database error", http.StatusInternalServerError)
+			return
+		}
+		// Create new apartment entry if no existing apartment with unit_number
+		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
+			UnitNumber:     int16(userMetadata.UnitNumber),
+			Price:          pgtype.Numeric{},
+			Size:           0,
+			ManagementID:   int64(managementMetadata.DbId),
+			Availability:   false,
+			LeaseID:        0,
+			LeaseStartDate: pgtype.Date{},
+			LeaseEndDate:   pgtype.Date{},
+			UpdatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+			CreatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+		})
+		if err != nil {
+			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)
+			http.Error(w, "Error inserting apartment", http.StatusInternalServerError)
+			return
+		}
+
+	}
+
+	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
@@ -153,12 +230,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		// Create a phone number generator
 		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:      userRole,
-		Status:    db.AccountStatusActive,
 		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
-		//
-		// This should be automatically be made from the database
-		// right now insert only works if I have these included
-		//
 		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
@@ -167,11 +239,12 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		http.Error(w, "Error inserting user", http.StatusInternalServerError)
 		return
 	}
+	tx.Commit(r.Context())
 
 	// Update clerk user metadata with DB ID, role, ect.
 	metadata := &ClerkUserPublicMetaData{
-		DbId: int32(res.ID),
-		Role: res.Role,
+		DbId: int32(userRes.ID),
+		Role: userRes.Role,
 	}
 
 	// Convert metadata to raw json

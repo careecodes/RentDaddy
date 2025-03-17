@@ -21,19 +21,18 @@ import LoginForm from "./pages/LoginForm.tsx";
 import { ConfigProvider } from "antd";
 
 // Clerk
-import { ClerkProvider } from "@clerk/react-router"
-import TestGoBackend from "./components/TestGoBackend.tsx"
+import { ClerkProvider } from "@clerk/react-router";
+import TestGoBackend from "./components/TestGoBackend.tsx";
 
 // Pages
-import App from "./App.tsx"
-import AdminDashboard from "./pages/AdminDashboard.tsx"
-import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx"
+import App from "./App.tsx";
+import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AddTenant from "./pages/AddTenant.tsx";
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
-import ReusableComponents from "./pages/ReusableComponents.tsx"
+import ReusableComponents from "./pages/ReusableComponents.tsx";
 
-import { TenantDashBoard } from "./components/TenantDashBoard.tsx";
+import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -51,7 +50,6 @@ createRoot(document.getElementById("root")!).render(
                 hashed: false,
                 token: {
                     colorPrimary: "#00674f",
-                    colorBgBase: "hsl(166, 100%, 20%, 5%)",
                     colorLink: "#00674f",
                     colorFillSecondary: "#7789f4",
                     colorFillTertiary: "#d86364",
@@ -78,8 +76,7 @@ createRoot(document.getElementById("root")!).render(
                     <ClerkProvider
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
-                        signInFallbackRedirectUrl="/"
-                      >
+                        signInFallbackRedirectUrl="/">
                         {/* Routes: Container for all Route definitions */}
                         <Routes>
                             {/* Example and Explanation of Routes */}

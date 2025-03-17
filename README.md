@@ -41,6 +41,7 @@ or testing.
 - **Node.js:** Ensure you have Node.js installed.
 - **NPM:** Ensure you have NPM installed.
 - **Docker**: Ensure you have docker and docker-compose installed.
+- **SMTP Server**: A functional SMTP server
 
 ## Installation
 
@@ -91,6 +92,9 @@ cp .env.example .env
 ```
 
 And then edit it using your favorite text editor.
+
+Here is a bit more information regarding SMTP setup and functionality: [SMTP
+README](./backend/internal/smtp/SMTP_README.md)
 
 > **Note:** Replace the placeholder values with your actual configuration.
 
