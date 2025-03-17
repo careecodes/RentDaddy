@@ -63,7 +63,9 @@ createRoot(document.getElementById("root")!).render(
                     Modal: {
                         colorBgElevated: "white",
                     },
-                    Select: {},
+                    Menu: {
+                        colorBgContainer: "#00674f",
+                    },
                 },
             }}>
             <QueryClientProvider client={queryClient}>
