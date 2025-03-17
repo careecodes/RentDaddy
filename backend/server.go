@@ -106,8 +106,8 @@ func main() {
 		r.Post("/{clerk_id}", userHandler.GetUserByClerkId)
 		r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
 		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
-		r.Get("/{clerk_id}/work_order", userHandler.GetTenantWorkOrders)
-		r.Get("/{clerk_id}/compaints", userHandler.GetTenantComplaints)
+		r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
+		r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
 	})
 
 	// Server config
