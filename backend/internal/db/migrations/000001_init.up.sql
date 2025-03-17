@@ -96,7 +96,6 @@ CREATE TABLE IF NOT EXISTS "users"
     "unit_number" SMALLINT         NULL,
     "role"        "Role"           NOT NULL DEFAULT "Role" 'tenant',
     "status"      "Account_Status" NOT NULL DEFAULT "Account_Status" 'active',
-    "last_login"  TIMESTAMP(0)     NOT NULL,
     "updated_at"  TIMESTAMP(0)              DEFAULT now(),
     "created_at"  TIMESTAMP(0)              DEFAULT now()
 );

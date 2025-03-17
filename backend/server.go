@@ -251,7 +251,7 @@ func main() {
 			workOrderHandler.ListWorkOrdersHandler(w, r)
 		})
 
-		// All route
+		// Create Order
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
 			log.Println("Create Order")
 			workOrderHandler.CreateWorkOrderHandler(w, r)
