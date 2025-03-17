@@ -19,12 +19,9 @@ func TestCreateLeaseHandler(t *testing.T) {
 	defer rollback()
 
 	// Fetch required test data
-	var tenantID, landlordID, createdBy int64
+	var tenantID, createdBy int64
 	err := testDB.QueryRow(ctx, `SELECT id FROM users WHERE role = 'tenant' LIMIT 1`).Scan(&tenantID)
 	assert.NoError(t, err, "Tenant ID should exist")
-
-	err = testDB.QueryRow(ctx, `SELECT id FROM users WHERE role = 'landlord' LIMIT 1`).Scan(&landlordID)
-	assert.NoError(t, err, "Landlord ID should exist")
 
 	err = testDB.QueryRow(ctx, `SELECT id FROM users WHERE role = 'admin' LIMIT 1`).Scan(&createdBy)
 	assert.NoError(t, err, "CreatedBy ID should exist")
@@ -32,9 +29,8 @@ func TestCreateLeaseHandler(t *testing.T) {
 	// Create test request body
 	reqBody, err := json.Marshal(handlers.CreateLeaseRequest{
 		Lease: db.Lease{ // Embed Lease fields
-			TenantID:   tenantID,
-			LandlordID: landlordID,
-			CreatedBy:  createdBy,
+			TenantID:  tenantID,
+			CreatedBy: createdBy,
 		},
 		StartDate:     time.Now(),
 		EndDate:       time.Now().AddDate(1, 0, 0),

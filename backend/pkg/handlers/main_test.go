@@ -18,7 +18,7 @@ var queries *db.Queries
 func TestMain(m *testing.M) {
 	dbURL := os.Getenv("PG_URL")
 	if dbURL == "" {
-		log.Fatal("PG_URL environment variable is required for tests")
+		dbURL = "postgres://appuser:apppassword@localhost/appdb?sslmode=disable"
 	}
 
 	var err error

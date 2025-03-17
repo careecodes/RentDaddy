@@ -452,7 +452,6 @@ type User struct {
 	UnitNumber pgtype.Int2      `json:"unit_number"`
 	Role       Role             `json:"role"`
 	Status     AccountStatus    `json:"status"`
-	LastLogin  pgtype.Timestamp `json:"last_login"`
 	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }

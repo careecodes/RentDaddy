@@ -12,7 +12,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"testing"
-	"time"
 )
 
 func TestBasic(t *testing.T) {
@@ -45,7 +44,6 @@ func setupTestUser(t *testing.T) int64 {
 			Email:     faker.Email(),
 			Phone:     pgtype.Text{String: "1234567890"},
 			Role:      db.RoleTenant,
-			LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		}
 		user, err := queries.CreateUser(context.Background(), userParams)
 		if err != nil {

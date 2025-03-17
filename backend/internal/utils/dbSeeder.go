@@ -6,7 +6,6 @@ import (
 	"github.com/go-faker/faker/v4"
 	"github.com/jackc/pgx/v5/pgtype"
 	"log"
-	"time"
 )
 
 func SeedDB(queries *db.Queries) {
@@ -19,7 +18,6 @@ func SeedDB(queries *db.Queries) {
 		Email:     faker.Email(),
 		Phone:     pgtype.Text{String: faker.Phonenumber(), Valid: true},
 		Role:      db.RoleTenant,
-		LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
 	}
 
 	createdUser, err := queries.CreateUser(context.Background(), user)

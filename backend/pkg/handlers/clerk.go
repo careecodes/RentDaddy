@@ -3,12 +3,6 @@ package handlers
 import (
 	"encoding/json"
 	"errors"
-	"io"
-	"log"
-	"net/http"
-	"os"
-	"time"
-
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
@@ -16,6 +10,10 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	svix "github.com/svix/svix-webhooks/go"
+	"io"
+	"log"
+	"net/http"
+	"os"
 )
 
 type ClerkUserPublicMetaData struct {
@@ -226,9 +224,8 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		Email:     primaryUserEmail,
 		// Phone numbers are paid tier
 		// Create a phone number generator
-		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
-		Role:      userRole,
-		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
+		Phone: pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
+		Role:  userRole,
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
