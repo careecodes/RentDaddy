@@ -55,7 +55,7 @@ const getColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): Co
     };
 };
 
-const shortenInput = (input: string, maxLength: number = 40) => {
+const shortenInput = (input: string, maxLength: number = 30) => {
     if (input.length > maxLength) {
         return input.substring(0, maxLength - 3) + "...";
     } else {
@@ -189,80 +189,6 @@ const workOrderDataRaw: WorkOrderData[] = [
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
     {
-        title: "Unit No.",
-        dataIndex: "apartmentNumber",
-        key: "apartmentNumber",
-        sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
-        ...getColumnSearchProps("apartmentNumber", "Unit No."),
-        className: "text-secondary text-left",
-    },
-    {
-        title: "Category",
-        dataIndex: "category",
-        key: "category",
-        sorter: (a, b) => a.category.localeCompare(b.category),
-        ...getColumnSearchProps("category", "Category"),
-        render: (category) => {
-            let color = "";
-            let text = "";
-
-            switch (category) {
-                case "plumbing":
-                    text = "Plumbing 🛀";
-                    color = "blue";
-                    break;
-                case "electrical":
-                    text = "Electrical ⚡";
-                    color = "yellow";
-                    break;
-                case "carpentry":
-                    text = "Carpentry 🪚";
-                    color = "brown";
-                    break;
-                case "hvac":
-                    text = "HVAC 🌡️";
-                    color = "grey";
-                    break;
-                default:
-                    text = "Other";
-            }
-
-            return <Tag color={color}>{text}</Tag>;
-        },
-        className: "text-center",
-    },
-    {
-        title: "Inquiry",
-        dataIndex: "title",
-        key: "title",
-        sorter: (a, b) => a.title.localeCompare(b.title),
-        ...getColumnSearchProps("title", "Inquiry"),
-        render: (title) => shortenInput(title, 25),
-    },
-    {
-        title: "Description",
-        dataIndex: "description",
-        key: "description",
-        ...getColumnSearchProps("description", "Description"),
-        render: (description) => shortenInput(description),
-    },
-    {
-        title: "Created",
-        dataIndex: "createdAt",
-        key: "createdAt",
-        ...getColumnSearchProps("createdAt", "Created"),
-        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
-        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
-    },
-    {
-        title: "Updated",
-        dataIndex: "updatedAt",
-        key: "updatedAt",
-        ...getColumnSearchProps("createdAt", "Updated"),
-        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
-        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
-    },
-    {
         title: "Status",
         dataIndex: "status",
         key: "status",
@@ -305,6 +231,81 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         sorter: (a, b) => a.status.localeCompare(b.status),
         className: "text-center",
     },
+    {
+        title: "Category",
+        dataIndex: "category",
+        key: "category",
+        sorter: (a, b) => a.category.localeCompare(b.category),
+        ...getColumnSearchProps("category", "Category"),
+        render: (category) => {
+            let color = "";
+            let text = "";
+
+            switch (category) {
+                case "plumbing":
+                    text = "Plumbing 🛀";
+                    color = "blue";
+                    break;
+                case "electrical":
+                    text = "Electrical ⚡";
+                    color = "yellow";
+                    break;
+                case "carpentry":
+                    text = "Carpentry 🪚";
+                    color = "brown";
+                    break;
+                case "hvac":
+                    text = "HVAC 🌡️";
+                    color = "grey";
+                    break;
+                default:
+                    text = "Other";
+            }
+
+            return <Tag color={color}>{text}</Tag>;
+        },
+        className: "text-center",
+    },
+    {
+        title: "Unit No.",
+        dataIndex: "apartmentNumber",
+        key: "apartmentNumber",
+        sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
+        ...getColumnSearchProps("apartmentNumber", "Unit No."),
+        className: "text-secondary text-left",
+    },
+    {
+        title: "Inquiry",
+        dataIndex: "title",
+        key: "title",
+        sorter: (a, b) => a.title.localeCompare(b.title),
+        ...getColumnSearchProps("title", "Inquiry"),
+        render: (title) => shortenInput(title, 25),
+    },
+    {
+        title: "Description",
+        dataIndex: "description",
+        key: "description",
+        ...getColumnSearchProps("description", "Description"),
+        render: (description) => shortenInput(description),
+    },
+    {
+        title: "Created",
+        dataIndex: "createdAt",
+        key: "createdAt",
+        ...getColumnSearchProps("createdAt", "Created"),
+        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
+    },
+    {
+        title: "Updated",
+        dataIndex: "updatedAt",
+        key: "updatedAt",
+        ...getColumnSearchProps("createdAt", "Updated"),
+        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
+        render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
+    },
+
 ];
 
 const complaintsDataRaw: ComplaintsData[] = [
@@ -360,12 +361,44 @@ const complaintsDataRaw: ComplaintsData[] = [
 
 const complaintsColumns: ColumnsType<ComplaintsData> = [
     {
-        title: "Unit No.",
-        dataIndex: "unitNumber",
-        key: "unitNumber",
-        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
-        ...getColumnSearchProps("unitNumber", "Unit No."),
-        className: "text-secondary text-left",
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        filters: [
+            { text: "Open", value: "open" },
+            { text: "In Progress", value: "in_progress" },
+            { text: "Resolved", value: "resolved" },
+            { text: "Closed", value: "closed" },
+        ],
+        onFilter: (value, record) => record.status === value as ComplaintsData["status"],
+        render: (status) => {
+            let color = "";
+            let text = "";
+
+            switch (status) {
+                case "open":
+                    color = "red";
+                    text = "Open";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    text = "In Progress";
+                    break;
+                case "resolved":
+                    color = "green";
+                    text = "Resolved";
+                    break;
+                case "closed":
+                    color = "gray";
+                    text = "Closed";
+                    break;
+                default:
+                    color = "default";
+                    text = status;
+            }
+            return <Tag color={color}>{text}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Category",
@@ -436,6 +469,14 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         className: "text-center",
     },
     {
+        title: "Unit No.",
+        dataIndex: "unitNumber",
+        key: "unitNumber",
+        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
+        ...getColumnSearchProps("unitNumber", "Unit No."),
+        className: "text-secondary text-left",
+    },
+    {
         title: "Complaint",
         dataIndex: "title",
         key: "title",
@@ -464,46 +505,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
-    {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in_progress" },
-            { text: "Resolved", value: "resolved" },
-            { text: "Closed", value: "closed" },
-        ],
-        onFilter: (value, record) => record.status === value as ComplaintsData["status"],
-        render: (status) => {
-            let color = "";
-            let text = "";
 
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in_progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "resolved":
-                    color = "green";
-                    text = "Resolved";
-                    break;
-                case "closed":
-                    color = "gray";
-                    text = "Closed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-            return <Tag color={color}>{text}</Tag>;
-        },
-        className: "text-center",
-    },
 ];
 
 
