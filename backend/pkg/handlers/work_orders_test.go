@@ -46,8 +46,6 @@ func setupTestUser(t *testing.T) int64 {
 			Phone:     pgtype.Text{String: "1234567890"},
 			Role:      db.RoleTenant,
 			LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
-			CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
-			UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		}
 		user, err := queries.CreateUser(context.Background(), userParams)
 		if err != nil {
@@ -58,7 +56,7 @@ func setupTestUser(t *testing.T) int64 {
 	}
 }
 
-func setupWorkOrderEntries(t *testing.T, userID int64) []db.WorkOrder {
+func setupWorkOrderEntries(t *testing.T, userID int64) {
 	var workOrders []db.WorkOrder
 
 	rowCount, err := testDB.Exec(context.Background(), "SELECT COUNT(*) FROM work_orders WHERE created_by = $1", userID)
@@ -70,16 +68,15 @@ func setupWorkOrderEntries(t *testing.T, userID int64) []db.WorkOrder {
 
 	for i := 0; i < 10; i++ {
 		params := db.CreateWorkOrderParams{
-			OrderNumber: int64(count + int64(i+1)),
+			OrderNumber: count + int64(i+1),
 			Status:      db.StatusOpen,
 			Description: faker.Paragraph(),
 			Category:    db.WorkCategoryCarpentry,
 			CreatedBy:   userID,
 			UnitNumber:  101 + int16(i),
 			Title:       "Test Work Order",
-			UpdatedAt:   pgtype.Timestamp{Time: time.Now(), Valid: true},
-			CreatedAt:   pgtype.Timestamp{Time: time.Now(), Valid: true},
 		}
+
 		workOrder, err := queries.CreateWorkOrder(context.Background(), params)
 		if err != nil {
 			t.Fatalf("Failed to create work order: %v", err)
@@ -88,33 +85,30 @@ func setupWorkOrderEntries(t *testing.T, userID int64) []db.WorkOrder {
 			t.Logf("Created work order: %d", workOrder.ID)
 		}
 	}
-
-	return workOrders
 }
 
 // setup for work order entries tests
-func setupTests(t *testing.T) func(t *testing.T) {
+func setupTests(t *testing.T) (func(t *testing.T), int64) {
 	userID := setupTestUser(t)
-	orders := setupWorkOrderEntries(t, userID)
+	setupWorkOrderEntries(t, userID)
 
 	return func(t *testing.T) {
-		for _, order := range orders {
-			ordID := order.ID
-			_, err := testDB.Exec(context.Background(), "DELETE FROM work_orders WHERE id = $1", ordID)
-			if err != nil {
-				t.Fatalf("Failed to delete work order: %v", err)
-			}
-		}
-		_, err := testDB.Exec(context.Background(), "DELETE FROM users WHERE id = $1", userID)
+		_, err := testDB.Exec(context.Background(), `TRUNCATE TABLE "work_orders" RESTART IDENTITY CASCADE;`)
 		if err != nil {
-			t.Fatalf("Failed to delete test user: %v", err)
+			t.Fatalf("Failed to drop work orders table: %v", err)
 		}
-	}
+		_, err = testDB.Exec(context.Background(), `TRUNCATE TABLE "users" RESTART IDENTITY CASCADE;`)
+		if err != nil {
+			t.Fatalf("Failed to drop users table: %v", err)
+		}
+
+		t.Logf("Created users: %v", userID)
+	}, userID
 }
 
 // TestWorkOrderHandler tests the work order handler
 func TestWorkOrderHandler(t *testing.T) {
-	teardown := setupTests(t)
+	teardown, _ := setupTests(t)
 	defer teardown(t)
 
 	// Create a new work order handler
@@ -141,13 +135,11 @@ func TestWorkOrderHandler(t *testing.T) {
 }
 
 func TestCreateWorkOrderHandler(t *testing.T) {
-	teardown := setupTests(t)
+	teardown, userID := setupTests(t)
 	defer teardown(t)
 
 	// Create a new work order handler
 	workOrderHandler := handlers.NewWorkOrderHandler(testDB, queries)
-
-	timeNow := pgtype.Timestamp{Time: time.Now(), Valid: true}
 
 	// Create a test request body
 	reqBody := db.CreateWorkOrderParams{
@@ -155,11 +147,9 @@ func TestCreateWorkOrderHandler(t *testing.T) {
 		Status:      db.StatusOpen,
 		Description: "Test Work Order",
 		Category:    db.WorkCategoryCarpentry,
-		CreatedBy:   1,
+		CreatedBy:   userID,
 		UnitNumber:  101,
 		Title:       "Test Work Order",
-		UpdatedAt:   timeNow,
-		CreatedAt:   timeNow,
 	}
 
 	body, err := json.Marshal(reqBody)
