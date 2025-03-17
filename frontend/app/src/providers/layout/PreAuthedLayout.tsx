@@ -1,5 +1,5 @@
 import React from "react";
-import { Layout, Menu, theme } from "antd";
+import { Divider, Layout, Menu, theme } from "antd";
 import { Link, Outlet } from "react-router";
 import { SignOutButton, useUser } from "@clerk/react-router";
 
@@ -23,7 +23,7 @@ const PreAuthedLayout: React.FC = () => {
                 <Link
                     className="text-white"
                     to={user.publicMetadata.role === "admin" ? "/admin" : "/tenant"}>
-                    Your Home
+                    Dashboard
                 </Link>
             ) : (
                 <Link
@@ -40,23 +40,18 @@ const PreAuthedLayout: React.FC = () => {
                     <div className="text-white">Logout</div>
                 </SignOutButton>
             ) : (
-                <Link to="/auth/login">Login</Link>
+                <Link
+                    className="text-white"
+                    to="/auth/login">
+                    Login
+                </Link>
             ),
         },
     ];
 
     return (
         <Layout>
-            <Header
-                style={{
-                    position: "sticky",
-                    top: 0,
-                    zIndex: 1,
-                    width: "100%",
-                    display: "flex",
-                    alignItems: "center",
-                    backgroundColor: "#00674f",
-                }}>
+            <Header className="header">
                 {/* Left Side Nav */}
                 <div style={{ width: "200px" }}>
                     <Link to="/">
@@ -80,26 +75,18 @@ const PreAuthedLayout: React.FC = () => {
                     </Link>
                 </div>
 
-                {/* Right Side Nav */}
+                {/* Top right Nav */}
                 <div style={{ width: "200px" }}>
                     <Menu
-                        theme="light"
+                        // theme="dark"
                         mode="horizontal"
                         inlineCollapsed={false}
-                        defaultSelectedKeys={["1"]}
+                        // defaultSelectedKeys={["1"]}
                         items={items}
                     />
                 </div>
             </Header>
-            <Content style={{ padding: "0 48px" }}>
-                {/* TODO: Decide if we are using this */}
-                {/* <Breadcrumb style={{ margin: '16px 0' }}>
-                        <Breadcrumb.Item><Link to="/">Home</Link></Breadcrumb.Item>
-                        <Breadcrumb.Item>Test</Breadcrumb.Item>
-                        <Breadcrumb.Item>Breadcrumb</Breadcrumb.Item>
-                    </Breadcrumb>
-                */}
-
+            <Content>
                 <div
                     style={{
                         padding: 24,
@@ -111,57 +98,45 @@ const PreAuthedLayout: React.FC = () => {
                     <Outlet />
                 </div>
             </Content>
-
             {/* Footer Container */}
-            <Footer style={{ textAlign: "center", padding: "24px 50px", backgroundColor: "#f5f5f5" }}>
+            <Footer className="footer">
                 {/* Rent Daddy */}
-                <h3
-                    className="footer-title"
-                    style={{ marginBottom: "16px", color: "#1a1a1a" }}>
-                    Rent Daddy
-                </h3>
+                <h3 className="footer-title">Rent Daddy</h3>
                 {/* Logo */}
                 <img
-                    // src="https://placehold.co/64x64?text=Logo"
                     src="/logo.png"
                     alt="logo"
                     className="footer-logo"
-                    style={{
-                        display: "block",
-                        margin: "0 auto",
-                        marginBottom: "24px",
-                        borderRadius: "8px",
-                    }}
+                    // style={{
+                    //     display: "block",
+                    //     margin: "0 auto",
+                    //     marginBottom: "24px",
+                    //     borderRadius: "8px",
+                    // }}
                 />
-                <div
-                    className="footer-links"
-                    style={{ marginBottom: "24px" }}>
+                <div>
                     <Link
                         to="/about"
-                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        className="link">
                         About
                     </Link>
                     <Link
                         to="/contact"
-                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        className="link">
                         Contact
                     </Link>
                     <Link
                         to="/privacy"
-                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        className="link">
                         Privacy Policy
                     </Link>
                     <Link
                         to="/terms"
-                        style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
+                        className="link">
                         Terms of Service
                     </Link>
                 </div>
-                <p
-                    className="footer-text"
-                    style={{ margin: 0, color: "#8c8c8c", fontSize: "14px" }}>
-                    Rent Daddy Â© {new Date().getFullYear()} | All Rights Reserved
-                </p>
+                <p className="footer-text">Rent Daddy © {new Date().getFullYear()} | All Rights Reserved</p>
             </Footer>
         </Layout>
     );

@@ -1,9 +1,10 @@
-package config
+package smtp
 
 import (
 	"crypto/tls"
 	"fmt"
 	"net/smtp"
+	"os"
 	"testing"
 )
 
@@ -61,3 +62,14 @@ func TestSMTPConnection(t *testing.T) {
 	}
 }
 
+func TestSendEmail(t *testing.T) {
+	recipient := os.Getenv("SMTP_TEST_EMAIL")
+	if recipient == "" {
+		t.Fatal("SMTP_TEST_EMAIL environment variable is not set")
+	}
+	subject := "Test Email"
+	body := "Hello there test user. Get out your wallet, daddy wants his lease money."
+	if err := SendEmail(recipient, subject, body); err != nil {
+		t.Fatalf("Email sending failed: %v", err)
+	}
+}

@@ -19,9 +19,7 @@ const AdminDashboard = () => {
         {
             title: "Lease Status",
             dataIndex: "leaseStatus",
-            render: (leaseStatus: string) => (
-                <Tag color={leaseStatus === "Active" ? "green" : "red"}>{leaseStatus}</Tag>
-            ),
+            render: (leaseStatus: string) => <Tag color={leaseStatus === "Active" ? "green" : "red"}>{leaseStatus}</Tag>,
         },
     ];
 
@@ -37,14 +35,12 @@ const AdminDashboard = () => {
         {
             title: "Type",
             dataIndex: "type",
-            render: (type: string) => <Tag color={type === "Work Order" ? "blue" : "red"}>{type}</Tag>,
+            render: (type: string) => <Tag color={type === "Work Order" ? "blue" : "orange"}>{type}</Tag>,
         },
         {
             title: "Status",
             dataIndex: "status",
-            render: (status: string) => (
-                <Tag color={status === "Solved" ? "green" : "red"}>{status}</Tag>
-            ),
+            render: (status: string) => <Tag color={status === "Solved" ? "green" : "orange"}>{status}</Tag>,
         },
     ];
 
@@ -71,7 +67,14 @@ const AdminDashboard = () => {
                     description="Active maintenance requests"
                     hoverable={true}
                     icon={<ToolOutlined style={{ fontSize: "24px", color: "#1890ff", marginBottom: "16px" }} />}
-                    button={<Link to="/admin/admin-view-and-edit-work-orders-and-complaints"><ButtonComponent title="View All" type="primary" /></Link>}
+                    button={
+                        <Link to="/admin/admin-view-and-edit-work-orders-and-complaints">
+                            <ButtonComponent
+                                title="View All"
+                                type="primary"
+                            />
+                        </Link>
+                    }
                 />
                 <CardComponent
                     title="Complaints"
@@ -79,7 +82,14 @@ const AdminDashboard = () => {
                     description="Pending tenant issues"
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: "24px", color: "#faad14", marginBottom: "16px" }} />}
-                    button={<Link to="/admin/admin-view-and-edit-work-orders-and-complaints"><ButtonComponent title="View All" type="primary" /></Link>}
+                    button={
+                        <Link to="/admin/admin-view-and-edit-work-orders-and-complaints">
+                            <ButtonComponent
+                                title="View All"
+                                type="primary"
+                            />
+                        </Link>
+                    }
                 />
                 <CardComponent
                     title="Packages"
@@ -87,7 +97,15 @@ const AdminDashboard = () => {
                     description="Awaiting delivery"
                     hoverable={true}
                     icon={<InboxOutlined style={{ fontSize: "24px", color: "#52c41a", marginBottom: "16px" }} />}
-                    button={<ModalComponent buttonTitle="Add Package" content="" type="Smart Locker" handleOkay={handleAddPackage} />}
+                    button={
+                        <ModalComponent
+                            buttonTitle="Add Package"
+                            buttonType="default"
+                            content=""
+                            type="Smart Locker"
+                            handleOkay={handleAddPackage}
+                        />
+                    }
                 />
                 <CardComponent
                     title="Events"
@@ -95,7 +113,12 @@ const AdminDashboard = () => {
                     description="Scheduled this month"
                     hoverable={true}
                     icon={<CalendarOutlined style={{ fontSize: "24px", color: "#722ed1", marginBottom: "16px" }} />}
-                    button={<ButtonComponent title="View All" type="primary" />}
+                    button={
+                        <ButtonComponent
+                            title="View All"
+                            type="primary"
+                        />
+                    }
                 />
             </div>
 
@@ -106,7 +129,7 @@ const AdminDashboard = () => {
                     <TableComponent
                         columns={columnsLeases}
                         dataSource={dataLeases}
-                        onChange={() => { }}
+                        onChange={() => {}}
                     />
                 </div>
                 <div className="d-flex flex-column w-50">
@@ -114,8 +137,7 @@ const AdminDashboard = () => {
                     <TableComponent
                         columns={columnsWorkOrdersAndComplaints}
                         dataSource={dataWorkOrdersAndComplaints}
-                        icon={<UserOutlined />}
-                        onChange={() => { }}
+                        onChange={() => {}}
                     />
                 </div>
             </div>
