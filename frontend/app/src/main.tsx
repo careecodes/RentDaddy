@@ -24,11 +24,13 @@ import { ConfigProvider } from "antd";
 import { ClerkProvider } from "@clerk/react-router";
 import TestGoBackend from "./components/TestGoBackend.tsx";
 
+
 // Pages
 import App from "./App.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AddTenant from "./pages/AddTenant.tsx";
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
+import AdminWorkOrder from "./pages/AdminWorkOrder.tsx";
 import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import ReusableComponents from "./pages/ReusableComponents.tsx";
 
@@ -158,7 +160,7 @@ createRoot(document.getElementById("root")!).render(
                                         />
                                         <Route
                                             path="admin-view-and-edit-work-orders-and-complaints"
-                                            element={<h1>Admin View & Edit Work Orders & Complaints</h1>}
+                                            element={<AdminWorkOrder />}
                                         />
                                     </Route>
 
