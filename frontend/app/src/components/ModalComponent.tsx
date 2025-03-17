@@ -2,7 +2,7 @@
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
 interface Lease {
@@ -10,13 +10,21 @@ interface Lease {
     title: string;
 }
 
+type Building = {
+    buildingNumber: number;
+    floorNumbers: number;
+    numberOfRooms: number;
+};
+
 interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
-    type: "default" | "Smart Locker" | "Guest Parking" | "Add Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease";
+    type: "default" | "Smart Locker" | "Guest Parking" | "Add Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
     handleOkay: () => void;
     modalTitle?: string;
+    apartmentBuildingEditProps?: Building;
+    apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
     leases?: Lease[];
 }
@@ -227,6 +235,72 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     </Button>
                                 </Form.Item>
                             </div>
+                        </Form>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Edit Apartment Building" && (
+                <>
+                    <Button
+                        type="primary"
+                        onClick={showModal}>
+                        <EditOutlined />
+                        {props.buttonTitle}
+                    </Button>
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <Form>
+                            <Form.Item name="Building #">
+                                <Input
+                                    placeholder={props.apartmentBuildingEditProps?.buildingNumber.toString() || ""}
+                                    type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.apartmentBuildingSetEditBuildingState({
+                                            ...props.apartmentBuildingEditProps!,
+                                            buildingNumber: updatedValue,
+                                        });
+                                    }}
+                                />
+                            </Form.Item>
+                            <Form.Item name="Amount of Floors">
+                                <Input
+                                    placeholder={props.apartmentBuildingEditProps?.floorNumbers.toString() || ""}
+                                    type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.apartmentBuildingSetEditBuildingState({
+                                            ...props.apartmentBuildingEditProps!,
+                                            floorNumbers: updatedValue,
+                                        });
+                                    }}
+                                />
+                            </Form.Item>
+                            <Form.Item name="# of Rooms/Floor">
+                                <Input
+                                    placeholder={props.apartmentBuildingEditProps?.numberOfRooms.toString() || ""}
+                                    type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.apartmentBuildingSetEditBuildingState({
+                                            ...props.apartmentBuildingEditProps!,
+                                            numberOfRooms: updatedValue,
+                                        });
+                                    }}
+                                />
+                            </Form.Item>
+                            <Divider />
                         </Form>
                     </Modal>
                 </>
