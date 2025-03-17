@@ -1,12 +1,11 @@
 import { useAuth } from "@clerk/react-router";
-import { useMutation, useQuery } from "@tanstack/react-query"
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 
 const TestGoBackend = () => {
+    const [username, setUsername] = useState("");
 
-    const [username, setUsername] = useState("")
-
-    const userId = useAuth().userId
+    const userId = useAuth().userId;
 
     const { mutate: updateUsernameGoBackend } = useMutation({
         mutationFn: async () => {
@@ -15,7 +14,7 @@ const TestGoBackend = () => {
                 body: JSON.stringify({ username: username, id: userId }),
                 headers: { "Content-Type": "application/json" },
             });
-            console.log(res, "res")
+            console.log(res, "res");
             return res;
         },
         onSuccess: () => {
@@ -28,11 +27,10 @@ const TestGoBackend = () => {
     });
 
     const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
-        e.preventDefault()
-        console.log(username, "username")
-        updateUsernameGoBackend()
-    }
-
+        e.preventDefault();
+        console.log(username, "username");
+        updateUsernameGoBackend();
+    };
 
     return (
         // Form with input of username (string)
@@ -44,10 +42,14 @@ const TestGoBackend = () => {
             <h3>Update Username</h3>
             <p className="text-muted">Test the Go Backend</p>
             <p className="text-muted">Test: /test/clerk/update-username</p>
-            <input value={username} onChange={(e) => setUsername(e.target.value)} type="text" placeholder="Username" />
+            <input
+                value={username}
+                onChange={(e) => setUsername(e.target.value)}
+                type="text"
+                placeholder="Username"
+            />
             <button type="submit">Update Username</button>
         </form>
-
-    )
-}
-export default TestGoBackend
+    );
+};
+export default TestGoBackend;
