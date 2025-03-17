@@ -174,7 +174,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 	qtx := queries.WithTx(tx)
 	var apartmentUnitNumber int
-	// log.Printf("ManagementId: %s Unit Number: %d\n", userMetadata.ManagementId, userMetadata.UnitNumber)
 
 	if userMetadata.ManagementId != "" && userMetadata.UnitNumber != 0 {
 		log.Println("[CLERK_WEBHOOK] Invited user")

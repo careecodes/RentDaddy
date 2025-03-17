@@ -93,7 +93,7 @@ func main() {
 				userHandler.GetAllTenants(w, r, gen.RoleTenant)
 			})
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
-			r.Post("/invite/unit_number", userHandler.InviteTenant)
+			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 		})
 	})
