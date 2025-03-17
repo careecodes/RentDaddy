@@ -496,7 +496,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
 
 
 const paginationConfig: TablePaginationConfig = {
-    pageSize: 10,
+    pageSize: 5,
     showSizeChanger: false,
 };
 
