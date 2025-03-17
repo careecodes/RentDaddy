@@ -11,6 +11,7 @@ import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TableProps, TablePaginationConfig } from "antd";
+import Title from "antd/es/typography/Title";
 
 
 const today = dayjs();
@@ -54,6 +55,13 @@ const getColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): Co
     };
 };
 
+const shortenInput = (input: string, maxLength: number = 40) => {
+    if (input.length > maxLength) {
+        return input.substring(0, maxLength - 3) + "...";
+    } else {
+        return input;
+    }
+}
 
 // DUMMY DATA THIS WILL BE DELETED :D
 const workOrderDataRaw: WorkOrderData[] = [
@@ -77,7 +85,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "Bathroom Light Flickering",
         description: "The bathroom light has been flickering for two days and sometimes goes out completely.",
         apartmentNumber: "B218",
-        status: "in progress",
+        status: "in_progress",
         createdAt: new Date("2025-02-10T14:45:00"),
         updatedAt: new Date("2025-02-12T11:20:00")
     },
@@ -89,7 +97,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "AC Not Cooling",
         description: "Air conditioner is running but not cooling the apartment. Temperature is getting uncomfortable.",
         apartmentNumber: "A101",
-        status: "awaiting parts",
+        status: "awaiting_parts",
         createdAt: new Date("2025-01-30T16:20:00"),
         updatedAt: new Date("2025-02-02T09:15:00")
     },
@@ -125,7 +133,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "No Power in Bedroom",
         description: "Electrical outlets in the bedroom aren't working. Breaker hasn't tripped.",
         apartmentNumber: "A212",
-        status: "in progress",
+        status: "in_progress",
         createdAt: new Date("2025-02-14T12:30:00"),
         updatedAt: new Date("2025-02-14T16:45:00")
     },
@@ -149,7 +157,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "Noisy Heater",
         description: "Heating system is making loud banging noises when it starts up.",
         apartmentNumber: "A333",
-        status: "awaiting parts",
+        status: "awaiting_parts",
         createdAt: new Date("2025-03-14T09:50:00"),
         updatedAt: new Date("2025-01-29T14:20:00")
     },
@@ -173,7 +181,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "Damaged Baseboards",
         description: "Baseboards in the living room are damaged and coming away from the wall in several places.",
         apartmentNumber: "D401",
-        status: "in progress",
+        status: "in_progress",
         createdAt: new Date("2025-02-12T15:00:00"),
         updatedAt: new Date("2025-02-13T11:30:00")
     }
@@ -229,12 +237,14 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         key: "title",
         sorter: (a, b) => a.title.localeCompare(b.title),
         ...getColumnSearchProps("title", "Inquiry"),
+        render: (title) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
         ...getColumnSearchProps("description", "Description"),
+        render: (description) => shortenInput(description),
     },
     {
         title: "Created",
@@ -258,8 +268,8 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         key: "status",
         filters: [
             { text: "Open", value: "open" },
-            { text: "In Progress", value: "in progress" },
-            { text: "Awaiting Parts", value: "awaiting parts" },
+            { text: "In Progress", value: "in_progress" },
+            { text: "Awaiting Parts", value: "awaiting_parts" },
             { text: "Completed", value: "completed" },
         ],
         onFilter: (value, record) => record.status === value,
@@ -273,11 +283,11 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
                     color = "red";
                     text = "Open";
                     break;
-                case "in progress":
+                case "in_progress":
                     color = "blue";
                     text = "In Progress";
                     break;
-                case "awaiting parts":
+                case "awaiting_parts":
                     color = "orange";
                     text = "Awaiting Parts";
                     break;
@@ -431,12 +441,14 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         key: "title",
         sorter: (a, b) => a.title.localeCompare(b.title),
         ...getColumnSearchProps("title", "Complaint"),
+        render: (title) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
         ...getColumnSearchProps("description", "Description"),
+        render: (description) => shortenInput(description),
     },
     {
         title: "Created",
