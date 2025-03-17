@@ -33,6 +33,7 @@ import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders
 import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
+import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetupAndDetailsManagement.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -61,6 +62,9 @@ createRoot(document.getElementById("root")!).render(
                     },
                     Modal: {
                         colorBgElevated: "white",
+                    },
+                    Menu: {
+                        colorBgContainer: "#00674f",
                     },
                 },
             }}>
@@ -142,7 +146,7 @@ createRoot(document.getElementById("root")!).render(
                                         />
                                         <Route
                                             path="init-apartment-complex"
-                                            element={<h1>Initial Admin Apartment Complex Setup</h1>}
+                                            element={<AdminApartmentSetupAndDetailsManagement />}
                                         />
                                         <Route
                                             path="add-tenant"
