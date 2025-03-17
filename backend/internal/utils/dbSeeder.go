@@ -2,8 +2,8 @@ package utils
 
 import (
 	"context"
-	"github.com/bxcodec/faker/v4"
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-faker/faker/v4"
 	"github.com/jackc/pgx/v5/pgtype"
 	"log"
 	"time"
