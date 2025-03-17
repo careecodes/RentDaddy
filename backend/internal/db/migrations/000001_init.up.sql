@@ -140,7 +140,7 @@ CREATE TABLE IF NOT EXISTS "leases"
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
-CREATE INDEX "lease_apartment_id_index" ON "leases" ("id");
+CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
 
 CREATE TABLE IF NOT EXISTS "lockers"
 (
