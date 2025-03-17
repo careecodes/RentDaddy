@@ -23,7 +23,7 @@ func NewWorkOrderHandler(pool *pgxpool.Pool, queries *db.Queries) *WorkOrderHand
 	}
 }
 
-func (h *WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
+func (h WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
 	param := chi.URLParam(r, "work_order")
 
 	workOrderNumber, err := strconv.Atoi(param)
@@ -57,7 +57,7 @@ func (h *WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (h *WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.Request) {
+func (h WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	props := db.ListWorkOrdersParams{
 		Limit:  5,
 		Offset: 0,
@@ -92,8 +92,19 @@ func (h *WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.
 	}
 }
 
-func (h *WorkOrderHandler) CreateWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
+type WorkOrdersRequest struct {
+	OrderNumber int64  `json:"order_number"`
+	Status      string `json:"status"`
+	Description string `json:"description"`
+	Category    string `json:"category"`
+	CreatedBy   int64  `json:"created_by"`
+	UnitNumber  int16  `json:"unit_number"`
+	Title       string `json:"title"`
+}
+
+func (h WorkOrderHandler) CreateWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
 	var params db.CreateWorkOrderParams
+
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		log.Printf("Error decoding request body: %v", err)
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)

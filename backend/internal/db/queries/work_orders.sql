@@ -6,11 +6,9 @@ INSERT INTO work_orders (
     title,
     description,
     unit_number,
-    status,
-    updated_at,
-    created_at
+    status
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING *;
 
 -- name: GetWorkOrder :one
@@ -33,7 +31,7 @@ SET
     description = $4,
     unit_number = $5,
     status = $6,
-    updated_at = $7
+    updated_at = now()
 WHERE id = $1;
 
 -- name: DeleteWorkOrder :exec

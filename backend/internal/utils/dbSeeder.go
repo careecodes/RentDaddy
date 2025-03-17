@@ -20,8 +20,6 @@ func SeedDB(queries *db.Queries) {
 		Phone:     pgtype.Text{String: faker.Phonenumber(), Valid: true},
 		Role:      db.RoleTenant,
 		LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
-		CreatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
-		UpdatedAt: pgtype.Timestamp{Time: time.Now(), Valid: true},
 	}
 
 	createdUser, err := queries.CreateUser(context.Background(), user)
@@ -42,8 +40,6 @@ func SeedDB(queries *db.Queries) {
 			Description: faker.Paragraph(),
 			UnitNumber:  int16(100 + i),
 			Status:      db.StatusOpen,
-			UpdatedAt:   pgtype.Timestamp{Time: time.Now(), Valid: true},
-			CreatedAt:   pgtype.Timestamp{Time: time.Now(), Valid: true},
 		}
 
 		_, err := queries.CreateWorkOrder(context.Background(), workOrder)

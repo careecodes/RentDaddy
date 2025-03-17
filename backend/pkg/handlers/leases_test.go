@@ -25,7 +25,7 @@ var queries *db.Queries
 func TestMain(m *testing.M) {
 	dbURL := os.Getenv("PG_URL")
 	if dbURL == "" {
-		log.Fatal("PG_URL is not set")
+		dbURL = "postgres://appuser:apppassword@localhost:5432/appdb?sslmode=disable"
 	}
 
 	var err error
