@@ -19,11 +19,9 @@ INSERT INTO complaints (
     title,
     description,
     unit_number,
-    status,
-    updated_at,
-    created_at
+    status
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, complaint_number, created_by, category, title, description, unit_number, status, updated_at, created_at
 `
 
@@ -35,8 +33,6 @@ type CreateComplaintParams struct {
 	Description     string            `json:"description"`
 	UnitNumber      int16             `json:"unit_number"`
 	Status          Status            `json:"status"`
-	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
-	CreatedAt       pgtype.Timestamp  `json:"created_at"`
 }
 
 func (q *Queries) CreateComplaint(ctx context.Context, arg CreateComplaintParams) (Complaint, error) {
@@ -48,8 +44,6 @@ func (q *Queries) CreateComplaint(ctx context.Context, arg CreateComplaintParams
 		arg.Description,
 		arg.UnitNumber,
 		arg.Status,
-		arg.UpdatedAt,
-		arg.CreatedAt,
 	)
 	var i Complaint
 	err := row.Scan(
@@ -168,8 +162,7 @@ SET
     description = $6,
     unit_number = $7,
     status = $8,
-    updated_at = $9,
-    created_at = $10
+    updated_at = now()
 WHERE id = $1
 `
 
@@ -182,8 +175,6 @@ type UpdateComplaintParams struct {
 	Description     string            `json:"description"`
 	UnitNumber      int16             `json:"unit_number"`
 	Status          Status            `json:"status"`
-	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
-	CreatedAt       pgtype.Timestamp  `json:"created_at"`
 }
 
 func (q *Queries) UpdateComplaint(ctx context.Context, arg UpdateComplaintParams) error {
@@ -196,8 +187,6 @@ func (q *Queries) UpdateComplaint(ctx context.Context, arg UpdateComplaintParams
 		arg.Description,
 		arg.UnitNumber,
 		arg.Status,
-		arg.UpdatedAt,
-		arg.CreatedAt,
 	)
 	return err
 }

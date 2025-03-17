@@ -65,8 +65,6 @@ func (r CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
 		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: true},
 		RentAmount:     floatToPgNumeric(r.RentAmount),
 		LeaseStatus:    "active",
-		CreatedBy:      r.CreatedBy,
-		UpdatedBy:      r.CreatedBy,
 	}
 }
 

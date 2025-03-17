@@ -308,6 +308,36 @@ func main() {
 
 
 
+	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
+	r.Route("/work_orders", func(r chi.Router) {
+		// Admin route
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("List Orders")
+			workOrderHandler.ListWorkOrdersHandler(w, r)
+		})
+
+		// Create Order
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Create Order")
+			workOrderHandler.CreateWorkOrderHandler(w, r)
+		})
+
+		r.Route("/{order_number}", func(r chi.Router) {
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Get Order")
+				workOrderHandler.GetWorkOrderHandler(w, r)
+			})
+			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Printf("Update Order")
+				workOrderHandler.UpdateWorkOrderHandler(w, r)
+			})
+			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Delete Order")
+				workOrderHandler.DeleteWorkOrderHandler(w, r)
+			})
+		})
+	})
+
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{

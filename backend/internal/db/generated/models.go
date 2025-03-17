@@ -197,9 +197,8 @@ func (ns NullLeaseStatus) Value() (driver.Value, error) {
 type Role string
 
 const (
-	RoleTenant   Role = "tenant"
-	RoleAdmin    Role = "admin"
-	RoleLandlord Role = "landlord"
+	RoleTenant Role = "tenant"
+	RoleAdmin  Role = "admin"
 )
 
 func (e *Role) Scan(src interface{}) error {

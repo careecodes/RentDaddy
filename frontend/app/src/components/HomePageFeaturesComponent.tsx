@@ -1,8 +1,6 @@
-import { Card, Row, Col } from "antd";
 import { LockOutlined, InboxOutlined, CarOutlined, MobileOutlined } from "@ant-design/icons";
-import { StyleConstants } from "../styles/styleConstants";
 import { CardComponent } from "./reusableComponents/CardComponent";
-import ButtonComponent from "./reusableComponents/ButtonComponent";
+
 
 /**
  * HomePageFeaturesComponent - Displays a grid of feature cards highlighting smart living amenities
@@ -36,31 +34,23 @@ const HomePageFeaturesComponent = () => {
     ];
 
     return (
-        <div
-            className="py-5 bg-light"
-            style={{ margin: "50px 0px" }}>
-            <div className="container">
+        <>
+            <div className="container mb-3">
                 {/* Title */}
-                <h2 className="text-center mb-5 fw-bold">Smart Living</h2>
-                {/* Grid of feature cards */}
-                <Row gutter={[StyleConstants.XS_BREAKPOINT, StyleConstants.XS_BREAKPOINT]}>
-                    {features.map((feature, index) => (
-                        <Col
-                            xs={StyleConstants.XS_BREAKPOINT}
-                            sm={StyleConstants.SM_BREAKPOINT}
-                            lg={StyleConstants.LG_BREAKPOINT}
-                            key={index}>
-                            <CardComponent
-                                hoverable
-                                icon={feature.icon}
-                                title={feature.title}
-                                description={feature.description}
-                            />
-                        </Col>
+                <h2 className="my-3 fw-bold">Smart Living</h2>
+                <div className="flex-container">
+                    {/* Grid of feature cards */}
+                    {features.map((feature) => (
+                        <CardComponent
+                            hoverable
+                            icon={feature.icon}
+                            title={feature.title}
+                            description={feature.description}
+                        />
                     ))}
-                </Row>
+                </div>
             </div>
-        </div>
+        </>
     );
 };
 

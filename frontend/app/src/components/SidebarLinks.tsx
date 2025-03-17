@@ -29,7 +29,7 @@ const SidebarLinks = () => {
     };
 
     return (
-        <div className="menu-container d-flex flex-column gap-3 mx-auto py-4 px-1">
+        <div className="menu-container d-flex flex-column gap-3 mx-auto py-4 px-1 vh-100">
             {/* Home Menu Item */}
             <div className="menu-item hover-lift transition-all rounded-lg p-3">
                 <div className="d-flex align-items-center">

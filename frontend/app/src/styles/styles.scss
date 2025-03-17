@@ -127,10 +127,53 @@ body {
     display: flex;
 }
 
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-grow-1 {
+    flex-grow: 1;
+}
+
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    overflow: hidden;
+    gap: 2rem;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.alert-container {
+    display: flex;
+    margin-bottom: 20px;
+}
+
 // Ant Design Covers the Styling for Tables Well Enough
 // If we want / need more, we can add it here
 .table {
     background: $secondary5;
+}
+
+.card {
+    width: 300px;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+}
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-height: 50%;
+    max-height: 90%;
+    text-align: center;
 }
 
 // Buttons
@@ -161,6 +204,47 @@ body {
 .icon {
     font-size: 24px;
     margin-bottom: 16px;
+}
+
+.btn {
+    display: inline-flex !important;
+}
+
+.footer {
+    text-align: center;
+    padding: 24px 50px;
+}
+
+.footer-title {
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+}
+
+.footer-logo {
+    margin: 1rem auto;
+    border-radius: 8px;
+}
+
+.link {
+    padding: 0 16px;
+    color: #595959;
+    text-decoration: none;
+}
+
+.footer-text {
+    margin: 0;
+    color: #8c8c8c;
+    font-size: 14px;
+}
+
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    background-color: #00674f;
 }
 
 // Text Sizes
