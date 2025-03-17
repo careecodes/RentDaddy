@@ -17,7 +17,7 @@ export interface WorkOrderData {
     title: string;
     description: string;
     apartmentNumber: string;
-    status: "open" | "in progress" | "awaiting parts" | "completed";
+    status: "open" | "in_progress" | "awaiting_parts" | "completed";
     createdAt: Date;
     updatedAt: Date;
 }

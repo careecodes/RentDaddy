@@ -510,7 +510,7 @@ const AdminWorkOrder = () => {
     };
 
     const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, "in progress": 2, "awaiting parts": 3, completed: 4 };
+        const statusPriority = { open: 1, "in_progress": 2, "awaiting_parts": 3, completed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
         if (priorityDiff !== 0) return priorityDiff;
 
