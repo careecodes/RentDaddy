@@ -13,7 +13,6 @@ import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TableProps, TablePaginationConfig } from "antd";
 import Title from "antd/es/typography/Title";
 
-
 const today = dayjs();
 
 // This is the dropdown that performs a search in each column
@@ -61,7 +60,7 @@ const shortenInput = (input: string, maxLength: number = 30) => {
     } else {
         return input;
     }
-}
+};
 
 // DUMMY DATA THIS WILL BE DELETED :D
 const workOrderDataRaw: WorkOrderData[] = [
@@ -75,7 +74,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "C466",
         status: "open",
         createdAt: new Date("2025-02-15T09:30:00"),
-        updatedAt: new Date("2025-02-15T09:30:00")
+        updatedAt: new Date("2025-02-15T09:30:00"),
     },
     {
         key: 2,
@@ -87,7 +86,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "B218",
         status: "in_progress",
         createdAt: new Date("2025-02-10T14:45:00"),
-        updatedAt: new Date("2025-02-12T11:20:00")
+        updatedAt: new Date("2025-02-12T11:20:00"),
     },
     {
         key: 3,
@@ -99,7 +98,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "A101",
         status: "awaiting_parts",
         createdAt: new Date("2025-01-30T16:20:00"),
-        updatedAt: new Date("2025-02-02T09:15:00")
+        updatedAt: new Date("2025-02-02T09:15:00"),
     },
     {
         key: 4,
@@ -123,7 +122,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "C299",
         status: "open",
         createdAt: new Date("2025-02-18T08:10:00"),
-        updatedAt: new Date("2025-02-18T08:10:00")
+        updatedAt: new Date("2025-02-18T08:10:00"),
     },
     {
         key: 6,
@@ -135,7 +134,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "A212",
         status: "in_progress",
         createdAt: new Date("2025-02-14T12:30:00"),
-        updatedAt: new Date("2025-02-14T16:45:00")
+        updatedAt: new Date("2025-02-14T16:45:00"),
     },
     {
         key: 7,
@@ -147,7 +146,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "B179",
         status: "open",
         createdAt: new Date("2025-02-17T11:25:00"),
-        updatedAt: new Date("2025-02-17T11:25:00")
+        updatedAt: new Date("2025-02-17T11:25:00"),
     },
     {
         key: 8,
@@ -159,7 +158,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "A333",
         status: "awaiting_parts",
         createdAt: new Date("2025-03-14T09:50:00"),
-        updatedAt: new Date("2025-01-29T14:20:00")
+        updatedAt: new Date("2025-01-29T14:20:00"),
     },
     {
         key: 9,
@@ -171,7 +170,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "B155",
         status: "completed",
         createdAt: new Date("2025-01-20T13:15:00"),
-        updatedAt: new Date("2025-01-23T10:40:00")
+        updatedAt: new Date("2025-01-23T10:40:00"),
     },
     {
         key: 10,
@@ -183,8 +182,8 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "D401",
         status: "in_progress",
         createdAt: new Date("2025-02-12T15:00:00"),
-        updatedAt: new Date("2025-02-13T11:30:00")
-    }
+        updatedAt: new Date("2025-02-13T11:30:00"),
+    },
 ];
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
@@ -305,7 +304,6 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
-
 ];
 
 const complaintsDataRaw: ComplaintsData[] = [
@@ -319,7 +317,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "A312",
         status: "open",
         createdAt: new Date("2025-03-10T22:15:00"),
-        updatedAt: new Date("2025-03-11T08:00:00")
+        updatedAt: new Date("2025-03-11T08:00:00"),
     },
     {
         key: 2,
@@ -331,7 +329,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "B210",
         status: "in_progress",
         createdAt: new Date("2025-02-28T18:30:00"),
-        updatedAt: new Date("2025-03-01T09:45:00")
+        updatedAt: new Date("2025-03-01T09:45:00"),
     },
     {
         key: 3,
@@ -343,7 +341,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "C405",
         status: "resolved",
         createdAt: new Date("2025-02-20T14:00:00"),
-        updatedAt: new Date("2025-02-22T16:00:00")
+        updatedAt: new Date("2025-02-22T16:00:00"),
     },
     {
         key: 4,
@@ -355,8 +353,8 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "E102",
         status: "closed",
         createdAt: new Date("2025-03-02T20:00:00"),
-        updatedAt: new Date("2025-03-03T12:00:00")
-    }
+        updatedAt: new Date("2025-03-03T12:00:00"),
+    },
 ];
 
 const complaintsColumns: ColumnsType<ComplaintsData> = [
@@ -370,7 +368,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             { text: "Resolved", value: "resolved" },
             { text: "Closed", value: "closed" },
         ],
-        onFilter: (value, record) => record.status === value as ComplaintsData["status"],
+        onFilter: (value, record) => record.status === (value as ComplaintsData["status"]),
         render: (status) => {
             let color = "";
             let text = "";
@@ -417,7 +415,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             { text: "Natural Disaster", value: "natural_disaster" },
             { text: "Other", value: "other" },
         ],
-        onFilter: (value, record) => record.category === value as ComplaintsData["category"],
+        onFilter: (value, record) => record.category === (value as ComplaintsData["category"]),
         render: (category) => {
             let color = "";
             let text = "";
@@ -505,9 +503,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
-
 ];
-
 
 const paginationConfig: TablePaginationConfig = {
     pageSize: 5,
@@ -516,15 +512,15 @@ const paginationConfig: TablePaginationConfig = {
 
 const AdminWorkOrder = () => {
     const handleAddWorkOrder = () => {
-        console.log("Added package successfully.")
+        console.log("Added package successfully.");
     };
 
     const handleAddComplaint = () => {
-        console.log("Added complaint successfully.")
+        console.log("Added complaint successfully.");
     };
 
     const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, "in_progress": 2, "awaiting_parts": 3, completed: 4 };
+        const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
         if (priorityDiff !== 0) return priorityDiff;
 
@@ -545,22 +541,22 @@ const AdminWorkOrder = () => {
         }
 
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    })
+    });
 
     const hoursUntilOverdue: number = 48;
     const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
         return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
     }).length;
     const hoursSinceRecentlyCreated: number = 24;
     const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
         return hoursSinceCreation <= hoursSinceRecentlyCreated;
     }).length;
 
     const hoursSinceRecentlyCompleted: number = 24;
     const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
-        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), 'hour');
+        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
         return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
     }).length;
 
@@ -569,24 +565,9 @@ const AdminWorkOrder = () => {
             <h1 className="mb-4 text-center">Work-Orders & Complaints</h1>
             {/* Alerts headers */}
             <div className="d-flex w-100 justify-content-between mb-4">
-                {
-                    overdueServiceCount > 0 ?
-                        <AlertComponent
-                            description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`}
-                        /> : null
-                }
-                {
-                    recentlyCreatedServiceCount > 0 ?
-                        <AlertComponent
-                            description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`}
-                        /> : null
-                }
-                {
-                    recentlyCompletedServiceCount > 0 ?
-                        <AlertComponent
-                            description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`}
-                        /> : null
-                }
+                {overdueServiceCount > 0 ? <AlertComponent description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`} /> : null}
+                {recentlyCreatedServiceCount > 0 ? <AlertComponent description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`} /> : null}
+                {recentlyCompletedServiceCount > 0 ? <AlertComponent description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`} /> : null}
             </div>
 
             {/* Work Order Table */}
@@ -601,7 +582,7 @@ const AdminWorkOrder = () => {
                         pagination: TablePaginationConfig,
                         filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
                         sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
+                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3]
                     ) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
@@ -621,14 +602,14 @@ const AdminWorkOrder = () => {
                         pagination: TablePaginationConfig,
                         filters: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[1],
                         sorter: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3],
+                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3]
                     ) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                 />
             </div>
         </div>
-    )
+    );
 };
 
 export default AdminWorkOrder;

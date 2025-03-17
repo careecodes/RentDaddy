@@ -24,7 +24,6 @@ import { ConfigProvider } from "antd";
 import { ClerkProvider } from "@clerk/react-router";
 import TestGoBackend from "./components/TestGoBackend.tsx";
 
-
 // Pages
 import App from "./App.tsx";
 import AdminDashboard from "./pages/AdminDashboard.tsx";

@@ -32,7 +32,6 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-
 const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style, pagination }: TableComponentProps<T>) => {
     const { styles } = useStyle();
 
