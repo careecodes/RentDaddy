@@ -15,14 +15,12 @@ const createParkingPermit = `-- name: CreateParkingPermit :one
 INSERT INTO parking_permits (
     permit_number,
     created_by,
-    updated_at, 
     expires_at
 )
 VALUES (
     $1,
     $2,
-    $3,
-    $4
+    $3
 )
 RETURNING id, permit_number, created_by, updated_at, expires_at
 `
@@ -30,17 +28,11 @@ RETURNING id, permit_number, created_by, updated_at, expires_at
 type CreateParkingPermitParams struct {
 	PermitNumber int64            `json:"permit_number"`
 	CreatedBy    int64            `json:"created_by"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
 }
 
 func (q *Queries) CreateParkingPermit(ctx context.Context, arg CreateParkingPermitParams) (ParkingPermit, error) {
-	row := q.db.QueryRow(ctx, createParkingPermit,
-		arg.PermitNumber,
-		arg.CreatedBy,
-		arg.UpdatedAt,
-		arg.ExpiresAt,
-	)
+	row := q.db.QueryRow(ctx, createParkingPermit, arg.PermitNumber, arg.CreatedBy, arg.ExpiresAt)
 	var i ParkingPermit
 	err := row.Scan(
 		&i.ID,
@@ -60,6 +52,19 @@ WHERE id = $1
 func (q *Queries) DeleteParkingPermit(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, deleteParkingPermit, id)
 	return err
+}
+
+const getNumOfUserParkingPermits = `-- name: GetNumOfUserParkingPermits :one
+SELECT COUNT(*)
+FROM parking_permits
+WHERE created_by = $1
+`
+
+func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int64) (int64, error) {
+	row := q.db.QueryRow(ctx, getNumOfUserParkingPermits, createdBy)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getParkingPermit = `-- name: GetParkingPermit :one

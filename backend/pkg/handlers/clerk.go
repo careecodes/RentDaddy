@@ -210,8 +210,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			LeaseID:        0,
 			LeaseStartDate: pgtype.Date{},
 			LeaseEndDate:   pgtype.Date{},
-			UpdatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
-			CreatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 		})
 		if err != nil {
 			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)
@@ -231,8 +229,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:      userRole,
 		LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
-		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
-		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
