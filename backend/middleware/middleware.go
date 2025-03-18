@@ -33,7 +33,7 @@ func IsAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := clerk.SessionClaimsFromContext(r.Context())
 		if !ok {
-			log.Printf("[USER_HANDLER] Failed reading Clerk session")
+			log.Printf("[CLERK_MIDDLEWARE] Failed reading Clerk session")
 			http.Error(w, "Error reading request Clerk session", http.StatusUnauthorized)
 			return
 		}
@@ -87,7 +87,7 @@ func GetClerkUser(r *http.Request) (*clerk.User, error) {
 	userCtx := r.Context().Value("user")
 	clerkUser, ok := userCtx.(*clerk.User)
 	if !ok {
-		log.Printf("[USER_HANDLER] No user CTX")
+		log.Printf("[CLERK_MIDDLEWARE] No user CTX")
 		return nil, http.ErrNoCookie // Use a relevant error
 	}
 	return clerkUser, nil

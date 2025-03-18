@@ -175,6 +175,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	qtx := queries.WithTx(tx)
 	var apartmentUnitNumber int
 
+	// If tenant was invited by admin
 	if userMetadata.ManagementId != "" && userMetadata.UnitNumber != 0 {
 		log.Println("[CLERK_WEBHOOK] Invited user")
 		adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
@@ -206,8 +207,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		}
 
 		// Create new apartment entry if no existing apartment with unit_number
-		// NOTE: THis could be failing because not filling in all the way??
-		// TODO: fix this
 		apartmentRes, err := qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
 			UnitNumber:     int16(userMetadata.UnitNumber),
 			Price:          pgtype.Numeric{Int: big.NewInt(350), Valid: true},
@@ -242,9 +241,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		Phone:    pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:     userRole,
 		ImageUrl: pgtype.Text{String: userData.ProfileImage, Valid: true},
-		// LastLogin: pgtype.Timestamp{Time: time.Unix(userData.LastSignInAt, 0).UTC(), Valid: true},
-		UpdatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
-		CreatedAt: pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
