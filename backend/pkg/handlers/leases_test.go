@@ -18,8 +18,10 @@ import (
 )
 
 // Global variables for DB connection
-var testDB *pgxpool.Pool
-var queries *db.Queries
+var (
+	testDB  *pgxpool.Pool
+	queries *db.Queries
+)
 
 // Initialize the test database connection
 func TestMain(m *testing.M) {
