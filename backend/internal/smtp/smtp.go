@@ -5,7 +5,7 @@ import (
 	"log"
 	"net/smtp"
 	"os"
-  "time"
+	"time"
 )
 
 type SMTPConfig struct {
@@ -63,7 +63,7 @@ func SendEmail(to string, subject string, body string) error {
 	for i := 0; i < maxRetries; i++ {
 		sendMailErr = smtp.SendMail(addr, auth, from, []string{to}, msg)
 		if sendMailErr == nil {
-		  log.Printf("Sent email to %s", to)
+			log.Printf("Sent email to %s", to)
 			return nil
 		}
 

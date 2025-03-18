@@ -87,17 +87,18 @@ CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
 CREATE TYPE "Role" AS ENUM ('tenant', 'admin');
 CREATE TABLE IF NOT EXISTS "users"
 (
-    "id"          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "clerk_id"    TEXT UNIQUE      NOT NULL, -- Clerk ID's "user_2u9IV7xs5cUaYv2MsGH3pcI5hzK" cannot be converted to UUID format
-    "first_name"  VARCHAR          NOT NULL,
-    "last_name"   VARCHAR          NOT NULL,
-    "email"       VARCHAR          NOT NULL,
-    "phone"       VARCHAR          NULL,
-    "unit_number" SMALLINT         NULL,
-    "role"        "Role"           NOT NULL DEFAULT "Role" 'tenant',
-    "status"      "Account_Status" NOT NULL DEFAULT "Account_Status" 'active',
-    "updated_at"  TIMESTAMP(0)              DEFAULT now(),
-    "created_at"  TIMESTAMP(0)              DEFAULT now()
+    "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "clerk_id"      TEXT                           NOT NULL, -- Clerk ID's "user_2u9IV7xs5cUaYv2MsGH3pcI5hzK" cannot be converted to UUID format
+    "first_name"    VARCHAR                        NOT NULL,
+    "last_name"     VARCHAR                        NOT NULL,
+    "email"         VARCHAR                        NOT NULL,
+    "phone"         VARCHAR                        NULL,
+    "image_url"     TEXT                           NULL, --Avatar picture
+    "unit_number"   SMALLINT                       NULL,
+    "role"          "Role"                         NOT NULL DEFAULT "Role" 'tenant',
+    "status"        "Account_Status"               NOT NULL DEFAULT "Account_Status" 'active',
+    "updated_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+    "created_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );
 CREATE INDEX "user_clerk_id_index" ON "users" ("clerk_id");
 CREATE INDEX "user_unit_number_index" ON "users" ("unit_number");
@@ -106,16 +107,14 @@ COMMENT ON COLUMN "users"."clerk_id" IS 'provided by Clerk';
 CREATE TABLE IF NOT EXISTS "apartments"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "unit_number"      SMALLINT       NOT NULL,
-    "price"            NUMERIC(10, 2) NOT NULL,
-    "size"             SMALLINT       NOT NULL,
-    "management_id"    BIGINT         NOT NULL,
-    "availability"     BOOLEAN        NOT NULL DEFAULT false,
-    "lease_id"         BIGINT         NOT NULL,
-    "lease_start_date" DATE           NOT NULL,
-    "lease_end_date"   DATE           NOT NULL,
-    "updated_at"       TIMESTAMP(0)            DEFAULT now(),
-    "created_at"       TIMESTAMP(0)            DEFAULT now()
+    "unit_number"      SMALLINT                       NOT NULL,
+    "price"            NUMERIC(10, 2)                 NOT NULL,
+    "size"             SMALLINT                       NOT NULL,
+    "management_id"    BIGINT                         NOT NULL,
+    "availability"     BOOLEAN                        NOT NULL DEFAULT false,
+    "lease_id"         BIGINT                         NOT NULL,
+    "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
+    "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 

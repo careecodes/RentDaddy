@@ -18,30 +18,35 @@ INSERT INTO users (
     last_name,
     email,
     phone,
+    unit_number,
+    image_url,
     role
 ) VALUES (
-    $1, $2, $3, $4, $5, $6
-) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at
+    $1, $2, $3, $4, $5, $6, $7, $8
+) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at
 `
 
 type CreateUserParams struct {
-	ClerkID   string      `json:"clerk_id"`
-	FirstName string      `json:"first_name"`
-	LastName  string      `json:"last_name"`
-	Email     string      `json:"email"`
-	Phone     pgtype.Text `json:"phone"`
-	Role      Role        `json:"role"`
+	ClerkID    string      `json:"clerk_id"`
+	FirstName  string      `json:"first_name"`
+	LastName   string      `json:"last_name"`
+	Email      string      `json:"email"`
+	Phone      pgtype.Text `json:"phone"`
+	UnitNumber pgtype.Int2 `json:"unit_number"`
+	ImageUrl   pgtype.Text `json:"image_url"`
+	Role       Role        `json:"role"`
 }
 
 type CreateUserRow struct {
-	ID        int64            `json:"id"`
-	ClerkID   string           `json:"clerk_id"`
-	FirstName string           `json:"first_name"`
-	LastName  string           `json:"last_name"`
-	Email     string           `json:"email"`
-	Phone     pgtype.Text      `json:"phone"`
-	Role      Role             `json:"role"`
-	CreatedAt pgtype.Timestamp `json:"created_at"`
+	ID         int64            `json:"id"`
+	ClerkID    string           `json:"clerk_id"`
+	FirstName  string           `json:"first_name"`
+	LastName   string           `json:"last_name"`
+	Email      string           `json:"email"`
+	Phone      pgtype.Text      `json:"phone"`
+	UnitNumber pgtype.Int2      `json:"unit_number"`
+	Role       Role             `json:"role"`
+	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -51,6 +56,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
+		arg.UnitNumber,
+		arg.ImageUrl,
 		arg.Role,
 	)
 	var i CreateUserRow
@@ -61,115 +68,31 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.LastName,
 		&i.Email,
 		&i.Phone,
+		&i.UnitNumber,
 		&i.Role,
 		&i.CreatedAt,
 	)
 	return i, err
 }
 
-const deleteUserByClerkID = `-- name: DeleteUserByClerkID :exec
+const deleteUser = `-- name: DeleteUser :exec
 DELETE FROM users
 WHERE clerk_id = $1
 `
 
-func (q *Queries) DeleteUserByClerkID(ctx context.Context, clerkID string) error {
-	_, err := q.db.Exec(ctx, deleteUserByClerkID, clerkID)
+func (q *Queries) DeleteUser(ctx context.Context, clerkID string) error {
+	_, err := q.db.Exec(ctx, deleteUser, clerkID)
 	return err
 }
 
-const getAdminByClerkID = `-- name: GetAdminByClerkID :one
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
-FROM users
-WHERE clerk_id = $1 AND role = 'admin'
-LIMIT 1
-`
-
-type GetAdminByClerkIDRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-}
-
-func (q *Queries) GetAdminByClerkID(ctx context.Context, clerkID string) (GetAdminByClerkIDRow, error) {
-	row := q.db.QueryRow(ctx, getAdminByClerkID, clerkID)
-	var i GetAdminByClerkIDRow
-	err := row.Scan(
-		&i.ID,
-		&i.ClerkID,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.Role,
-		&i.UnitNumber,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getTenantByClerkID = `-- name: GetTenantByClerkID :one
-SELECT id, clerk_id, first_name, last_name, email, role, unit_number, status, created_at
-FROM users
-WHERE clerk_id = $1 AND role = 'tenant'
-LIMIT 1
-`
-
-type GetTenantByClerkIDRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-}
-
-func (q *Queries) GetTenantByClerkID(ctx context.Context, clerkID string) (GetTenantByClerkIDRow, error) {
-	row := q.db.QueryRow(ctx, getTenantByClerkID, clerkID)
-	var i GetTenantByClerkIDRow
-	err := row.Scan(
-		&i.ID,
-		&i.ClerkID,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.Role,
-		&i.UnitNumber,
-		&i.Status,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
-const getTenantsUnitNumber = `-- name: GetTenantsUnitNumber :one
-SELECT unit_number
-FROM users
-WHERE clerk_id = $1
-`
-
-func (q *Queries) GetTenantsUnitNumber(ctx context.Context, clerkID string) (pgtype.Int2, error) {
-	row := q.db.QueryRow(ctx, getTenantsUnitNumber, clerkID)
-	var unit_number pgtype.Int2
-	err := row.Scan(&unit_number)
-	return unit_number, err
-}
-
-const getUserByClerkID = `-- name: GetUserByClerkID :one
+const getUser = `-- name: GetUser :one
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 WHERE clerk_id = $1
 LIMIT 1
 `
 
-type GetUserByClerkIDRow struct {
+type GetUserRow struct {
 	ID         int64            `json:"id"`
 	ClerkID    string           `json:"clerk_id"`
 	FirstName  string           `json:"first_name"`
@@ -182,9 +105,9 @@ type GetUserByClerkIDRow struct {
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
-func (q *Queries) GetUserByClerkID(ctx context.Context, clerkID string) (GetUserByClerkIDRow, error) {
-	row := q.db.QueryRow(ctx, getUserByClerkID, clerkID)
-	var i GetUserByClerkIDRow
+func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, error) {
+	row := q.db.QueryRow(ctx, getUser, clerkID)
+	var i GetUserRow
 	err := row.Scan(
 		&i.ID,
 		&i.ClerkID,
@@ -200,21 +123,14 @@ func (q *Queries) GetUserByClerkID(ctx context.Context, clerkID string) (GetUser
 	return i, err
 }
 
-const getUsers = `-- name: GetUsers :many
+const listUsersByRole = `-- name: ListUsersByRole :many
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC
-LIMIT $2 OFFSET $3
 `
 
-type GetUsersParams struct {
-	Role   Role  `json:"role"`
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-type GetUsersRow struct {
+type ListUsersByRoleRow struct {
 	ID         int64            `json:"id"`
 	ClerkID    string           `json:"clerk_id"`
 	FirstName  string           `json:"first_name"`
@@ -227,15 +143,15 @@ type GetUsersRow struct {
 	CreatedAt  pgtype.Timestamp `json:"created_at"`
 }
 
-func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]GetUsersRow, error) {
-	rows, err := q.db.Query(ctx, getUsers, arg.Role, arg.Limit, arg.Offset)
+func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersByRoleRow, error) {
+	rows, err := q.db.Query(ctx, listUsersByRole, role)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetUsersRow
+	var items []ListUsersByRoleRow
 	for rows.Next() {
-		var i GetUsersRow
+		var i ListUsersByRoleRow
 		if err := rows.Scan(
 			&i.ID,
 			&i.ClerkID,
@@ -258,144 +174,29 @@ func (q *Queries) GetUsers(ctx context.Context, arg GetUsersParams) ([]GetUsersR
 	return items, nil
 }
 
-const getUsersByRole = `-- name: GetUsersByRole :many
-SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
-FROM users
-WHERE role = $1
-ORDER BY created_at DESC
-LIMIT $2 OFFSET $3
-`
-
-type GetUsersByRoleParams struct {
-	Role   Role  `json:"role"`
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-type GetUsersByRoleRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Phone      pgtype.Text      `json:"phone"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
-}
-
-func (q *Queries) GetUsersByRole(ctx context.Context, arg GetUsersByRoleParams) ([]GetUsersByRoleRow, error) {
-	rows, err := q.db.Query(ctx, getUsersByRole, arg.Role, arg.Limit, arg.Offset)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	var items []GetUsersByRoleRow
-	for rows.Next() {
-		var i GetUsersByRoleRow
-		if err := rows.Scan(
-			&i.ID,
-			&i.ClerkID,
-			&i.FirstName,
-			&i.LastName,
-			&i.Email,
-			&i.Phone,
-			&i.Role,
-			&i.UnitNumber,
-			&i.Status,
-			&i.CreatedAt,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const updateTenantProfile = `-- name: UpdateTenantProfile :exec
-UPDATE users 
-SET first_name = $2, last_name = $3, email = $4, phone = $5, unit_number = $6, updated_at = now()
-WHERE clerk_id = $1 AND role = 'tenant'
-`
-
-type UpdateTenantProfileParams struct {
-	ClerkID    string      `json:"clerk_id"`
-	FirstName  string      `json:"first_name"`
-	LastName   string      `json:"last_name"`
-	Email      string      `json:"email"`
-	Phone      pgtype.Text `json:"phone"`
-	UnitNumber pgtype.Int2 `json:"unit_number"`
-}
-
-func (q *Queries) UpdateTenantProfile(ctx context.Context, arg UpdateTenantProfileParams) error {
-	_, err := q.db.Exec(ctx, updateTenantProfile,
-		arg.ClerkID,
-		arg.FirstName,
-		arg.LastName,
-		arg.Email,
-		arg.Phone,
-		arg.UnitNumber,
-	)
-	return err
-}
-
-const updateTenantsUnitNumber = `-- name: UpdateTenantsUnitNumber :exec
+const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET unit_number = $2, updated_at = now()
+SET first_name = $2, last_name = $3, email = $4, phone = $5, image_url = $6
 WHERE clerk_id = $1
 `
 
-type UpdateTenantsUnitNumberParams struct {
-	ClerkID    string      `json:"clerk_id"`
-	UnitNumber pgtype.Int2 `json:"unit_number"`
-}
-
-func (q *Queries) UpdateTenantsUnitNumber(ctx context.Context, arg UpdateTenantsUnitNumberParams) error {
-	_, err := q.db.Exec(ctx, updateTenantsUnitNumber, arg.ClerkID, arg.UnitNumber)
-	return err
-}
-
-const updateUserCredentials = `-- name: UpdateUserCredentials :exec
-UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, updated_at = now()
-WHERE clerk_id = $1
-`
-
-type UpdateUserCredentialsParams struct {
+type UpdateUserParams struct {
 	ClerkID   string      `json:"clerk_id"`
 	FirstName string      `json:"first_name"`
 	LastName  string      `json:"last_name"`
 	Email     string      `json:"email"`
 	Phone     pgtype.Text `json:"phone"`
+	ImageUrl  pgtype.Text `json:"image_url"`
 }
 
-func (q *Queries) UpdateUserCredentials(ctx context.Context, arg UpdateUserCredentialsParams) error {
-	_, err := q.db.Exec(ctx, updateUserCredentials,
+func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
+	_, err := q.db.Exec(ctx, updateUser,
 		arg.ClerkID,
 		arg.FirstName,
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
+		arg.ImageUrl,
 	)
-	return err
-}
-
-const updateUserRole = `-- name: UpdateUserRole :exec
-UPDATE users
-SET role = $2, updated_at = now()
-WHERE clerk_id = $1
-`
-
-type UpdateUserRoleParams struct {
-	ClerkID string `json:"clerk_id"`
-	Role    Role   `json:"role"`
-}
-
-func (q *Queries) UpdateUserRole(ctx context.Context, arg UpdateUserRoleParams) error {
-	_, err := q.db.Exec(ctx, updateUserRole, arg.ClerkID, arg.Role)
 	return err
 }

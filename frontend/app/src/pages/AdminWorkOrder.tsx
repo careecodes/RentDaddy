@@ -11,7 +11,7 @@ import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TableProps, TablePaginationConfig } from "antd";
-
+import Title from "antd/es/typography/Title";
 
 const today = dayjs();
 
@@ -54,6 +54,13 @@ const getColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): Co
     };
 };
 
+const shortenInput = (input: string, maxLength: number = 30) => {
+    if (input.length > maxLength) {
+        return input.substring(0, maxLength - 3) + "...";
+    } else {
+        return input;
+    }
+};
 
 // DUMMY DATA THIS WILL BE DELETED :D
 const workOrderDataRaw: WorkOrderData[] = [
@@ -67,7 +74,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "C466",
         status: "open",
         createdAt: new Date("2025-02-15T09:30:00"),
-        updatedAt: new Date("2025-02-15T09:30:00")
+        updatedAt: new Date("2025-02-15T09:30:00"),
     },
     {
         key: 2,
@@ -77,9 +84,9 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "Bathroom Light Flickering",
         description: "The bathroom light has been flickering for two days and sometimes goes out completely.",
         apartmentNumber: "B218",
-        status: "in progress",
+        status: "in_progress",
         createdAt: new Date("2025-02-10T14:45:00"),
-        updatedAt: new Date("2025-02-12T11:20:00")
+        updatedAt: new Date("2025-02-12T11:20:00"),
     },
     {
         key: 3,
@@ -89,9 +96,9 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "AC Not Cooling",
         description: "Air conditioner is running but not cooling the apartment. Temperature is getting uncomfortable.",
         apartmentNumber: "A101",
-        status: "awaiting parts",
+        status: "awaiting_parts",
         createdAt: new Date("2025-01-30T16:20:00"),
-        updatedAt: new Date("2025-02-02T09:15:00")
+        updatedAt: new Date("2025-02-02T09:15:00"),
     },
     {
         key: 4,
@@ -115,7 +122,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "C299",
         status: "open",
         createdAt: new Date("2025-02-18T08:10:00"),
-        updatedAt: new Date("2025-02-18T08:10:00")
+        updatedAt: new Date("2025-02-18T08:10:00"),
     },
     {
         key: 6,
@@ -125,9 +132,9 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "No Power in Bedroom",
         description: "Electrical outlets in the bedroom aren't working. Breaker hasn't tripped.",
         apartmentNumber: "A212",
-        status: "in progress",
+        status: "in_progress",
         createdAt: new Date("2025-02-14T12:30:00"),
-        updatedAt: new Date("2025-02-14T16:45:00")
+        updatedAt: new Date("2025-02-14T16:45:00"),
     },
     {
         key: 7,
@@ -139,7 +146,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "B179",
         status: "open",
         createdAt: new Date("2025-02-17T11:25:00"),
-        updatedAt: new Date("2025-02-17T11:25:00")
+        updatedAt: new Date("2025-02-17T11:25:00"),
     },
     {
         key: 8,
@@ -149,9 +156,9 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "Noisy Heater",
         description: "Heating system is making loud banging noises when it starts up.",
         apartmentNumber: "A333",
-        status: "awaiting parts",
+        status: "awaiting_parts",
         createdAt: new Date("2025-03-14T09:50:00"),
-        updatedAt: new Date("2025-01-29T14:20:00")
+        updatedAt: new Date("2025-01-29T14:20:00"),
     },
     {
         key: 9,
@@ -163,7 +170,7 @@ const workOrderDataRaw: WorkOrderData[] = [
         apartmentNumber: "B155",
         status: "completed",
         createdAt: new Date("2025-01-20T13:15:00"),
-        updatedAt: new Date("2025-01-23T10:40:00")
+        updatedAt: new Date("2025-01-23T10:40:00"),
     },
     {
         key: 10,
@@ -173,20 +180,55 @@ const workOrderDataRaw: WorkOrderData[] = [
         title: "Damaged Baseboards",
         description: "Baseboards in the living room are damaged and coming away from the wall in several places.",
         apartmentNumber: "D401",
-        status: "in progress",
+        status: "in_progress",
         createdAt: new Date("2025-02-12T15:00:00"),
-        updatedAt: new Date("2025-02-13T11:30:00")
-    }
+        updatedAt: new Date("2025-02-13T11:30:00"),
+    },
 ];
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
     {
-        title: "Unit No.",
-        dataIndex: "apartmentNumber",
-        key: "apartmentNumber",
-        sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
-        ...getColumnSearchProps("apartmentNumber", "Unit No."),
-        className: "text-secondary text-left",
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        filters: [
+            { text: "Open", value: "open" },
+            { text: "In Progress", value: "in_progress" },
+            { text: "Awaiting Parts", value: "awaiting_parts" },
+            { text: "Completed", value: "completed" },
+        ],
+        onFilter: (value, record) => record.status === value,
+        render: (status) => {
+            let color = "";
+            let text = "";
+
+            // If naming convention here is changed, we will need to change the strings for cases
+            switch (status) {
+                case "open":
+                    color = "red";
+                    text = "Open";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    text = "In Progress";
+                    break;
+                case "awaiting_parts":
+                    color = "orange";
+                    text = "Awaiting Parts";
+                    break;
+                case "completed":
+                    color = "green";
+                    text = "Completed";
+                    break;
+                default:
+                    color = "default";
+                    text = status;
+            }
+
+            return <Tag color={color}>{text}</Tag>;
+        },
+        sorter: (a, b) => a.status.localeCompare(b.status),
+        className: "text-center",
     },
     {
         title: "Category",
@@ -224,17 +266,27 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         className: "text-center",
     },
     {
+        title: "Unit No.",
+        dataIndex: "apartmentNumber",
+        key: "apartmentNumber",
+        sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
+        ...getColumnSearchProps("apartmentNumber", "Unit No."),
+        className: "text-secondary text-left",
+    },
+    {
         title: "Inquiry",
         dataIndex: "title",
         key: "title",
         sorter: (a, b) => a.title.localeCompare(b.title),
         ...getColumnSearchProps("title", "Inquiry"),
+        render: (title) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
         ...getColumnSearchProps("description", "Description"),
+        render: (description) => shortenInput(description),
     },
     {
         title: "Created",
@@ -252,49 +304,6 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
-    {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in progress" },
-            { text: "Awaiting Parts", value: "awaiting parts" },
-            { text: "Completed", value: "completed" },
-        ],
-        onFilter: (value, record) => record.status === value,
-        render: (status) => {
-            let color = "";
-            let text = "";
-
-            // If naming convention here is changed, we will need to change the strings for cases
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "awaiting parts":
-                    color = "orange";
-                    text = "Awaiting Parts";
-                    break;
-                case "completed":
-                    color = "green";
-                    text = "Completed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-
-            return <Tag color={color}>{text}</Tag>;
-        },
-        sorter: (a, b) => a.status.localeCompare(b.status),
-        className: "text-center",
-    },
 ];
 
 const complaintsDataRaw: ComplaintsData[] = [
@@ -308,7 +317,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "A312",
         status: "open",
         createdAt: new Date("2025-03-10T22:15:00"),
-        updatedAt: new Date("2025-03-11T08:00:00")
+        updatedAt: new Date("2025-03-11T08:00:00"),
     },
     {
         key: 2,
@@ -320,7 +329,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "B210",
         status: "in_progress",
         createdAt: new Date("2025-02-28T18:30:00"),
-        updatedAt: new Date("2025-03-01T09:45:00")
+        updatedAt: new Date("2025-03-01T09:45:00"),
     },
     {
         key: 3,
@@ -332,7 +341,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "C405",
         status: "resolved",
         createdAt: new Date("2025-02-20T14:00:00"),
-        updatedAt: new Date("2025-02-22T16:00:00")
+        updatedAt: new Date("2025-02-22T16:00:00"),
     },
     {
         key: 4,
@@ -344,18 +353,50 @@ const complaintsDataRaw: ComplaintsData[] = [
         unitNumber: "E102",
         status: "closed",
         createdAt: new Date("2025-03-02T20:00:00"),
-        updatedAt: new Date("2025-03-03T12:00:00")
-    }
+        updatedAt: new Date("2025-03-03T12:00:00"),
+    },
 ];
 
 const complaintsColumns: ColumnsType<ComplaintsData> = [
     {
-        title: "Unit No.",
-        dataIndex: "unitNumber",
-        key: "unitNumber",
-        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
-        ...getColumnSearchProps("unitNumber", "Unit No."),
-        className: "text-secondary text-left",
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        filters: [
+            { text: "Open", value: "open" },
+            { text: "In Progress", value: "in_progress" },
+            { text: "Resolved", value: "resolved" },
+            { text: "Closed", value: "closed" },
+        ],
+        onFilter: (value, record) => record.status === (value as ComplaintsData["status"]),
+        render: (status) => {
+            let color = "";
+            let text = "";
+
+            switch (status) {
+                case "open":
+                    color = "red";
+                    text = "Open";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    text = "In Progress";
+                    break;
+                case "resolved":
+                    color = "green";
+                    text = "Resolved";
+                    break;
+                case "closed":
+                    color = "gray";
+                    text = "Closed";
+                    break;
+                default:
+                    color = "default";
+                    text = status;
+            }
+            return <Tag color={color}>{text}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Category",
@@ -374,7 +415,7 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
             { text: "Natural Disaster", value: "natural_disaster" },
             { text: "Other", value: "other" },
         ],
-        onFilter: (value, record) => record.category === value as ComplaintsData["category"],
+        onFilter: (value, record) => record.category === (value as ComplaintsData["category"]),
         render: (category) => {
             let color = "";
             let text = "";
@@ -426,17 +467,27 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         className: "text-center",
     },
     {
+        title: "Unit No.",
+        dataIndex: "unitNumber",
+        key: "unitNumber",
+        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
+        ...getColumnSearchProps("unitNumber", "Unit No."),
+        className: "text-secondary text-left",
+    },
+    {
         title: "Complaint",
         dataIndex: "title",
         key: "title",
         sorter: (a, b) => a.title.localeCompare(b.title),
         ...getColumnSearchProps("title", "Complaint"),
+        render: (title) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
         ...getColumnSearchProps("description", "Description"),
+        render: (description) => shortenInput(description),
     },
     {
         title: "Created",
@@ -452,65 +503,24 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
-    {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in_progress" },
-            { text: "Resolved", value: "resolved" },
-            { text: "Closed", value: "closed" },
-        ],
-        onFilter: (value, record) => record.status === value as ComplaintsData["status"],
-        render: (status) => {
-            let color = "";
-            let text = "";
-
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in_progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "resolved":
-                    color = "green";
-                    text = "Resolved";
-                    break;
-                case "closed":
-                    color = "gray";
-                    text = "Closed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-            return <Tag color={color}>{text}</Tag>;
-        },
-        className: "text-center",
-    },
 ];
 
-
 const paginationConfig: TablePaginationConfig = {
-    pageSize: 10,
+    pageSize: 5,
     showSizeChanger: false,
 };
 
 const AdminWorkOrder = () => {
     const handleAddWorkOrder = () => {
-        console.log("Added package successfully.")
+        console.log("Added package successfully.");
     };
 
     const handleAddComplaint = () => {
-        console.log("Added complaint successfully.")
+        console.log("Added complaint successfully.");
     };
 
     const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, "in_progress": 2, "awaiting_parts": 3, completed: 4 };
+        const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
         if (priorityDiff !== 0) return priorityDiff;
 
@@ -531,22 +541,22 @@ const AdminWorkOrder = () => {
         }
 
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    })
+    });
 
     const hoursUntilOverdue: number = 48;
     const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
         return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
     }).length;
     const hoursSinceRecentlyCreated: number = 24;
     const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), 'hour');
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
         return hoursSinceCreation <= hoursSinceRecentlyCreated;
     }).length;
 
     const hoursSinceRecentlyCompleted: number = 24;
     const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
-        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), 'hour');
+        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
         return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
     }).length;
 
@@ -555,24 +565,9 @@ const AdminWorkOrder = () => {
             <h1 className="mb-4 text-center">Work-Orders & Complaints</h1>
             {/* Alerts headers */}
             <div className="d-flex w-100 justify-content-between mb-4">
-                {
-                    overdueServiceCount > 0 ?
-                        <AlertComponent
-                            description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`}
-                        /> : null
-                }
-                {
-                    recentlyCreatedServiceCount > 0 ?
-                        <AlertComponent
-                            description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`}
-                        /> : null
-                }
-                {
-                    recentlyCompletedServiceCount > 0 ?
-                        <AlertComponent
-                            description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`}
-                        /> : null
-                }
+                {overdueServiceCount > 0 ? <AlertComponent description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`} /> : null}
+                {recentlyCreatedServiceCount > 0 ? <AlertComponent description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`} /> : null}
+                {recentlyCompletedServiceCount > 0 ? <AlertComponent description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`} /> : null}
             </div>
 
             {/* Work Order Table */}
@@ -587,7 +582,7 @@ const AdminWorkOrder = () => {
                         pagination: TablePaginationConfig,
                         filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
                         sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3],
+                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3]
                     ) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
@@ -607,14 +602,14 @@ const AdminWorkOrder = () => {
                         pagination: TablePaginationConfig,
                         filters: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[1],
                         sorter: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3],
+                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3]
                     ) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                 />
             </div>
         </div>
-    )
+    );
 };
 
 export default AdminWorkOrder;

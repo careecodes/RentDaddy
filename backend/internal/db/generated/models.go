@@ -373,16 +373,14 @@ func (ns NullWorkCategory) Value() (driver.Value, error) {
 type Apartment struct {
 	ID int64 `json:"id"`
 	// describes as <building><floor><door> -> 2145
-	UnitNumber     int16            `json:"unit_number"`
-	Price          pgtype.Numeric   `json:"price"`
-	Size           int16            `json:"size"`
-	ManagementID   int64            `json:"management_id"`
-	Availability   bool             `json:"availability"`
-	LeaseID        int64            `json:"lease_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UnitNumber   int16            `json:"unit_number"`
+	Price        pgtype.Numeric   `json:"price"`
+	Size         int16            `json:"size"`
+	ManagementID int64            `json:"management_id"`
+	Availability bool             `json:"availability"`
+	LeaseID      int64            `json:"lease_id"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
 type ApartmentTenant struct {
@@ -449,6 +447,7 @@ type User struct {
 	LastName   string           `json:"last_name"`
 	Email      string           `json:"email"`
 	Phone      pgtype.Text      `json:"phone"`
+	ImageUrl   pgtype.Text      `json:"image_url"`
 	UnitNumber pgtype.Int2      `json:"unit_number"`
 	Role       Role             `json:"role"`
 	Status     AccountStatus    `json:"status"`
