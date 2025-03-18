@@ -5,8 +5,10 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id
-  ) VALUES ($1, $2, $3, $4, $5, $6)
+    lease_id,
+    created_at,
+    updated_at
+  ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
 RETURNING *;
 
 -- name: GetApartmentByUnitNumber :one
@@ -44,7 +46,7 @@ SET price = $2,
   management_id = $3,
   availability = $4,
   lease_id = $5,
-  updated_at = $6
+  updated_at = now()
 WHERE id = $1;
 
 -- name: DeleteApartment :exec

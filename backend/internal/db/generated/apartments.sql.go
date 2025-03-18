@@ -18,8 +18,10 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id
-  ) VALUES ($1, $2, $3, $4, $5, $6)
+    lease_id,
+    created_at,
+    updated_at
+  ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
 RETURNING id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
 `
 
