@@ -73,10 +73,6 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 
-	r.Get("/hello", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte("hello world"))
-	})
-
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
 	// Admin Endpoints
