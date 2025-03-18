@@ -17,11 +17,10 @@ import AuthenticatedLayout from "./providers/layout/AuthenticatedLayout.tsx";
 // Tanstack Query Client
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import ErrorNotFound from "./pages/Error404.tsx";
-import LoginForm from "./pages/LoginForm.tsx";
 import { ConfigProvider } from "antd";
 
 // Clerk
-import { ClerkProvider } from "@clerk/react-router";
+import { ClerkProvider, SignIn } from "@clerk/react-router";
 import TestGoBackend from "./components/TestGoBackend.tsx";
 
 // Pages
@@ -115,14 +114,23 @@ createRoot(document.getElementById("root")!).render(
                                 {/* Authentication Routes */}
                                 <Route path="auth">
                                     <Route
-                                        path="login"
-                                        element={<LoginForm />}
+                                        path="sign-in/*"
+                                        element={<SignIn />}
                                     />
-                                    {/* We probably don't need a register route, but I'll leave it here for now */}
-                                    <Route
+                                </Route>
+
+                                <Route
+                                    path="/auth/sign-in/"
+                                    element={<SignIn />}>
+                                    {/* <Route
+                                        path="sign-in"
+                                        element={<SignIn />}
+                                    /> /}
+                                    {/ We probably don't need a register route, but I'll leave it here for now /}
+                                    {/ <Route
                                         path="register"
                                         element={<h1>Register</h1>}
-                                    />
+                                    /> */}
                                 </Route>
 
                                 {/* Testing Routes */}

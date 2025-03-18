@@ -1,5 +1,5 @@
 import React from "react";
-import { Divider, Layout, Menu, theme } from "antd";
+import { Layout, Menu, theme } from "antd";
 import { Link, Outlet } from "react-router";
 import { SignOutButton, useUser } from "@clerk/react-router";
 
@@ -40,11 +40,7 @@ const PreAuthedLayout: React.FC = () => {
                     <div className="text-white">Logout</div>
                 </SignOutButton>
             ) : (
-                <Link
-                    className="text-white"
-                    to="/auth/login">
-                    Login
-                </Link>
+                <Link to="/auth/sign-in">Login</Link>
             ),
         },
     ];
