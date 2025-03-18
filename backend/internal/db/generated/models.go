@@ -403,8 +403,9 @@ type Complaint struct {
 
 type Lease struct {
 	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
+	LeaseVersion   int64            `json:"lease_version"`
 	ExternalDocID  string           `json:"external_doc_id"`
+	LeasePdf       []byte           `json:"lease_pdf"`
 	TenantID       int64            `json:"tenant_id"`
 	LandlordID     int64            `json:"landlord_id"`
 	ApartmentID    pgtype.Int8      `json:"apartment_id"`

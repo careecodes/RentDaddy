@@ -122,8 +122,9 @@ COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><
 CREATE TABLE IF NOT EXISTS "leases"
 (
     "id"               BIGSERIAL PRIMARY KEY,
-    "lease_number"     BIGINT UNIQUE  NOT NULL,
+    "lease_version"     BIGINT UNIQUE  NOT NULL,
     "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
+    "lease_pdf"   BYTEA         NOT NULL,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
     "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
     "apartment_id"     BIGINT,

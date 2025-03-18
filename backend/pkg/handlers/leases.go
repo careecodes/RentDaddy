@@ -1,15 +1,21 @@
 package handlers
 
 import (
-	"encoding/json"
-	"log"
+	"bytes"
+	"context"
+	"encoding/base64"
+	"fmt"
 	"math/big"
 	"net/http"
+	"strconv"
 	"time"
 
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/jung-kurt/gofpdf"
+
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
 )
 
 // LeaseHandler encapsulates dependencies for lease-related handlers
@@ -26,112 +32,92 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	}
 }
 
-// Convert float64 to pgtype.Numeric
-func floatToPgNumeric(value float64) pgtype.Numeric {
-	bigFloat := big.NewFloat(value)
-	bigInt, accuracy := bigFloat.Int(nil)
-	exp := int32(0)
-	if accuracy != big.Exact {
-		exp = -2 // Adjust precision if necessary
-	}
-
-	return pgtype.Numeric{
-		Int:   bigInt,
-		Exp:   exp,
-		Valid: true,
-	}
-}
-
-// reconcile CreateLeaseRequest and CreateLeaseResponse with db/generated/models Lease struct
+// Create Lease Request Struct
 type CreateLeaseRequest struct {
-	db.Lease `json:",inline"` // Embedding Lease struct to inherit fields
-
-	// Overriding fields that we want to expose with simplified types
+	TenantID      int64     `json:"tenant_id"`
+	LandlordID    int64     `json:"landlord_id"`
+	ApartmentID   int64     `json:"apartment_id"`
 	StartDate     time.Time `json:"start_date"`
 	EndDate       time.Time `json:"end_date"`
 	RentAmount    float64   `json:"rent_amount"`
+	LeaseStatus   string    `json:"lease_status"`
+	ExternalDocID string    `json:"external_doc_id,omitempty"`
 	DocumentTitle string    `json:"document_title"`
+	CreatedBy     int64     `json:"created_by"`
 }
 
 // Convert `CreateLeaseRequest` to `db.CreateLeaseParams`
-func (r CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
+func (r CreateLeaseRequest) ToCreateLeaseParams(leasePdf []byte) db.CreateLeaseParams {
 	return db.CreateLeaseParams{
-		LeaseNumber:    0, // Auto-generated
-		ExternalDocID:  "",
+		LeaseVersion:   1,
+		ExternalDocID:  r.ExternalDocID,
 		TenantID:       r.TenantID,
 		LandlordID:     r.LandlordID,
-		ApartmentID:    pgtype.Int8{Int64: 0, Valid: false}, // Default empty
-		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: true},
-		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: true},
-		RentAmount:     floatToPgNumeric(r.RentAmount),
-		LeaseStatus:    "active",
+		ApartmentID:    pgtype.Int8{Int64: r.ApartmentID, Valid: r.ApartmentID != 0},
+		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: !r.StartDate.IsZero()},
+		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: !r.EndDate.IsZero()},
+		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(r.RentAmount)), Exp: -2, Valid: true},
+		LeaseStatus:    db.LeaseStatus(r.LeaseStatus),
+		LeasePdf:       leasePdf,
+		CreatedBy:      r.CreatedBy,
 	}
 }
 
+// Create Lease Response Struct
 type CreateLeaseResponse struct {
-	db.Lease `json:",inline"`
-
-	// Explicitly expose only required fields
-	LeaseID       int64  `json:"lease_id"`
-	ExternalDocID string `json:"external_doc_id,omitempty"`
-	LeaseStatus   string `json:"lease_status"`
+	LeaseID         int64  `json:"lease_id"`
+	ExternalDocID   string `json:"external_doc_id,omitempty"`
+	LeaseStatus     string `json:"lease_status"`
+	LeasePDF        string `json:"lease_pdf,omitempty"`
+	LeaseSigningURL string `json:"lease_signing_url"`
 }
 
 // Convert `db.Lease` to `CreateLeaseResponse`
 func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
 	return CreateLeaseResponse{
-		Lease:         lease,
-		LeaseID:       lease.ID,
-		ExternalDocID: lease.ExternalDocID,
-		LeaseStatus:   string(lease.LeaseStatus),
+		LeaseID:         lease.ID,
+		ExternalDocID:   lease.ExternalDocID,
+		LeaseStatus:     string(lease.LeaseStatus),
+		LeasePDF:        base64.StdEncoding.EncodeToString(lease.LeasePdf),
+		LeaseSigningURL: "",
 	}
 }
 
-func (h LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
-	var req CreateLeaseRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.respondWithError(w, http.StatusBadRequest, "Invalid JSON")
-		return
-	}
+// Generate Lease PDF
+func (h *LeaseHandler) GenerateLeasePDF(title string, formData map[string]string) ([]byte, error) {
+	pdf := gofpdf.New("P", "mm", "A4", "")
+	pdf.AddPage()
+	pdf.SetFont("Arial", "B", 16)
+	pdf.Cell(40, 10, "Lease Agreement: "+title)
 
-	if req.TenantID == 0 || req.LandlordID == 0 || req.StartDate.IsZero() || req.EndDate.IsZero() || req.RentAmount <= 0 || req.CreatedBy == 0 {
-		h.respondWithError(w, http.StatusBadRequest, "Missing or invalid fields")
-		return
-	}
-
-	leaseID, err := h.queries.CreateLease(r.Context(), req.ToCreateLeaseParams())
+	var buf bytes.Buffer
+	err := pdf.Output(&buf)
 	if err != nil {
-		log.Printf("[LEASE_HANDLER] Database insert error: %v", err)
-		h.respondWithError(w, http.StatusInternalServerError, "Database insert failed")
-		return
+		return nil, fmt.Errorf("failed to generate lease PDF: %w", err)
 	}
+	return buf.Bytes(), nil
+}
 
-	// Fetch the created lease to return full response
-	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+// Generate Signing URL (Documenso)
+func (h *LeaseHandler) GenerateDocumensoURL(leaseID int64) (string, error) {
+	return fmt.Sprintf("https://documenso.com/sign/%d", leaseID), nil
+}
+
+func (h *LeaseHandler) GetLeasePDF(w http.ResponseWriter, r *http.Request) {
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
 	if err != nil {
-		log.Printf("[LEASE_HANDLER] Failed to retrieve created lease: %v", err)
-		h.respondWithError(w, http.StatusInternalServerError, "Failed to retrieve lease")
+		http.Error(w, "Invalid lease ID", http.StatusBadRequest)
 		return
 	}
 
-	h.respondWithJSON(w, http.StatusOK, NewCreateLeaseResponse(lease))
-}
-
-// Utility functions for response handling
-func (h LeaseHandler) respondWithError(w http.ResponseWriter, code int, message string) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(map[string]string{"error": message}); err != nil {
-		log.Printf("[LEASE_HANDLER] Failed to encode response: %v", err)
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
+	lease, err := h.queries.GetLeaseByID(context.Background(), leaseID)
+	if err != nil {
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
 	}
-}
 
-func (h LeaseHandler) respondWithJSON(w http.ResponseWriter, code int, payload interface{}) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(code)
-	if err := json.NewEncoder(w).Encode(payload); err != nil {
-		log.Printf("[LEASE_HANDLER] Failed to encode response: %v", err)
-		http.Error(w, `{"error": "Failed to encode response"}`, http.StatusInternalServerError)
-	}
+	w.Header().Set("Content-Type", "application/pdf")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(lease.LeasePdf)
 }

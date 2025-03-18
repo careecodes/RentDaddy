@@ -75,6 +75,7 @@ func main() {
 
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
+	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
@@ -91,6 +92,8 @@ func main() {
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
+			r.Get("/leases/{leaseID}/pdf", leaseHandler.GetLeasePDF)
+
 		})
 	})
 	// Tenant Endpoints
