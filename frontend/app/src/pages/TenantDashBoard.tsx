@@ -27,7 +27,7 @@ export const TenantDashBoard = () => {
             {/* </div> */}
 
             {/* Dashboard Statistics Cards */}
-            <h2 className="my-3 p-3">Quick Actions</h2>
+            <h2 className="my-3 p-3 text-center">Quick Actions</h2>
             <div className="flex-container my-3">
                 <CardComponent
                     title="Open Complaint form"
@@ -81,7 +81,7 @@ export const TenantDashBoard = () => {
             </div>
 
             {/* Quick Access Documents Section */}
-            <h2 className="my-3 p-3">Quick Access Documents Section</h2>
+            <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
                 <CardComponent
                     title="Lease"
