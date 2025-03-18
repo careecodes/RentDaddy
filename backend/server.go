@@ -67,7 +67,8 @@ func main() {
 
 	dbUrl := os.Getenv("PG_URL")
 	if dbUrl == "" {
-		log.Fatal("[ENV] Error: No Database url")
+		log.Fatal("[ENV] PG_URL environment vars are required")
+		return
 	}
 	// Get the secret key from the environment variable
 	clerkSecretKey := os.Getenv("CLERK_SECRET_KEY")

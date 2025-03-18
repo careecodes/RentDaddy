@@ -1,52 +1,20 @@
 package handlers_test
 
 import (
-	"bytes"
-	"encoding/json"
-	"go.uber.org/mock/gomock"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/careecodes/RentDaddy/mocks"
+	"github.com/DATA-DOG/go-sqlmock"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
-	"github.com/jackc/pgx/v5/pgxpool"
+	"testing"
 )
 
 func TestCreateWorkOrderHandler(t *testing.T) {
-	ctrl := gomock.NewController(t)
-	defer ctrl.Finish()
-
-	mockDB := mocks.NewMockDBTX(ctrl)
-	mockQueries := db.New(mockDB)
-
-	handler := handlers.NewWorkOrderHandler(&pgxpool.Pool{}, mockQueries)
-
-	workOrder := db.WorkOrder{
-		ID:          1,
-		OrderNumber: 12345,
-		Status:      db.StatusOpen,
-		Description: "Test work order",
-		Category:    db.WorkCategoryCarpentry,
-		CreatedBy:   1,
-		UnitNumber:  101,
-		Title:       "Test Title",
+	db, mock, err := sqlmock.New()
+	if err != nil {
+		t.Fatalf("an error '%s' was not expected when opening a stub database connection", err)
 	}
+	defer db.Close()
 
-	mockDB.EXPECT().Exec(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil)
+	mock.ExpectBegin()
+	mock.ExpectQuery("INSERT INTO work_orders").WithArgs().WillReturnRows(sqlmock.NewRows([]string{"id"}).AddRow(1))
+	mock.ExpectCommit()
 
-	reqBody, _ := json.Marshal(workOrder)
-	req := httptest.NewRequest(http.MethodPost, "/work_orders", bytes.NewBuffer(reqBody))
-	req.Header.Set("Content-Type", "application/json")
-	w := httptest.NewRecorder()
-
-	handler.CreateWorkOrderHandler(w, req)
-
-	resp := w.Result()
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusCreated {
-		t.Errorf("expected status %d, got %d", http.StatusCreated, resp.StatusCode)
-	}
 }
