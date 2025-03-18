@@ -1,5 +1,5 @@
 import { Table } from "antd";
-import type { ColumnsType } from "antd/es/table/interface";
+import type { ColumnsType, TablePaginationConfig } from "antd/es/table/interface";
 import type { TableProps } from "antd";
 import { createStyles } from "antd-style";
 
@@ -9,6 +9,7 @@ interface TableComponentProps<T> {
     onChange?: TableProps<T>["onChange"];
     icon?: React.ReactNode;
     style?: string;
+    pagination?: TablePaginationConfig;
 }
 const useStyle = createStyles(({ css, token }) => {
     const { antCls } = token; //ignore the warning
@@ -31,8 +32,10 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon }: TableComponentProps<T>) => {
+
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style, pagination }: TableComponentProps<T>) => {
     const { styles } = useStyle();
+
     return (
         <>
             {icon && <div className="table-icon">{icon}</div>}
@@ -40,6 +43,7 @@ const TableComponent = <T,>({ columns, dataSource = [], onChange, icon }: TableC
                 className={styles.customTable}
                 columns={columns}
                 dataSource={dataSource}
+                pagination={pagination}
                 onChange={onChange}
                 scroll={{ x: "max-content" }}
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}

@@ -186,7 +186,13 @@ SET price = $2,
   management_id = $3,
   availability = $4,
   lease_id = $5,
+<<<<<<< HEAD
   updated_at = $6
+=======
+  lease_start_date = $6,
+  lease_end_date = $7,
+  updated_at = now()
+>>>>>>> main
 WHERE id = $1
 `
 

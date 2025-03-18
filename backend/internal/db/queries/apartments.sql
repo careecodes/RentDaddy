@@ -6,10 +6,8 @@ INSERT INTO apartments (
     management_id,
     availability,
     lease_id,
-    updated_at,
-    created_at
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetApartmentByUnitNumber :one

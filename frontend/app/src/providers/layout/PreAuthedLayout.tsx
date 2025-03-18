@@ -74,10 +74,10 @@ const PreAuthedLayout: React.FC = () => {
                 {/* Top right Nav */}
                 <div style={{ width: "200px" }}>
                     <Menu
-                        theme="light"
+                        // theme="dark"
                         mode="horizontal"
                         inlineCollapsed={false}
-                        defaultSelectedKeys={["1"]}
+                        // defaultSelectedKeys={["1"]}
                         items={items}
                     />
                 </div>

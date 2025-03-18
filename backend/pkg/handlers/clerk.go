@@ -8,7 +8,6 @@ import (
 	"math/big"
 	"net/http"
 	"os"
-	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
@@ -208,16 +207,12 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 		// Create new apartment entry if no existing apartment with unit_number
 		apartmentRes, err := qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
-			UnitNumber:     int16(userMetadata.UnitNumber),
-			Price:          pgtype.Numeric{Int: big.NewInt(350), Valid: true},
-			Size:           2323,
-			ManagementID:   int64(managementMetadata.DbId),
-			Availability:   false,
-			LeaseID:        2321,
-			LeaseStartDate: pgtype.Date{Time: time.Now(), Valid: true},
-			LeaseEndDate:   pgtype.Date{Time: time.Now(), Valid: true},
-			UpdatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
-			CreatedAt:      pgtype.Timestamp{Time: time.Now().UTC(), Valid: true},
+			UnitNumber:   int16(userMetadata.UnitNumber),
+			Price:        pgtype.Numeric{Int: big.NewInt(350), Valid: true},
+			Size:         2323,
+			ManagementID: int64(managementMetadata.DbId),
+			Availability: false,
+			LeaseID:      2321,
 		})
 		if err != nil {
 			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)

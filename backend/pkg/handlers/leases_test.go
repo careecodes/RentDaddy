@@ -25,7 +25,7 @@ var queries *db.Queries
 func TestMain(m *testing.M) {
 	dbURL := os.Getenv("PG_URL")
 	if dbURL == "" {
-		log.Fatal("PG_URL is not set")
+		log.Fatal("PG_URL environment variable is required for tests")
 	}
 
 	var err error
