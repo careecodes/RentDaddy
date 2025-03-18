@@ -10,6 +10,7 @@ import (
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -44,36 +45,49 @@ func ConvertStringToInt64(input string) int64 {
 func (p PermitHandler) CreateParkingPermitHandler(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("[Parking_Handler] Failed reading body: %v", err)
+		log.Printf("[PARKING_HANDLER] Failed reading body: %v", err)
 		http.Error(w, "Error reading request body", http.StatusBadRequest)
 		return
 	}
 	var req CreatePermitRequest
 	if err := json.Unmarshal(body, &req); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		log.Printf("[PARKING_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
 		return
 	}
 
 	clerkID := chi.URLParam(r, "clerk_id")
-	count, err := p.queries.GetNumOfUserParkingPermits(r.Context(), ConvertStringToInt64(clerkID))
-	if err != nil {
 
-		http.Error(w, "Could not retrieve permit count", http.StatusInternalServerError)
+	userData, err := user.Get(r.Context(), clerkID)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed querying clerk user data: %v", err)
+		http.Error(w, "Error Clerk user not found ", http.StatusNotFound)
+		return
+	}
+
+	var userMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(userData.PublicMetadata, &userMetadata)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed parsing user Clerk metadata: %v", err)
+		http.Error(w, "Error parsing user clerk metadata", http.StatusBadRequest)
+		return
+	}
+
+	count, err := p.queries.GetNumOfUserParkingPermits(r.Context(), int64(userMetadata.DbId))
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed querying parking permits for user: %v", err)
+		http.Error(w, "Error querying parking permits", http.StatusInternalServerError)
 		return
 	}
 
 	if count >= 2 {
-		http.Error(w, "Permit limit reached", http.StatusForbidden)
+		http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
 		return
 	}
 
 	permit, err := p.queries.CreateParkingPermit(r.Context(), db.CreateParkingPermitParams{
 		PermitNumber: ConvertStringToInt64(req.PermitNumber),
 		CreatedBy:    ConvertStringToInt64(clerkID),
-		UpdatedAt: pgtype.Timestamp{
-			Time:  time.Time{}.UTC(),
-			Valid: true,
-		},
 		ExpiresAt: pgtype.Timestamp{
 			Time:  time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
 			Valid: true,
