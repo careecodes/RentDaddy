@@ -74,7 +74,7 @@ func main() {
 	})
 
 	// Permits Routes
-	permitHandler := handlers.NewPermitHandler(pool, queries)
+	permitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	r.Route("/parking_permits", func(r chi.Router) {
 		r.Post("/{clerk_id}", permitHandler.CreateParkingPermitHandler)
 	})
