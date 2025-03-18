@@ -75,6 +75,8 @@ func main() {
 
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
+	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
+
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
@@ -92,6 +94,14 @@ func main() {
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 		})
+
+		r.Route("/apartments", func(r chi.Router) {
+			r.Get("/", apartmentHandler.ListWorkOrdersHandler)
+			r.Get("/{apartment}", apartmentHandler.GetWorkOrderHandler)
+			r.Post("/", apartmentHandler.CreateWorkOrderHandler)
+			r.Patch("/{apartment}", apartmentHandler.UpdateWorkOrderHandler)
+			r.Delete("/{apartment}", apartmentHandler.DeleteWorkOrderHandler)
+		})
 	})
 	// Tenant Endpoints
 	r.Route("/tenant", func(r chi.Router) {
@@ -104,15 +114,14 @@ func main() {
 		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
 		r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
 		r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
+
+		// route to retrieve a tenants apartment
 	})
 
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	r.Route("/work_orders", func(r chi.Router) {
 		// Admin route
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("List Orders")
-			workOrderHandler.ListWorkOrdersHandler(w, r)
-		})
+		r.Get("/", workOrderHandler.ListWorkOrdersHandler)
 
 		// Create Order
 		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
