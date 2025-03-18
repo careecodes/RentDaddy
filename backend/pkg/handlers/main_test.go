@@ -2,7 +2,9 @@ package handlers_test
 
 import (
 	"context"
+	"database/sql"
 	"github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/mocks"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/stretchr/testify/assert"
 	"log"
@@ -11,28 +13,27 @@ import (
 )
 
 // Global variables for DB connection
-var testDB *pgxpool.Pool
-var queries *db.Queries
+var testDB *sql.DB
+var testQueries *db.Queries
 
 // Initialize the test database connection
 func TestMain(m *testing.M) {
 	dbURL := os.Getenv("PG_URL")
 	if dbURL == "" {
-		dbURL = "postgres://appuser:apppassword@localhost/appdb?sslmode=disable"
+		log.Fatal("PG_URL environment variable is not set")
 	}
 
-	var err error
-	testDB, err = pgxpool.New(context.Background(), dbURL)
+	testDB, err := sql.Open("postgres", dbURL)
 	if err != nil {
-		log.Fatalf("Failed to connect to test database: %v", err)
+		log.Fatalf("Failed to connect to the database: %v", err)
 	}
-	queries = db.New(testDB)
+	defer testDB.Close()
+
+	testQueries := db.New(mocks.MockDBTX)
 
 	// Run tests
 	code := m.Run()
 
-	// Clean up
-	testDB.Close()
 	os.Exit(code)
 }
 

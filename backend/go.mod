@@ -11,8 +11,9 @@ require (
 	github.com/go-chi/cors v1.2.1
 	github.com/go-faker/faker/v4 v4.6.0
 	github.com/jackc/pgx/v5 v5.7.2
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.9.0
 	github.com/svix/svix-webhooks v1.61.3
+	go.uber.org/mock v0.5.0
 )
 
 require (

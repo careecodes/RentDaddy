@@ -33,7 +33,7 @@ func SeedDB(queries *db.Queries) {
 		workOrder := db.CreateWorkOrderParams{
 			CreatedBy:   createdUser.ID,
 			OrderNumber: int64(i + 1),
-			Category:    db.WorkCategory(faker.Word()),
+			Category:    db.WorkCategoryElectric,
 			Title:       faker.Sentence(),
 			Description: faker.Paragraph(),
 			UnitNumber:  int16(100 + i),

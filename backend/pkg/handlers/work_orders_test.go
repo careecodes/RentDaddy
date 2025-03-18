@@ -9,6 +9,7 @@ import (
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/go-faker/faker/v4"
 	"github.com/jackc/pgx/v5/pgtype"
+	"go.uber.org/mock/gomock"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -29,7 +30,7 @@ func TestBasic(t *testing.T) {
 func setupTestUser(t *testing.T) int64 {
 	// Create a new test user
 	clerkID := "clerk_user_id"
-	user, err := queries.GetUserByClerkID(context.Background(), clerkID)
+	user, err := testQueries.GetUserByClerkID(context.Background(), clerkID)
 	if err == nil {
 		t.Logf("User already exists with ClerkID: %s", clerkID)
 		t.Logf("User details: %v", user)
@@ -87,6 +88,9 @@ func setupWorkOrderEntries(t *testing.T, userID int64) {
 
 // setup for work order entries tests
 func setupTests(t *testing.T) (func(t *testing.T), int64) {
+	ctrl := gomock.NewController(t)
+	defer ctrl.Finish()
+
 	userID := setupTestUser(t)
 	setupWorkOrderEntries(t, userID)
 

@@ -2,6 +2,7 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"log"
 	"net/http"
 	"strconv"
@@ -115,6 +116,7 @@ func (h WorkOrderHandler) CreateWorkOrderHandler(w http.ResponseWriter, r *http.
 	if err != nil {
 		log.Printf("Error creating work order: %v", err)
 		http.Error(w, "Failed to create work order", http.StatusInternalServerError)
+		w.Write([]byte(fmt.Sprintf("Failed to create work order \n %v", params)))
 		return
 	}
 
