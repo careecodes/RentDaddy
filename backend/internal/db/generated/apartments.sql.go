@@ -18,23 +18,18 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id,
-    updated_at,
-    created_at
-  )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+    lease_id
+  ) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
 `
 
 type CreateApartmentParams struct {
-	UnitNumber   int16            `json:"unit_number"`
-	Price        pgtype.Numeric   `json:"price"`
-	Size         int16            `json:"size"`
-	ManagementID int64            `json:"management_id"`
-	Availability bool             `json:"availability"`
-	LeaseID      int64            `json:"lease_id"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-	CreatedAt    pgtype.Timestamp `json:"created_at"`
+	UnitNumber   int16          `json:"unit_number"`
+	Price        pgtype.Numeric `json:"price"`
+	Size         int16          `json:"size"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams) (Apartment, error) {
@@ -45,8 +40,6 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 		arg.ManagementID,
 		arg.Availability,
 		arg.LeaseID,
-		arg.UpdatedAt,
-		arg.CreatedAt,
 	)
 	var i Apartment
 	err := row.Scan(
@@ -186,13 +179,7 @@ SET price = $2,
   management_id = $3,
   availability = $4,
   lease_id = $5,
-<<<<<<< HEAD
   updated_at = $6
-=======
-  lease_start_date = $6,
-  lease_end_date = $7,
-  updated_at = now()
->>>>>>> main
 WHERE id = $1
 `
 

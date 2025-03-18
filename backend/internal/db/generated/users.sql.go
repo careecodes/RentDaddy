@@ -20,25 +20,21 @@ INSERT INTO users (
     phone,
     unit_number,
     image_url,
-    role,
-    updated_at,
-    created_at
+    role
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, $9, $10
+    $1, $2, $3, $4, $5, $6, $7, $8
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at
 `
 
 type CreateUserParams struct {
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Phone      pgtype.Text      `json:"phone"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	ImageUrl   pgtype.Text      `json:"image_url"`
-	Role       Role             `json:"role"`
-	UpdatedAt  pgtype.Timestamp `json:"updated_at"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	ClerkID    string      `json:"clerk_id"`
+	FirstName  string      `json:"first_name"`
+	LastName   string      `json:"last_name"`
+	Email      string      `json:"email"`
+	Phone      pgtype.Text `json:"phone"`
+	UnitNumber pgtype.Int2 `json:"unit_number"`
+	ImageUrl   pgtype.Text `json:"image_url"`
+	Role       Role        `json:"role"`
 }
 
 type CreateUserRow struct {
@@ -63,8 +59,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.UnitNumber,
 		arg.ImageUrl,
 		arg.Role,
-		arg.UpdatedAt,
-		arg.CreatedAt,
 	)
 	var i CreateUserRow
 	err := row.Scan(

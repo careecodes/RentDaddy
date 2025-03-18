@@ -7,7 +7,7 @@ INSERT INTO users (
     phone,
     unit_number,
     image_url,
-    role,
+    role
 ) VALUES (
     $1, $2, $3, $4, $5, $6, $7, $8
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at;
