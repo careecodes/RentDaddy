@@ -14,10 +14,9 @@ import (
 const createLease = `-- name: CreateLease :one
 INSERT INTO leases (
     lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
-    lease_start_date, lease_end_date, rent_amount, lease_status,
-    created_by, updated_by
+    lease_start_date, lease_end_date, rent_amount, lease_status
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 RETURNING id
 `
 
@@ -31,8 +30,6 @@ type CreateLeaseParams struct {
 	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric `json:"rent_amount"`
 	LeaseStatus    LeaseStatus    `json:"lease_status"`
-	CreatedBy      int64          `json:"created_by"`
-	UpdatedBy      int64          `json:"updated_by"`
 }
 
 func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64, error) {
@@ -46,8 +43,6 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64
 		arg.LeaseEndDate,
 		arg.RentAmount,
 		arg.LeaseStatus,
-		arg.CreatedBy,
-		arg.UpdatedBy,
 	)
 	var id int64
 	err := row.Scan(&id)

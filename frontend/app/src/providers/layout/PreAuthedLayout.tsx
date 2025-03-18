@@ -40,7 +40,11 @@ const PreAuthedLayout: React.FC = () => {
                     <div className="text-white">Logout</div>
                 </SignOutButton>
             ) : (
-                <Link to="/auth/login">Login</Link>
+                <Link
+                    className="text-white"
+                    to="/auth/login">
+                    Login
+                </Link>
             ),
         },
     ];
@@ -74,10 +78,10 @@ const PreAuthedLayout: React.FC = () => {
                 {/* Top right Nav */}
                 <div style={{ width: "200px" }}>
                     <Menu
-                        theme="light"
+                        // theme="dark"
                         mode="horizontal"
                         inlineCollapsed={false}
-                        defaultSelectedKeys={["1"]}
+                        // defaultSelectedKeys={["1"]}
                         items={items}
                     />
                 </div>
