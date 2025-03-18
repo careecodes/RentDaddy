@@ -10,6 +10,11 @@ import (
 	"time"
 )
 
+// Define interface for documenso client
+type DocumensoClientInterface interface {
+	SetField(documentID, field, value string) error
+}
+
 // DocumensoClient handles interactions with the Documenso API
 type DocumensoClient struct {
 	BaseURL string
@@ -18,7 +23,8 @@ type DocumensoClient struct {
 }
 
 // NewDocumensoClient creates a new Documenso API client
-func NewDocumensoClient(baseURL, apiKey string) *DocumensoClient {
+func NewDocumensoClient(baseURL string, apiKey string) *DocumensoClient {
+
 	return &DocumensoClient{
 		BaseURL: baseURL,
 		ApiKey:  apiKey,
@@ -180,4 +186,48 @@ func (c *DocumensoClient) GetDocumentStatus(documentID string) (*DocumentStatusR
 	}
 
 	return &result, nil
+}
+
+// SetField updates a form field in a document stored in Documenso
+func (c *DocumensoClient) SetField(documentID string, fieldName string, fieldValue string) error {
+	// Define the request payload
+	payload := map[string]interface{}{
+		"fields": []map[string]interface{}{
+			{
+				"name":  fieldName,
+				"value": fieldValue,
+			},
+		},
+	}
+
+	// Convert payload to JSON
+	body, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to encode JSON: %w", err)
+	}
+
+	// Create HTTP request
+	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/api/documents/%s/fields", c.BaseURL, documentID), bytes.NewBuffer(body))
+	if err != nil {
+		return fmt.Errorf("failed to create request: %w", err)
+	}
+
+	// Set headers
+	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+	// Send request
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("failed to send request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Handle response
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("API error: %s - %s", resp.Status, string(body))
+	}
+
+	return nil
 }

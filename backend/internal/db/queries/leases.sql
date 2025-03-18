@@ -52,3 +52,4 @@ WHERE id = $7
 RETURNING id, lease_version, external_doc_id, tenant_id, landlord_id, apartment_id, 
     lease_start_date, lease_end_date, rent_amount, lease_status, 
     updated_by, updated_at;
+

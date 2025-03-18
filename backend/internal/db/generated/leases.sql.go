@@ -25,7 +25,7 @@ type CreateLeaseParams struct {
 	ExternalDocID  string         `json:"external_doc_id"`
 	TenantID       int64          `json:"tenant_id"`
 	LandlordID     int64          `json:"landlord_id"`
-	ApartmentID    pgtype.Int8    `json:"apartment_id"`
+	ApartmentID    int64          `json:"apartment_id"`
 	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric `json:"rent_amount"`
@@ -66,7 +66,7 @@ type GetLeaseByIDRow struct {
 	ExternalDocID  string         `json:"external_doc_id"`
 	TenantID       int64          `json:"tenant_id"`
 	LandlordID     int64          `json:"landlord_id"`
-	ApartmentID    pgtype.Int8    `json:"apartment_id"`
+	ApartmentID    int64          `json:"apartment_id"`
 	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric `json:"rent_amount"`
@@ -94,7 +94,7 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 }
 
 const listLeases = `-- name: ListLeases :many
-SELECT id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, lease_status, created_by, updated_by, created_at, updated_at FROM leases ORDER BY created_at DESC
+SELECT id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id, template_id, lease_start_date, lease_end_date, rent_amount, lease_status, created_by, updated_by, created_at, updated_at FROM leases ORDER BY created_at DESC
 `
 
 func (q *Queries) ListLeases(ctx context.Context) ([]Lease, error) {
@@ -114,6 +114,7 @@ func (q *Queries) ListLeases(ctx context.Context) ([]Lease, error) {
 			&i.TenantID,
 			&i.LandlordID,
 			&i.ApartmentID,
+			&i.TemplateID,
 			&i.LeaseStartDate,
 			&i.LeaseEndDate,
 			&i.RentAmount,

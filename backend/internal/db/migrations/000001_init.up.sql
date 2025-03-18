@@ -119,6 +119,11 @@ CREATE TABLE IF NOT EXISTS "apartments"
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
+CREATE TABLE IF NOT EXISTS "lease_templates"(
+    "id"               BIGSERIAL PRIMARY KEY,
+    "lease_template_pdf"   BYTEA    NOT NULL
+);
+
 CREATE TABLE IF NOT EXISTS "leases"
 (
     "id"               BIGSERIAL PRIMARY KEY,
@@ -127,7 +132,8 @@ CREATE TABLE IF NOT EXISTS "leases"
     "lease_pdf"   BYTEA         NOT NULL,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
     "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
-    "apartment_id"     BIGINT,
+    "apartment_id"     BIGINT         NOT NULL REFERENCES apartment_id(id),
+    "template_id"      BIGINT         NOT NULL REFERENCES lease_templates (id),
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
     "rent_amount"      DECIMAL(10, 2) NOT NULL,

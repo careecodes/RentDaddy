@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"math/big"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -16,19 +17,24 @@ import (
 	"github.com/jung-kurt/gofpdf"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/pkg/handlers/documenso"
 )
 
 // LeaseHandler encapsulates dependencies for lease-related handlers
 type LeaseHandler struct {
-	pool    *pgxpool.Pool
-	queries *db.Queries
+	pool             *pgxpool.Pool
+	queries          *db.Queries
+	documenso_client documenso.DocumensoClientInterface
 }
 
 // NewLeaseHandler initializes a LeaseHandler
 func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
+	baseURL := os.Getenv("DOCUMENSO_API_URL")
+	apiKey := os.Getenv("DOCUMENSO_API_KEY")
 	return &LeaseHandler{
-		pool:    pool,
-		queries: queries,
+		pool:             pool,
+		queries:          queries,
+		documenso_client: documenso.NewDocumensoClient(baseURL, apiKey),
 	}
 }
 
@@ -53,7 +59,7 @@ func (r CreateLeaseRequest) ToCreateLeaseParams(leasePdf []byte) db.CreateLeaseP
 		ExternalDocID:  r.ExternalDocID,
 		TenantID:       r.TenantID,
 		LandlordID:     r.LandlordID,
-		ApartmentID:    pgtype.Int8{Int64: r.ApartmentID, Valid: r.ApartmentID != 0},
+		ApartmentID:    r.ApartmentID,
 		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: !r.StartDate.IsZero()},
 		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: !r.EndDate.IsZero()},
 		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(r.RentAmount)), Exp: -2, Valid: true},
@@ -85,6 +91,7 @@ func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
 
 // Generate Lease PDF
 func (h *LeaseHandler) GenerateLeasePDF(title string, formData map[string]string) ([]byte, error) {
+
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
 	pdf.SetFont("Arial", "B", 16)
@@ -120,4 +127,49 @@ func (h *LeaseHandler) GetLeasePDF(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/pdf")
 	w.WriteHeader(http.StatusOK)
 	_, _ = w.Write(lease.LeasePdf)
+}
+
+func (h *LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request) {
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid lease ID", http.StatusBadRequest)
+		return
+	}
+
+	// Retrieve lease details from DB
+	lease, err := h.queries.GetLeaseByID(context.Background(), leaseID)
+	if err != nil {
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
+	}
+
+	// Get preloaded lease template document ID from Documenso
+	documentID := lease.ExternalDocID
+	if documentID == "" {
+		http.Error(w, "Lease document not linked to Documenso", http.StatusNotFound)
+		return
+	}
+
+	// Define form values
+	formValues := map[string]string{
+		"tenant_name":      "John Doe",
+		"property_address": "123 Main St",
+		"lease_start_date": lease.LeaseStartDate.Time.Format("2006-01-02"),
+		"lease_end_date":   lease.LeaseEndDate.Time.Format("2006-01-02"),
+		"rent_amount":      lease.RentAmount.Int.String(),
+	}
+
+	// Iterate over form values and update fields in Documenso
+	for field, value := range formValues {
+		err := h.documenso_client.SetField(documentID, field, value)
+		if err != nil {
+			http.Error(w, fmt.Sprintf("Failed to update field %s: %v", field, err), http.StatusInternalServerError)
+			return
+		}
+	}
+
+	// Return confirmation response
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintln(w, "Lease fields updated successfully in Documenso")
 }
