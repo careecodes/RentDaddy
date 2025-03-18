@@ -33,7 +33,7 @@ tasks:
       #   SELECT '{{.POSTGRES_USER}}' AS current_user,
       #      '{{.POSTGRES_PASSWORD}}' AS current_password,
       #      '{{.POSTGRES_DB}}' AS current_db) SELECT * FROM settings;" > /dev/null 2>&1
-      - psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'" 
+      - psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'"
       - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up # > /dev/null 2>&1
       - echo "Migrations applied!"
 
@@ -63,3 +63,13 @@ tasks:
     cmds:
       - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
       - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
+  test:all:
+    desc: "Test all in backend in container"
+    cmds:
+      - chmod +x ./scripts/test-all.sh
+      - ./scripts/test-all.sh
+  test:changed:
+    desc: "Test changed files only in backend in container"
+    cmds:
+      - chmod +x ./scripts/test-changed.sh
+      - ./scripts/test-changed.sh
