@@ -7,6 +7,7 @@ import type { ColumnsType } from "antd/es/table/interface";
 import ModalComponent from "../components/ModalComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { Link } from "react-router";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const AdminDashboard = () => {
     const handleAddPackage = () => {
@@ -52,7 +53,8 @@ const AdminDashboard = () => {
 
     return (
         <div className="container">
-            <h1 className="mb-4">Admin Dashboard</h1>
+            {/* <h1 className="mb-4">Admin Dashboard</h1> */}
+            <PageTitleComponent title="Admin Dashboard" />
             <AlertComponent
                 message="Welcome to the Admin Dashboard"
                 description="This is the Admin Dashboard. Here's a demo alert component."

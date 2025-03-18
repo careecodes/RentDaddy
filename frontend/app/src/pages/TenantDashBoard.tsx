@@ -6,6 +6,7 @@ import ModalComponent from "../components/ModalComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 export const TenantDashBoard = () => {
     const handleOpenLocker = () => {
@@ -15,14 +16,15 @@ export const TenantDashBoard = () => {
 
     return (
         <div className="container">
-            <h1 className="my-4">Tenant Dashboard</h1>
-            <div className="alert-container">
-                <AlertComponent
-                    message="Welcome to the Tenant Dashboard"
-                    description="Sign Yo Lease. Pay Daddy Rent"
-                    type="warning"
-                />
-            </div>
+            {/* <h1 className="my-4">Tenant Dashboard</h1> */}
+            <PageTitleComponent title="Tenant Dashboard" />
+            {/* <div className="alert-container"> */}
+            <AlertComponent
+                message="Welcome to the Tenant Dashboard"
+                description="Sign Yo Lease. Pay Daddy Rent"
+                type="warning"
+            />
+            {/* </div> */}
 
             {/* Dashboard Statistics Cards */}
             <h2 className="my-3 p-3">Quick Actions</h2>

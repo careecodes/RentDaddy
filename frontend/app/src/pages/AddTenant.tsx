@@ -1,4 +1,5 @@
 import ModalComponent from "../components/ModalComponent";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 
 // Mock data for tenant table
@@ -155,7 +156,8 @@ const mockTenants = [
 const AddTenant = () => {
     return (
         <div className="container">
-            <h1 className="p-3">View or Add Tenants</h1>
+            {/* <h1 className="p-3">View or Add Tenants</h1> */}
+            <PageTitleComponent title="View or Add Tenants" />
             <div className="mb-3 flex">
                 <ModalComponent
                     type="Add Tenant"
