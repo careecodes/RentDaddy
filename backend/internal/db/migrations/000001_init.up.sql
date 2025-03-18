@@ -114,8 +114,6 @@ CREATE TABLE IF NOT EXISTS "apartments"
     "management_id"    BIGINT                         NOT NULL,
     "availability"     BOOLEAN                        NOT NULL DEFAULT false,
     "lease_id"         BIGINT                         NOT NULL,
-    "lease_start_date" DATE                           NOT NULL,
-    "lease_end_date"   DATE                           NOT NULL,
     "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );
