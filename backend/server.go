@@ -96,11 +96,11 @@ func main() {
 		})
 
 		r.Route("/apartments", func(r chi.Router) {
-			r.Get("/", apartmentHandler.ListWorkOrdersHandler)
-			r.Get("/{apartment}", apartmentHandler.GetWorkOrderHandler)
-			r.Post("/", apartmentHandler.CreateWorkOrderHandler)
-			r.Patch("/{apartment}", apartmentHandler.UpdateWorkOrderHandler)
-			r.Delete("/{apartment}", apartmentHandler.DeleteWorkOrderHandler)
+			r.Get("/", apartmentHandler.ListApartmentsHandler)
+			r.Get("/{apartment}", apartmentHandler.GetApartmentHandler)
+			r.Post("/", apartmentHandler.CreateApartmentHandler)
+			r.Patch("/{apartment}", apartmentHandler.UpdateApartmentHandler)
+			r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 		})
 	})
 	// Tenant Endpoints

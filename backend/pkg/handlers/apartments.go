@@ -16,8 +16,8 @@ type ApartmentHandler struct {
 	queries *db.Queries
 }
 
-func NewApartmentHandler(pool *pgxpool.Pool, queries *db.Queries) *WorkOrderHandler {
-	return &WorkOrderHandler{
+func NewApartmentHandler(pool *pgxpool.Pool, queries *db.Queries) *ApartmentHandler {
+	return &ApartmentHandler{
 		pool:    pool,
 		queries: queries,
 	}
