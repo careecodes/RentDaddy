@@ -75,6 +75,10 @@ func main() {
 
 	// User Router
 	userHandler := handlers.NewUserHandler(pool, queries)
+
+	// Locker Handler
+	lockerHandler := handlers.NewLockerHandler(pool, queries)
+
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
 		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
@@ -91,6 +95,16 @@ func main() {
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
+		})
+
+		// Start of Locker Handlers
+		r.Route("/lockers", func(r chi.Router) {
+			r.Get("/", lockerHandler.GetLockers)
+			r.Get("/{id}", lockerHandler.GetLocker)
+			// Used to change the user assigned to a locker or the status of a locker
+			r.Patch("/{id}", lockerHandler.UpdateLocker)
+			// Used to set up the initial lockers for an apartment
+			r.Post("/", lockerHandler.CreateManyLockers)
 		})
 	})
 	// Tenant Endpoints
@@ -132,35 +146,6 @@ func main() {
 			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
 				log.Println("Delete Order")
 				workOrderHandler.DeleteWorkOrderHandler(w, r)
-			})
-		})
-	})
-
-	// Locker handler
-	lockerHandler := handlers.NewLockerHandler(pool, queries)
-	r.Route("/lockers", func(r chi.Router) {
-		// Get all lockers with pagination
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("List Lockers")
-			lockerHandler.GetLockers(w, r)
-		})
-		// Create many lockers (used for the initial apartment setup)
-		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("Creating Multiple Lockers")
-			lockerHandler.CreateManyLockers(w, r)
-		})
-
-		r.Route("/{id}", func(r chi.Router) {
-			// Get a single, specific locker
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Get Locker")
-				lockerHandler.GetLocker(w, r)
-			})
-
-			// Update locker (user, status, or the access code)
-			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Update Locker")
-				lockerHandler.UpdateLocker(w, r)
 			})
 		})
 	})
