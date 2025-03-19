@@ -403,13 +403,13 @@ type Complaint struct {
 
 type Lease struct {
 	ID             int64            `json:"id"`
+	IsSigned       bool             `json:"is_signed"`
 	LeaseVersion   int64            `json:"lease_version"`
 	ExternalDocID  string           `json:"external_doc_id"`
 	LeasePdf       []byte           `json:"lease_pdf"`
 	TenantID       int64            `json:"tenant_id"`
 	LandlordID     int64            `json:"landlord_id"`
 	ApartmentID    int64            `json:"apartment_id"`
-	TemplateID     int64            `json:"template_id"`
 	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric   `json:"rent_amount"`
@@ -418,12 +418,6 @@ type Lease struct {
 	UpdatedBy      int64            `json:"updated_by"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-}
-
-type LeaseTemplate struct {
-	ID                 int64  `json:"id"`
-	LeaseTemplateTitle string `json:"lease_template_title"`
-	LeaseTemplatePdf   []byte `json:"lease_template_pdf"`
 }
 
 type LeaseTenant struct {

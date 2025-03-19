@@ -14,9 +14,9 @@ import (
 const createLease = `-- name: CreateLease :one
 INSERT INTO leases (
     lease_version, external_doc_id, tenant_id, landlord_id, apartment_id, 
-    lease_start_date, lease_end_date, rent_amount, lease_status, lease_pdf, created_by
+    lease_start_date, lease_end_date, rent_amount, lease_status, lease_pdf, created_by, updated_by
 )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 RETURNING id
 `
 
@@ -32,6 +32,7 @@ type CreateLeaseParams struct {
 	LeaseStatus    LeaseStatus    `json:"lease_status"`
 	LeasePdf       []byte         `json:"lease_pdf"`
 	CreatedBy      int64          `json:"created_by"`
+	UpdatedBy      int64          `json:"updated_by"`
 }
 
 func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64, error) {
@@ -47,6 +48,7 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64
 		arg.LeaseStatus,
 		arg.LeasePdf,
 		arg.CreatedBy,
+		arg.UpdatedBy,
 	)
 	var id int64
 	err := row.Scan(&id)
@@ -94,7 +96,9 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 }
 
 const listLeases = `-- name: ListLeases :many
-SELECT id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id, template_id, lease_start_date, lease_end_date, rent_amount, lease_status, created_by, updated_by, created_at, updated_at FROM leases ORDER BY created_at DESC
+SELECT id, is_signed, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
+       lease_start_date, lease_end_date, rent_amount, lease_status, created_by, updated_by, created_at, updated_at
+FROM leases ORDER BY created_at DESC
 `
 
 func (q *Queries) ListLeases(ctx context.Context) ([]Lease, error) {
@@ -108,13 +112,13 @@ func (q *Queries) ListLeases(ctx context.Context) ([]Lease, error) {
 		var i Lease
 		if err := rows.Scan(
 			&i.ID,
+			&i.IsSigned,
 			&i.LeaseVersion,
 			&i.ExternalDocID,
 			&i.LeasePdf,
 			&i.TenantID,
 			&i.LandlordID,
 			&i.ApartmentID,
-			&i.TemplateID,
 			&i.LeaseStartDate,
 			&i.LeaseEndDate,
 			&i.RentAmount,
@@ -132,6 +136,20 @@ func (q *Queries) ListLeases(ctx context.Context) ([]Lease, error) {
 		return nil, err
 	}
 	return items, nil
+}
+
+const markLeaseAsSigned = `-- name: MarkLeaseAsSigned :exec
+UPDATE leases
+SET is_signed = TRUE
+WHERE id = $1
+RETURNING id, lease_version, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, lease_status, 
+    updated_by, updated_at
+`
+
+func (q *Queries) MarkLeaseAsSigned(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, markLeaseAsSigned, id)
+	return err
 }
 
 const renewLease = `-- name: RenewLease :exec

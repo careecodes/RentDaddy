@@ -34,5 +34,8 @@ WHERE clerk_id = $1;
 DELETE FROM users
 WHERE clerk_id = $1;
 
-
-
+-- name: GetUserByID :one
+SELECT id, clerk_id, first_name, last_name, email, phone, image_url, unit_number, role, status
+FROM users
+WHERE id = $1
+LIMIT 1;

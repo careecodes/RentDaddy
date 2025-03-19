@@ -12,8 +12,10 @@ import type { ColumnType } from "antd/es/table";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { LeaseData } from "../types/types.ts";
 import { ItemType } from "antd/es/menu/interface";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import SendLeaseModalComponent from "../components/ModalComponent.tsx";
+import { useMutation } from "@tanstack/react-query";
+import { useState } from "react";
+import { SendLeaseModal } from "../components/ModalComponent.tsx";
+console.log(SendLeaseModal);
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -132,41 +134,107 @@ const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
     return "active";
 };
 
+
 export default function AdminViewEditLeases() {
-    const { data: leaseTemplates, isLoading } = useQuery({
-        queryKey: ["leaseTemplates"],
-        queryFn: async () => {
-            const res = await fetch(`${API_URL}/admins/leases/tenants/getLeaseTemplatesTitles`, {
-                method: "GET",
-                headers: { "Content-Type": "application/json" },
-            });
-            const data = await res.json();
-            return data;
+    const [selectedLease, setSelectedLease] = useState(null);
+    const [isModalOpen, setIsModalOpen] = useState(false);
+
+    // Prepare lease data with formatted dates for the modal
+    const prepareLeaseForModal = (lease) => {
+        // Create a copy of the lease with dayjs dates
+        const startDate = dayjs(lease.leaseStartDate);
+        const endDate = dayjs(lease.leaseEndDate);
+
+        return {
+            ...lease,
+            // Add dayjs objects for date handling in the component
+            formattedStartDate: startDate,
+            formattedEndDate: endDate
+        };
+    };
+
+    const showModal = (lease) => {
+        // Format and enrich the lease data with dayjs dates before setting it
+        const enrichedLease = prepareLeaseForModal(lease);
+        setSelectedLease(enrichedLease);
+        setIsModalOpen(true);
+    };
+
+    const handleCancel = () => {
+        setIsModalOpen(false);
+        setSelectedLease(null);
+    };
+
+
+    const generateLeasePDF = async (tenantName, propertyAddress, rentAmount, leaseTemplateID) => {
+        const res = await fetch(`${API_URL}/admin/tenants/leases/generate-pdf`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                tenant_name: tenantName,
+                property_address: propertyAddress,
+                rent_amount: rentAmount,
+                lease_template_id: leaseTemplateID,
+            }),
+        });
+
+        if (!res.ok) {
+            throw new Error("Failed to generate lease PDF");
+        }
+
+        return res.json();
+    };
+
+    // Use mutation instead of useQuery
+    const { mutate: createLease, isLoading } = useMutation({
+        mutationFn: ({ tenantName, propertyAddress, rentAmount, leaseTemplateID }) =>
+            generateLeasePDF(tenantName, propertyAddress, rentAmount, leaseTemplateID),
+        onSuccess: (data) => {
+            console.log("Lease generated:", data);
+            message.success("Lease PDF generated successfully.");
+        },
+        onError: (error) => {
+            console.error("Error generating lease:", error);
+            message.error("Failed to generate lease PDF.");
         },
     });
 
-    const { mutate: sendLease } = useMutation({
+
+    // Use mutation for sending lease
+    const { mutate: sendLeaseMutation } = useMutation({
         mutationKey: ["sendLease"],
-        mutationFn: async () => {
-            const res = await fetch(`${API_URL}/admins/leases/sendLease`, {
+        mutationFn: async (leaseData) => {
+            const res = await fetch(`${API_URL}/admin/tenants/leases/upload-with-signers`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: "1" }),
+                body: JSON.stringify(leaseData),
             });
 
             if (!res.ok) {
-                throw new Error("Failed to fetch lease templates");
+                throw new Error("Failed to send lease");
             }
 
-            console.log("success");
-
-            return res.json(); // Assuming the response is JSON.
+            return res.json();
         },
+        onSuccess: () => {
+            message.success("Lease sent successfully!");
+            handleCancel(); // Close the modal on success
+        },
+        onError: (error) => {
+            message.error(`Failed to send lease: ${error.message}`);
+        }
     });
 
-    const templates = leaseTemplates?.data;
 
-    console.log(templates);
+    const terminateLease = (record: LeaseData) => {
+        console.log(`Terminating lease for ${record.tenantName}`);
+        // Implement lease termination logic here
+    };
+
+    const sendRenewal = (record: LeaseData) => {
+        console.log(`Sending renewal for ${record.tenantName}`);
+        // Implement lease renewal logic here
+    };
 
     const leaseColumns: ColumnsType<LeaseData> = [
         {
@@ -241,22 +309,11 @@ export default function AdminViewEditLeases() {
             render: (_, record) => (
                 <Space size="middle">
                     {record.status === "draft" && (
-                        <>
-                            {/* <ButtonComponent
-                                type="primary"
-                                title="Send Lease"
-                                onClick={() => sendLease(record)}
-                            /> */}
-                            <SendLeaseModalComponent
-                                buttonTitle="Send Lease"
-                                buttonType="primary"
-                                modalTitle="Send Lease"
-                                content="Select a lease template to send to the tenant."
-                                type="Send Tenant Lease"
-                                leases={templates}
-                                handleOkay={sendLease}
-                            />
-                        </>
+                        <ButtonComponent
+                            type="primary"
+                            title="Send Lease"
+                            onClick={() => showModal(record)}
+                        />
                     )}
                     {record.status === "active" && (
                         <ButtonComponent
@@ -302,20 +359,29 @@ export default function AdminViewEditLeases() {
 
     return (
         <div className="container overflow-hidden">
-            <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
 
-            <TableComponent<LeaseData>
-                columns={leaseColumns}
-                dataSource={filteredData}
-                onChange={(
-                    pagination: TablePaginationConfig,
-                    filters: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[1],
-                    sorter: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[2],
-                    extra: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[3]
-                ) => {
-                    console.log("Table changed:", pagination, filters, sorter, extra);
-                }}
-            />
+                <TableComponent<LeaseData>
+                    columns={leaseColumns}
+                    dataSource={filteredData}
+                    onChange={(
+                        pagination: TablePaginationConfig,
+                        filters: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[1],
+                        sorter: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[2],
+                        extra: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[3]
+                    ) => {
+                        console.log("Table changed:", pagination, filters, sorter, extra);
+                    }}
+                />
+
+                {/* Lease Modal - Pass the prepared lease data */}
+                <SendLeaseModal
+                    visible={isModalOpen}
+                    onClose={handleCancel}
+                    selectedLease={selectedLease}
+                />
+            </div>
         </div>
     );
 }

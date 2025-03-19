@@ -123,6 +123,44 @@ func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, erro
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, clerk_id, first_name, last_name, email, phone, image_url, unit_number, role, status
+FROM users
+WHERE id = $1
+LIMIT 1
+`
+
+type GetUserByIDRow struct {
+	ID         int64         `json:"id"`
+	ClerkID    string        `json:"clerk_id"`
+	FirstName  string        `json:"first_name"`
+	LastName   string        `json:"last_name"`
+	Email      string        `json:"email"`
+	Phone      pgtype.Text   `json:"phone"`
+	ImageUrl   pgtype.Text   `json:"image_url"`
+	UnitNumber pgtype.Int2   `json:"unit_number"`
+	Role       Role          `json:"role"`
+	Status     AccountStatus `json:"status"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.ClerkID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.Phone,
+		&i.ImageUrl,
+		&i.UnitNumber,
+		&i.Role,
+		&i.Status,
+	)
+	return i, err
+}
+
 const listUsersByRole = `-- name: ListUsersByRole :many
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users

@@ -73,3 +73,15 @@ tasks:
     cmds:
       - chmod +x ./scripts/test-changed.sh
       - ./scripts/test-changed.sh
+  db:connect:
+    desc: "Test changed files only in backend in container"
+    cmds:
+      # Check if container is running
+      - |
+        CONTAINER_NAME="rentdaddy-backend"
+          if ! docker ps | grep -q "$CONTAINER_NAME"; then 
+          echo "Error: Container $CONTAINER_NAME is not running!"
+        exit 1
+        fi
+        echo "Running all tests in container: $CONTAINER_NAME..."
+        psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
