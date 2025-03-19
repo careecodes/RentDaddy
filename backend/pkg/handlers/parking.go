@@ -9,6 +9,7 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/middleware"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -27,6 +28,63 @@ func NewParkingPermitHandler(pool *pgxpool.Pool, queries *db.Queries) *ParkingPe
 }
 
 func (p ParkingPermitHandler) CreateParkingPermitHandler(w http.ResponseWriter, r *http.Request) {
+	permitNumberStr := chi.URLParam(r, "permit_number")
+	tenantClerkId := chi.URLParam(r, "clerk_id")
+
+	permitNumber, err := strconv.Atoi(permitNumberStr)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
+		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
+		return
+	}
+
+	userCtx, err := user.Get(r.Context(), tenantClerkId)
+	if err != nil {
+		log.Println("[PARKING_HANDLER] Failed user not found")
+		http.Error(w, "Error user not found", http.StatusNotFound)
+		return
+	}
+
+	var userMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(userCtx.PublicMetadata, &userMetadata)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed parsing user Clerk metadata: %v", err)
+		http.Error(w, "Error parsing user clerk metadata", http.StatusBadRequest)
+		return
+	}
+
+	count, err := p.queries.GetNumOfUserParkingPermits(r.Context(), int64(userMetadata.DbId))
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed querying parking permits for user: %v", err)
+		http.Error(w, "Error querying parking permits", http.StatusInternalServerError)
+		return
+	}
+
+	if count >= 2 {
+		log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", count, err)
+		http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
+		return
+	}
+
+	res, err := p.queries.CreateParkingPermit(r.Context(), db.CreateParkingPermitParams{
+		PermitNumber: int64(permitNumber),
+		CreatedBy:    int64(userMetadata.DbId),
+		ExpiresAt: pgtype.Timestamp{
+			Time:  time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
+			Valid: true,
+		},
+	})
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed creating parking permit: %v", err)
+		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(res)
+}
+
+func (p ParkingPermitHandler) TenantCreateParkingPermitHandler(w http.ResponseWriter, r *http.Request) {
 	permitNumberStr := chi.URLParam(r, "permit_number")
 
 	permitNumber, err := strconv.Atoi(permitNumberStr)

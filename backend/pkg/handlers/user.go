@@ -163,7 +163,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(adminOverviewData))
 }
 
-func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
+func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request) {
 	tenants, err := u.queries.ListUsersByRole(r.Context(), db.RoleTenant)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed getting tenants: %v", err)

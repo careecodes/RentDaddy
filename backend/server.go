@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
-	gen "github.com/careecodes/RentDaddy/internal/db/generated"
 
 	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
@@ -76,6 +75,7 @@ func main() {
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
+	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -84,10 +84,8 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
-			r.Route("/tenant", func(r chi.Router) {
-				r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-					userHandler.GetAllTenants(w, r, gen.RoleTenant)
-				})
+			r.Route("/tenants", func(r chi.Router) {
+				r.Get("/", userHandler.GetAllTenants)
 				r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 				r.Post("/invite", userHandler.InviteTenant)
 				r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
@@ -95,8 +93,19 @@ func main() {
 				r.Route("/parking", func(r chi.Router) {
 					r.Get("/", parkingPermitHandler.GetParkingPermits)
 					r.Get("/{permit_number}", parkingPermitHandler.GetParkingPermit)
-					r.Post("/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
+					r.Post("/{clerk_id}/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
 					r.Delete("/{parking_permit_id}", parkingPermitHandler.DeleteParkingPermit)
+				})
+				// Work Orders
+				r.Route("/work_orders", func(r chi.Router) {
+					r.Get("/", workOrderHandler.ListWorkOrdersHandler)
+					// Create Order
+					r.Post("/", workOrderHandler.CreateWorkOrderHandler)
+					r.Route("/{order_number}", func(r chi.Router) {
+						r.Get("/", workOrderHandler.GetWorkOrderHandler)
+						r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
+						r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
+					})
 				})
 			})
 		})
@@ -104,41 +113,11 @@ func main() {
 		// Tenant Endpoints
 		r.Route("/", func(r chi.Router) {
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
-			r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
+			r.Get("/parking", userHandler.GetTenantParkingPermits)
+			r.Post("/parking", parkingPermitHandler.TenantCreateParkingPermitHandler)
 			r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
 			r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
 			r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
-		})
-
-		workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
-		r.Route("/work_orders", func(r chi.Router) {
-			// r.Use(mymiddleware.IsAdmin)                // Admin middleware
-			// Admin route
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("List Orders")
-				workOrderHandler.ListWorkOrdersHandler(w, r)
-			})
-
-			// Create Order
-			r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Create Order")
-				workOrderHandler.CreateWorkOrderHandler(w, r)
-			})
-
-			r.Route("/{order_number}", func(r chi.Router) {
-				r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-					log.Println("Get Order")
-					workOrderHandler.GetWorkOrderHandler(w, r)
-				})
-				r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-					log.Printf("Update Order")
-					workOrderHandler.UpdateWorkOrderHandler(w, r)
-				})
-				r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-					log.Println("Delete Order")
-					workOrderHandler.DeleteWorkOrderHandler(w, r)
-				})
-			})
 		})
 	})
 
