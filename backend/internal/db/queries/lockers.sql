@@ -14,7 +14,7 @@ INSERT INTO lockers (
     in_use
 )
 SELECT 
-    NULL::text,  -- generates a random UUID for access code, not sure if we wanna just leave them empty and do a "lock / unlock" situation instead of the code
+    NULL::text,
     NULL::bigint,             -- default null user_id, explicitly cast to bigint (not sure if I need to change this to string, since the Clerk UserId is a string)
     false                     -- default to not in use
 FROM generate_series(1, sqlc.arg(count)::int); -- Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
@@ -33,7 +33,7 @@ WHERE id = $1;
 SELECT *
 FROM lockers
 ORDER BY id DESC
--- LIMIT $1 OFFSET $2;
+LIMIT $1 OFFSET $2;
 
 -- name: GetLocker :one
 SELECT *

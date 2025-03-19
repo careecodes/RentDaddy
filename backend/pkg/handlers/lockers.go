@@ -32,7 +32,7 @@ func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
 func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		AccessCode string `json:"access_code"`
-		UserID     *int32 `json:"user_id,omitempty"`
+		UserID     *int64 `json:"user_id,omitempty"`
 		Status     string `json:"status"`
 	}
 
@@ -55,27 +55,24 @@ func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) 
 }
 
 func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
+	// limitStr := r.URL.Query().Get("limit")
+	// offsetStr := r.URL.Query().Get("offset")
 
-	limit := int32(20)
-	if limitStr != "" {
-		if parsedLimit, err := strconv.ParseInt(limitStr, 10, 32); err == nil {
-			limit = int32(parsedLimit)
-		}
-	}
+	// limit := int32(20)
+	// if limitStr != "" {
+	// 	if parsedLimit, err := strconv.ParseInt(limitStr, 10, 32); err == nil {
+	// 		limit = int32(parsedLimit)
+	// 	}
+	// }
 
-	offset := int32(0)
-	if offsetStr != "" {
-		if parsedOffset, err := strconv.ParseInt(offsetStr, 10, 32); err == nil {
-			offset = int32(parsedOffset)
-		}
-	}
+	// offset := int32(0)
+	// if offsetStr != "" {
+	// 	if parsedOffset, err := strconv.ParseInt(offsetStr, 10, 32); err == nil {
+	// 		offset = int32(parsedOffset)
+	// 	}
+	// }
 
-	lockers, err := l.queries.GetLockers(r.Context(), db.GetLockersParams{
-		Limit:  limit,
-		Offset: offset,
-	})
+	lockers, err := l.queries.GetLockers(r.Context(), db.GetLockersParams{})
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
