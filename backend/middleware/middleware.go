@@ -29,11 +29,11 @@ type UserContextKey string
 
 var UserKey UserContextKey = "user"
 
-func MainMiddleware(next http.Handler) http.Handler {
+func ClerkAuthMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		userCtx := GetUserCtx(r)
 		if userCtx == nil {
-			log.Println("[USER_HANDLER] Failed")
+			log.Println("[CLERK_MIDDLEWARE] Unauthorized no user ctx")
 			http.Error(w, "Error Unauthorized", http.StatusUnauthorized)
 			return
 		}
