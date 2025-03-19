@@ -90,32 +90,26 @@ func main() {
 		// NOTE: Uncomment this after
 		// r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 		r.Get("/", userHandler.GetAdminOverview)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello this is admin test"))
-		})
 		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				userHandler.GetAllTenants(w, r, gen.RoleTenant)
-			})
-			// Parking
-			r.Route("/parking", func(r chi.Router) {
-				r.Post("/", permitHandler.CreateParkingPermitHandler)
-				r.Get("/", permitHandler.GetParkingPermits)
-				r.Get("/{permit_number}", permitHandler.GetParkingPermit)
 			})
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 			r.Post("/{clerk_id}/{permit_number}", permitHandler.CreateParkingPermitHandler)
+			// Parking
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/", permitHandler.GetParkingPermits)
+				r.Post("/{permit_number}", permitHandler.CreateParkingPermitHandler)
+				r.Get("/{permit_number}", permitHandler.GetParkingPermit)
+			})
 		})
 	})
 
 	// Tenant Endpoints
 	r.Route("/", func(r chi.Router) {
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello this is tenant test"))
-		})
-		r.Post("/{clerk_id}", userHandler.GetUserByClerkId)
+		r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 		r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
 		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
 		r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)

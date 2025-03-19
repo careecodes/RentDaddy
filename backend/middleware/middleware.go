@@ -31,7 +31,7 @@ var UserKey UserContextKey = "user"
 
 func MainMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		userCtx := GetUserCtx(w, r)
+		userCtx := GetUserCtx(r)
 		if userCtx == nil {
 			log.Println("[USER_HANDLER] Failed")
 			http.Error(w, "Error Unauthorized", http.StatusUnauthorized)
@@ -78,7 +78,7 @@ func IsAdmin(next http.Handler) http.Handler {
 	})
 }
 
-func GetUserCtx(w http.ResponseWriter, r *http.Request) *clerk.User {
+func GetUserCtx(r *http.Request) *clerk.User {
 	claims, ok := clerk.SessionClaimsFromContext(r.Context())
 	if !ok {
 		return nil

@@ -99,8 +99,8 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error converting metadata to JSON", http.StatusInternalServerError)
 		return
 	}
-	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
 
+	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
 	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
 		EmailAddress:   tenantPayload.Email,
 		PublicMetadata: &publicMetadataRawJson,
@@ -212,12 +212,12 @@ func (u UserHandler) GetTenantEmailAddresses(w http.ResponseWriter, r *http.Requ
 }
 
 func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request) {
-	// clerkUser, err := middleware.GetClerkUser(r)
-	// if err != nil {
-	// 	log.Printf("[USER_HANDLER] No user CTX")
-	// 	http.Error(w, "Error No user CTX", http.StatusInternalServerError)
-	// 	return
-	// }
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
+		log.Println("[PARKING_HANDLER] Failed no user context")
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
+		return
+	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed reading request body: %v", err)

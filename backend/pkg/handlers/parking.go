@@ -36,22 +36,12 @@ func (p ParkingPermitHandler) CreateParkingPermitHandler(w http.ResponseWriter, 
 		return
 	}
 
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed no user context: %v", err)
-		http.Error(w, "Error no user context", http.StatusInternalServerError)
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
+		log.Println("[PARKING_HANDLER] Failed no user context")
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
 		return
 	}
-
-	// Shouldnt need this anymore
-	// clerkID := chi.URLParam(r, "clerk_id")
-	//
-	// userData, err := user.Get(r.Context(), clerkID)
-	// if err != nil {
-	// 	log.Printf("[PARKING_HANDLER] Failed querying clerk user data: %v", err)
-	// 	http.Error(w, "Error Clerk user not found ", http.StatusNotFound)
-	// 	return
-	// }
 
 	var userMetadata ClerkUserPublicMetaData
 	err = json.Unmarshal(userCtx.PublicMetadata, &userMetadata)
