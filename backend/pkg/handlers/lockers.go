@@ -17,10 +17,11 @@ type LockerHandler struct {
 	queries *db.Queries
 }
 
+// Need the pointers to handle the case where the field is not provided.
 type UpdateLockerRequest struct {
-    UserID     *int64 `json:"user_id,omitempty"`
-    InUse      *bool  `json:"in_use,omitempty"`
-    AccessCode *string `json:"access_code,omitempty"`
+	UserID     *int64  `json:"user_id,omitempty"`
+	InUse      *bool   `json:"in_use,omitempty"`
+	AccessCode *string `json:"access_code,omitempty"`
 }
 
 func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
@@ -30,30 +31,30 @@ func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
 	}
 }
 
-// func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) {
-// 	var req struct {
-// 		AccessCode string `json:"access_code"`
-// 		UserID     *int64 `json:"user_id,omitempty"`
-// 		Status     string `json:"status"`
-// 	}
+func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		AccessCode string `json:"access_code"`
+		UserID     *int64 `json:"user_id,omitempty"`
+		Status     string `json:"status"`
+	}
 
-// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-// 		http.Error(w, "Invalid request body", http.StatusBadRequest)
-// 		return
-// 	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
 
-// 	createParams := db.CreateLockerParams{
-// 		AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
-// 		UserID:    pgtype.Int8{Valid: false},
-// 		InUse:     false,
-// 	}
+	createParams := db.CreateLockerParams{
+		AccessCode: pgtype.Text{String: req.AccessCode, Valid: true},
+		UserID:     pgtype.Int8{Valid: false},
+		InUse:      false,
+	}
 
-// 	locker := l.queries.CreateLocker(r.Context(), createParams)
+	locker := l.queries.CreateLocker(r.Context(), createParams)
 
-// 	w.Header().Set("Content-Type", "application/json")
-// 	w.WriteHeader(http.StatusCreated)
-// 	json.NewEncoder(w).Encode(locker)
-// }
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusCreated)
+	json.NewEncoder(w).Encode(locker)
+}
 
 func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
 	// limitStr := r.URL.Query().Get("limit")
@@ -79,7 +80,7 @@ func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(lockers)
 }
@@ -92,78 +93,99 @@ func (l LockerHandler) GetLocker(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid locker ID", http.StatusBadRequest)
 		return
 	}
-	
+
 	locker, err := l.queries.GetLocker(r.Context(), id)
 	if err != nil {
 		log.Printf("Error getting locker: %v", err)
 		http.Error(w, err.Error(), http.StatusNotFound)
 		return
 	}
-	
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(locker)
+}
+
+func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request) {
+
+	userIdStr := chi.URLParam(r, "user_id")
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+	if err != nil {
+		log.Printf("Error parsing user ID: %v", err)
+		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		return
+	}
+
+	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: userId, Valid: true})
+	if err != nil {
+		log.Printf("Error getting locker by user ID: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(locker)
 }
 
 // This can handle updating the userId, access code, and the inUse status separately and together.
 func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
-    idStr := chi.URLParam(r, "id")
-    id, err := strconv.ParseInt(idStr, 10, 64)
-    if err != nil {
+	idStr := chi.URLParam(r, "id")
+	id, err := strconv.ParseInt(idStr, 10, 64)
+	if err != nil {
 		log.Printf("Error parsing locker ID: %v", err)
-        http.Error(w, "Invalid locker ID", http.StatusBadRequest)
-        return
-    }
+		http.Error(w, "Invalid locker ID", http.StatusBadRequest)
+		return
+	}
 
-    var req UpdateLockerRequest
-    if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+	var req UpdateLockerRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error decoding request body: %v", err)
-        http.Error(w, err.Error(), http.StatusBadRequest)
-        return
-    }
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
 
-    // Handles user and / or status update
-    if req.UserID != nil || req.InUse != nil {
-        var userID pgtype.Int8
-        if req.UserID == nil {
+	// Handles user and / or status update
+	if req.UserID != nil || req.InUse != nil {
+		var userID pgtype.Int8
+		if req.UserID == nil {
 			// If there is no userId the field is invalid
-            userID = pgtype.Int8{Valid: false}
-        } else {
+			userID = pgtype.Int8{Valid: false}
+		} else {
 			// If there is a userId, it is stored and valid.
-            userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
-        }
+			userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
+		}
 
 		// inUse is false by default, but takes in a value if given
-        inUse := false
-        if req.InUse != nil {
-            inUse = *req.InUse
-        }
+		inUse := false
+		if req.InUse != nil {
+			inUse = *req.InUse
+		}
 
-        err = l.queries.UpdateLockerUser(r.Context(), db.UpdateLockerUserParams{
-            ID:     id,
-            UserID: userID,
-            InUse:  inUse,
-        })
-        if err != nil {
+		err = l.queries.UpdateLockerUser(r.Context(), db.UpdateLockerUserParams{
+			ID:     id,
+			UserID: userID,
+			InUse:  inUse,
+		})
+		if err != nil {
 			log.Printf("Error updating locker user: %v", err)
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-    }
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
-    // Handles access code update
-    if req.AccessCode != nil {
-        err = l.queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
-            ID:         id,
-            AccessCode: pgtype.Text{String: *req.AccessCode, Valid: true},
-        })
-        if err != nil {
+	// Handles access code update
+	if req.AccessCode != nil {
+		err = l.queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
+			ID:         id,
+			AccessCode: pgtype.Text{String: *req.AccessCode, Valid: true},
+		})
+		if err != nil {
 			log.Printf("Error updating access code: %v", err)
-            http.Error(w, err.Error(), http.StatusInternalServerError)
-            return
-        }
-    }
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+	}
 
-    w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
 }
 
 // This is the function that we are using to create all the lockers based off the given number in the Apartment setup page.

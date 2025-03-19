@@ -72,6 +72,25 @@ func (q *Queries) GetLocker(ctx context.Context, id int64) (Locker, error) {
 	return i, err
 }
 
+const getLockerByUserId = `-- name: GetLockerByUserId :one
+SELECT id, access_code, in_use, user_id
+FROM lockers
+WHERE user_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetLockerByUserId(ctx context.Context, userID pgtype.Int8) (Locker, error) {
+	row := q.db.QueryRow(ctx, getLockerByUserId, userID)
+	var i Locker
+	err := row.Scan(
+		&i.ID,
+		&i.AccessCode,
+		&i.InUse,
+		&i.UserID,
+	)
+	return i, err
+}
+
 const getLockers = `-- name: GetLockers :many
 SELECT id, access_code, in_use, user_id
 FROM lockers

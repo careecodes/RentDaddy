@@ -106,6 +106,7 @@ func main() {
 			// Used to set up the initial lockers for an apartment
 			r.Post("/", lockerHandler.CreateManyLockers)
 		})
+		// End of Locker Handlers
 	})
 	// Tenant Endpoints
 	r.Route("/tenant", func(r chi.Router) {
@@ -118,6 +119,8 @@ func main() {
 		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
 		r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
 		r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
+
+		r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
 	})
 
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)

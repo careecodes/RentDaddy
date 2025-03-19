@@ -44,10 +44,10 @@ func ConvertToPgTimestamp(input string) (pgtype.Timestamp, error) {
 }
 
 func ConvertStringToInt64(input string) int64 {
-    newNum, err := strconv.Atoi(input)
-    if err != nil {
-        fmt.Println(err)
-    }
-    
-    return int64(newNum)
+	newNum, err := strconv.Atoi(input)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	return int64(newNum)
 }

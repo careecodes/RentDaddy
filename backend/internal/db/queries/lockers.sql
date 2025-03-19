@@ -40,3 +40,9 @@ SELECT *
 FROM lockers
 WHERE id = $1
 LIMIT 1;
+
+-- name: GetLockerByUserId :one
+SELECT *
+FROM lockers
+WHERE user_id = $1
+LIMIT 1;
