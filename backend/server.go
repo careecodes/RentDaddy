@@ -12,7 +12,7 @@ import (
 	"github.com/careecodes/RentDaddy/internal/db"
 	gen "github.com/careecodes/RentDaddy/internal/db/generated"
 
-	// mymiddleware "github.com/careecodes/RentDaddy/middleware"
+	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -57,6 +57,8 @@ func main() {
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
+	r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+	r.Use(mymiddleware.MainMiddleware)         // Clerk middleware #2
 
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
@@ -74,35 +76,42 @@ func main() {
 	})
 
 	// Permits Routes
-	permitHandler := handlers.NewParkingPermitHandler(pool, queries)
-	r.Route("/parking_permits", func(r chi.Router) {
-		r.Post("/{clerk_id}", permitHandler.CreateParkingPermitHandler)
-	})
 	// End Permits
 
-	// User Router
+	// Routers
+	// workerOrder Router
+	// Complaints Router
+	// Lease Router
 	userHandler := handlers.NewUserHandler(pool, queries)
+	permitHandler := handlers.NewParkingPermitHandler(pool, queries)
+
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
 		// NOTE: Uncomment this after
-		// r.Use(mymiddleware.IsAdmin)                // Admin middleware
+		// r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 		r.Get("/", userHandler.GetAdminOverview)
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Hello this is admin test"))
 		})
-		r.Route("/tenants", func(r chi.Router) {
+		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 				userHandler.GetAllTenants(w, r, gen.RoleTenant)
+			})
+			// Parking
+			r.Route("/parking", func(r chi.Router) {
+				r.Post("/", permitHandler.CreateParkingPermitHandler)
+				r.Get("/", permitHandler.GetParkingPermits)
+				r.Get("/{permit_number}", permitHandler.GetParkingPermit)
 			})
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
+			r.Post("/{clerk_id}/{permit_number}", permitHandler.CreateParkingPermitHandler)
 		})
 	})
+
 	// Tenant Endpoints
-	r.Route("/tenant", func(r chi.Router) {
-		// r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+	r.Route("/", func(r chi.Router) {
 		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("Hello this is tenant test"))
 		})
@@ -115,6 +124,7 @@ func main() {
 
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	r.Route("/work_orders", func(r chi.Router) {
+		// r.Use(mymiddleware.IsAdmin)                // Admin middleware
 		// Admin route
 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
 			log.Println("List Orders")

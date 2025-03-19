@@ -29,6 +29,20 @@ type UserContextKey string
 
 var UserKey UserContextKey = "user"
 
+func MainMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		userCtx := GetUserCtx(w, r)
+		if userCtx == nil {
+			log.Println("[USER_HANDLER] Failed")
+			http.Error(w, "Error Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		c := context.WithValue(r.Context(), UserKey, userCtx)
+		next.ServeHTTP(w, r.WithContext(c))
+	})
+}
+
 func IsAdmin(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		claims, ok := clerk.SessionClaimsFromContext(r.Context())
@@ -53,30 +67,25 @@ func IsAdmin(next http.Handler) http.Handler {
 			return
 		}
 
-		if userMetaData.Role == db.RoleTenant {
+		if userMetaData.Role != db.RoleAdmin {
 			log.Printf("[CLERK_MIDDLEWARE] Unauthorized")
 			http.Error(w, "Unauthorized", http.StatusUnauthorized)
 			return
 
 		}
 
-		c := context.WithValue(r.Context(), UserKey, user)
-		next.ServeHTTP(w, r.WithContext(c))
+		next.ServeHTTP(w, r)
 	})
 }
 
 func GetUserCtx(w http.ResponseWriter, r *http.Request) *clerk.User {
 	claims, ok := clerk.SessionClaimsFromContext(r.Context())
 	if !ok {
-		log.Printf("[CLERK_MIDDLEWARE] Failed reading Clerk session")
-		http.Error(w, "Error reading request Clerk session", http.StatusUnauthorized)
 		return nil
 	}
 
 	user, err := user.Get(r.Context(), claims.Subject)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Clerk failed getting user: %v", err)
-		http.Error(w, "Error getting user from Clerk", http.StatusInternalServerError)
 		return nil
 	}
 

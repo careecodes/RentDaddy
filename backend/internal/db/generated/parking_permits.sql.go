@@ -15,12 +15,14 @@ const createParkingPermit = `-- name: CreateParkingPermit :one
 INSERT INTO parking_permits (
     permit_number,
     created_by,
-    expires_at
+    expires_at,
+    updated_at
 )
 VALUES (
     $1,
     $2,
-    $3
+    $3,
+    now()
 )
 RETURNING id, permit_number, created_by, updated_at, expires_at
 `
@@ -93,20 +95,14 @@ func (q *Queries) GetParkingPermit(ctx context.Context, permitNumber int64) (Get
 	return i, err
 }
 
-const getParkingPermits = `-- name: GetParkingPermits :many
+const listParkingPermits = `-- name: ListParkingPermits :many
 SELECT id, permit_number, created_by, updated_at, expires_at
 FROM parking_permits
 ORDER BY created_by DESC
-LIMIT $1 OFFSET $2
 `
 
-type GetParkingPermitsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) GetParkingPermits(ctx context.Context, arg GetParkingPermitsParams) ([]ParkingPermit, error) {
-	rows, err := q.db.Query(ctx, getParkingPermits, arg.Limit, arg.Offset)
+func (q *Queries) ListParkingPermits(ctx context.Context) ([]ParkingPermit, error) {
+	rows, err := q.db.Query(ctx, listParkingPermits)
 	if err != nil {
 		return nil, err
 	}
