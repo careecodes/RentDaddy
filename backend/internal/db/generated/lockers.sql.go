@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createLocker = `-- name: CreateLocker :exec
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+) VALUES (
+    $1, $2, $3
+)
+`
+
+type CreateLockerParams struct {
+	AccessCode pgtype.Text `json:"access_code"`
+	UserID     pgtype.Int8 `json:"user_id"`
+	InUse      bool        `json:"in_use"`
+}
+
+func (q *Queries) CreateLocker(ctx context.Context, arg CreateLockerParams) error {
+	_, err := q.db.Exec(ctx, createLocker, arg.AccessCode, arg.UserID, arg.InUse)
+	return err
+}
+
+const createManyLockers = `-- name: CreateManyLockers :execrows
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+)
+SELECT 
+    gen_random_uuid()::text,  -- generates a random UUID for access code, not sure if we wanna just leave them empty and do a "lock / unlock" situation instead of the code
+    NULL::bigint,             -- default null user_id, explicitly cast to bigint (not sure if I need to change this to string, since the Clerk UserId is a string)
+    false                     -- default to not in use
+FROM generate_series(1, $1::int)
+`
+
+func (q *Queries) CreateManyLockers(ctx context.Context, count int32) (int64, error) {
+	result, err := q.db.Exec(ctx, createManyLockers, count)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getLocker = `-- name: GetLocker :one
 SELECT id, access_code, in_use, user_id
 FROM lockers
@@ -84,6 +126,7 @@ func (q *Queries) UpdateAccessCode(ctx context.Context, arg UpdateAccessCodePara
 }
 
 const updateLockerUser = `-- name: UpdateLockerUser :exec
+
 UPDATE lockers
 SET user_id = $2, in_use = $3
 WHERE id = $1
@@ -95,6 +138,7 @@ type UpdateLockerUserParams struct {
 	InUse  bool        `json:"in_use"`
 }
 
+// Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
 func (q *Queries) UpdateLockerUser(ctx context.Context, arg UpdateLockerUserParams) error {
 	_, err := q.db.Exec(ctx, updateLockerUser, arg.ID, arg.UserID, arg.InUse)
 	return err

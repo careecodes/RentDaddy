@@ -136,6 +136,35 @@ func main() {
 		})
 	})
 
+	// Locker handler
+	lockerHandler := handlers.NewLockerHandler(pool, queries)
+	r.Route("/lockers", func(r chi.Router) {
+		// Get all lockers with pagination
+		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("List Lockers")
+			lockerHandler.GetLockers(w, r)
+		})
+		// Create many lockers (used for the initial apartment setup)
+		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+			log.Println("Creating Multiple Lockers")
+			lockerHandler.CreateManyLockers(w, r)
+		})
+
+		r.Route("/{id}", func(r chi.Router) {
+			// Get a single, specific locker
+			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Get Locker")
+				lockerHandler.GetLocker(w, r)
+			})
+
+			// Update locker (user, status, or the access code)
+			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
+				log.Println("Update Locker")
+				lockerHandler.UpdateLocker(w, r)
+			})
+		})
+	})
+
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{
