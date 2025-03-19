@@ -96,7 +96,7 @@ func main() {
 					r.Get("/", parkingPermitHandler.GetParkingPermits)
 					r.Get("/{permit_number}", parkingPermitHandler.GetParkingPermit)
 					r.Post("/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
-					r.Delete("/{permit_number}", parkingPermitHandler.DeleteParkingPermit)
+					r.Delete("/{parking_permit_id}", parkingPermitHandler.DeleteParkingPermit)
 				})
 			})
 		})
