@@ -20,20 +20,54 @@ func (q *Queries) GetLeaseTemplateByID(ctx context.Context, id int64) ([]byte, e
 	return lease_template_pdf, err
 }
 
-const getLeaseTemplates = `-- name: GetLeaseTemplates :many
-SELECT id, lease_template_pdf FROM lease_templates
+const getLeaseTemplatePDFs = `-- name: GetLeaseTemplatePDFs :many
+SELECT id,lease_template_pdf FROM lease_templates
 `
 
-func (q *Queries) GetLeaseTemplates(ctx context.Context) ([]LeaseTemplate, error) {
-	rows, err := q.db.Query(ctx, getLeaseTemplates)
+type GetLeaseTemplatePDFsRow struct {
+	ID               int64  `json:"id"`
+	LeaseTemplatePdf []byte `json:"lease_template_pdf"`
+}
+
+func (q *Queries) GetLeaseTemplatePDFs(ctx context.Context) ([]GetLeaseTemplatePDFsRow, error) {
+	rows, err := q.db.Query(ctx, getLeaseTemplatePDFs)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []LeaseTemplate
+	var items []GetLeaseTemplatePDFsRow
 	for rows.Next() {
-		var i LeaseTemplate
+		var i GetLeaseTemplatePDFsRow
 		if err := rows.Scan(&i.ID, &i.LeaseTemplatePdf); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getLeaseTemplateTitles = `-- name: GetLeaseTemplateTitles :many
+SELECT id,lease_template_title FROM lease_templates
+`
+
+type GetLeaseTemplateTitlesRow struct {
+	ID                 int64  `json:"id"`
+	LeaseTemplateTitle string `json:"lease_template_title"`
+}
+
+func (q *Queries) GetLeaseTemplateTitles(ctx context.Context) ([]GetLeaseTemplateTitlesRow, error) {
+	rows, err := q.db.Query(ctx, getLeaseTemplateTitles)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetLeaseTemplateTitlesRow
+	for rows.Next() {
+		var i GetLeaseTemplateTitlesRow
+		if err := rows.Scan(&i.ID, &i.LeaseTemplateTitle); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

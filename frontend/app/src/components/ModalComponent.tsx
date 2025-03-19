@@ -4,7 +4,7 @@ import { useState } from "react";
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-
+import axios from "axios";
 interface Lease {
     id: string | number;
     title: string;
@@ -253,8 +253,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -516,7 +516,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                         onCancel={handleCancel}
                         // leases={leaseTemplates || []} // Add null check
                         okButtonProps={{ disabled: !props.leases?.length }}
-                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                    // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
                     >
                         <Form>
                             {/* Pick a Lease */}
@@ -541,3 +541,84 @@ const ModalComponent = (props: ModalComponentProps) => {
 };
 
 export default ModalComponent;
+
+
+const API_URL = `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`.replace(/\/$/, "");
+
+interface LeaseTemplate {
+    id: number;
+    title: string;
+}
+
+interface SendLeaseModalProps {
+    leases: LeaseTemplate[];
+    visible: boolean;
+    onClose: () => void;
+}
+
+const SendLeaseModal: React.FC<SendLeaseModalProps> = ({ leases, visible, onClose }) => {
+    const [templateId, setTemplateId] = useState<number | null>(null);
+    const [fields, setFields] = useState<{ [key: string]: string }>({});
+    const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+
+    useEffect(() => {
+        if (templateId) {
+            setPdfUrl(`${API_URL}/leases/${templateId}/pdf`);
+        }
+    }, [templateId]);
+
+    const handleFieldChange = (key: string, value: string) => {
+        setFields((prev) => ({ ...prev, [key]: value }));
+    };
+
+    const handleSendLease = async () => {
+        if (!templateId) return;
+        try {
+            const response = await axios.post(
+                `${API_URL}/generate-pdf`,
+                {
+                    lease_id: templateId,
+                    fields: fields,
+                },
+                { responseType: "blob" }
+            );
+
+            const url = window.URL.createObjectURL(new Blob([response.data]));
+            setPdfUrl(url);
+            message.success("Lease PDF generated successfully!");
+        } catch (error) {
+            console.error("Failed to generate lease PDF", error);
+            message.error("Failed to generate lease PDF.");
+        }
+    };
+
+    return (
+        <Modal title="Send Lease" open={visible} onCancel={onClose} footer={null}>
+            <Form layout="vertical" onFinish={handleSendLease}>
+                <Form.Item label="Select Lease Template">
+                    <Select onChange={(value) => setTemplateId(value)}>
+                        {leases.map((lease) => (
+                            <Select.Option key={lease.id} value={lease.id}>
+                                {lease.title}
+                            </Select.Option>
+                        ))}
+                    </Select>
+                </Form.Item>
+                <Form.Item label="Tenant Name">
+                    <Input onChange={(e) => handleFieldChange("tenant_name", e.target.value)} />
+                </Form.Item>
+                <Form.Item label="Property Address">
+                    <Input onChange={(e) => handleFieldChange("property_address", e.target.value)} />
+                </Form.Item>
+                <Form.Item>
+                    <Button type="primary" htmlType="submit">Generate Lease PDF</Button>
+                </Form.Item>
+            </Form>
+            {pdfUrl && (
+                <div style={{ marginTop: "20px", textAlign: "center" }}>
+                    <Button type="link" href={pdfUrl} target="_blank">View Generated PDF</Button>
+                </div>
+            )}
+        </Modal>
+    );
+};

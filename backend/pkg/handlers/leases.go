@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"encoding/json"
 	"fmt"
 	"math/big"
 	"net/http"
@@ -24,7 +25,7 @@ import (
 type LeaseHandler struct {
 	pool             *pgxpool.Pool
 	queries          *db.Queries
-	documenso_client documenso.DocumensoClientInterface
+	documenso_client *documenso.DocumensoClient
 }
 
 // NewLeaseHandler initializes a LeaseHandler
@@ -90,7 +91,7 @@ func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
 }
 
 // Generate Lease PDF
-func (h *LeaseHandler) GenerateLeasePDF(title string, formData map[string]string) ([]byte, error) {
+func (h LeaseHandler) GenerateLeasePDF(title string, formData map[string]string) ([]byte, error) {
 
 	pdf := gofpdf.New("P", "mm", "A4", "")
 	pdf.AddPage()
@@ -106,10 +107,11 @@ func (h *LeaseHandler) GenerateLeasePDF(title string, formData map[string]string
 }
 
 // Generate Signing URL (Documenso)
-func (h *LeaseHandler) GenerateDocumensoURL(leaseID int64) (string, error) {
+func (h LeaseHandler) GenerateDocumensoURL(leaseID int64) (string, error) {
 	return fmt.Sprintf("https://documenso.com/sign/%d", leaseID), nil
 }
 
+// GetLeasePDF retrieves the generated lease PDF
 func (h *LeaseHandler) GetLeasePDF(w http.ResponseWriter, r *http.Request) {
 	leaseIDStr := chi.URLParam(r, "leaseID")
 	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
@@ -118,7 +120,7 @@ func (h *LeaseHandler) GetLeasePDF(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	lease, err := h.queries.GetLeaseByID(context.Background(), leaseID)
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
 	if err != nil {
 		http.Error(w, "Lease not found", http.StatusNotFound)
 		return
@@ -126,10 +128,10 @@ func (h *LeaseHandler) GetLeasePDF(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/pdf")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(lease.LeasePdf)
+	w.Write(lease.LeasePdf)
 }
 
-func (h *LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request) {
+func (h LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request) {
 	leaseIDStr := chi.URLParam(r, "leaseID")
 	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
 	if err != nil {
@@ -138,7 +140,7 @@ func (h *LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request
 	}
 
 	// Retrieve lease details from DB
-	lease, err := h.queries.GetLeaseByID(context.Background(), leaseID)
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
 	if err != nil {
 		http.Error(w, "Lease not found", http.StatusNotFound)
 		return
@@ -172,4 +174,56 @@ func (h *LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request
 	// Return confirmation response
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Lease fields updated successfully in Documenso")
+}
+func (h LeaseHandler) GeneratePDFHandler(w http.ResponseWriter, r *http.Request) {
+	var req struct {
+		LeaseID int64             `json:"lease_id"`
+		Fields  map[string]string `json:"fields"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	lease, err := h.queries.GetLeaseByID(r.Context(), req.LeaseID)
+	if err != nil {
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
+	}
+
+	docID, err := h.documenso_client.CreateDocument(lease.LeasePdf, req.Fields)
+	if err != nil {
+		http.Error(w, fmt.Sprintf("Failed to generate PDF: %v", err), http.StatusInternalServerError)
+		return
+	}
+
+	err = h.queries.StoreGeneratedLeasePDF(r.Context(), db.StoreGeneratedLeasePDFParams{
+		LeasePdf:      lease.LeasePdf,
+		ExternalDocID: docID,
+		ID:            req.LeaseID,
+	})
+	if err != nil {
+		http.Error(w, "Failed to store lease PDF", http.StatusInternalServerError)
+		return
+	}
+
+	response := map[string]string{"document_id": docID}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+func (h LeaseHandler) GetLeaseTemplateTitles(w http.ResponseWriter, r *http.Request) {
+	ctx := context.Background()
+	lease, err := h.queries.GetLeaseTemplateTitles(ctx)
+	if err != nil {
+		http.Error(w, "Error fetching templates", http.StatusNotFound)
+		return
+	}
+
+	//parse into bytes
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(lease); err != nil {
+		http.Error(w, "Error parsing database content", http.StatusInternalServerError)
+	}
 }

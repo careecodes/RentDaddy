@@ -158,6 +158,24 @@ func (q *Queries) RenewLease(ctx context.Context, arg RenewLeaseParams) error {
 	return err
 }
 
+const storeGeneratedLeasePDF = `-- name: StoreGeneratedLeasePDF :exec
+UPDATE leases
+SET lease_pdf = $1, external_doc_id = $2
+WHERE id = $3
+RETURNING lease_pdf
+`
+
+type StoreGeneratedLeasePDFParams struct {
+	LeasePdf      []byte `json:"lease_pdf"`
+	ExternalDocID string `json:"external_doc_id"`
+	ID            int64  `json:"id"`
+}
+
+func (q *Queries) StoreGeneratedLeasePDF(ctx context.Context, arg StoreGeneratedLeasePDFParams) error {
+	_, err := q.db.Exec(ctx, storeGeneratedLeasePDF, arg.LeasePdf, arg.ExternalDocID, arg.ID)
+	return err
+}
+
 const terminateLease = `-- name: TerminateLease :exec
 UPDATE leases
 SET 

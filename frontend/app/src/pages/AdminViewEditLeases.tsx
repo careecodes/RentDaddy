@@ -13,7 +13,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { LeaseData } from "../types/types.ts";
 import { ItemType } from "antd/es/menu/interface";
 import { useMutation, useQuery } from "@tanstack/react-query";
-import ModalComponent from "../components/ModalComponent.tsx";
+import SendLeaseModalComponent from "../components/ModalComponent.tsx";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -136,7 +136,7 @@ export default function AdminViewEditLeases() {
     const { data: leaseTemplates, isLoading } = useQuery({
         queryKey: ["leaseTemplates"],
         queryFn: async () => {
-            const res = await fetch(`${API_URL}/admins/leases/getLeaseTemplates`, {
+            const res = await fetch(`${API_URL}/admins/leases/tenants/getLeaseTemplatesTitles`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
@@ -247,7 +247,7 @@ export default function AdminViewEditLeases() {
                                 title="Send Lease"
                                 onClick={() => sendLease(record)}
                             /> */}
-                            <ModalComponent
+                            <SendLeaseModalComponent
                                 buttonTitle="Send Lease"
                                 buttonType="primary"
                                 modalTitle="Send Lease"

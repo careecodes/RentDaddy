@@ -421,8 +421,9 @@ type Lease struct {
 }
 
 type LeaseTemplate struct {
-	ID               int64  `json:"id"`
-	LeaseTemplatePdf []byte `json:"lease_template_pdf"`
+	ID                 int64  `json:"id"`
+	LeaseTemplateTitle string `json:"lease_template_title"`
+	LeaseTemplatePdf   []byte `json:"lease_template_pdf"`
 }
 
 type LeaseTenant struct {

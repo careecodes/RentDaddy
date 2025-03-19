@@ -15,11 +15,8 @@ echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 
 if [ "$DEBUG_MODE" = "true" ]; then
-  echo "Debug mode enabled. Container will stay alive."
-  # Debugging: Show working directory and files
-  echo "Current directory: $(pwd)"
-  ls -lah
-  tail -f /dev/null
+  echo "Debug mode enabled. Starting Delve debugger..."
+  dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /tmp/server
 else
   # Run Air with config file
   echo "Starting Air..."

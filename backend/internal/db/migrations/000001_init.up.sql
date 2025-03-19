@@ -121,6 +121,7 @@ CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
 CREATE TABLE IF NOT EXISTS "lease_templates"(
     "id"               BIGSERIAL PRIMARY KEY,
+    "lease_template_title" TEXT     NOT NULL,
     "lease_template_pdf"   BYTEA    NOT NULL
 );
 
@@ -132,7 +133,7 @@ CREATE TABLE IF NOT EXISTS "leases"
     "lease_pdf"   BYTEA         NOT NULL,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
     "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
-    "apartment_id"     BIGINT         NOT NULL REFERENCES apartment_id(id),
+    "apartment_id"     BIGINT         NOT NULL ,
     "template_id"      BIGINT         NOT NULL REFERENCES lease_templates (id),
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
@@ -144,7 +145,7 @@ CREATE TABLE IF NOT EXISTS "leases"
     "updated_at"       TIMESTAMP(0)            DEFAULT now()
 );
 
-CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
+CREATE INDEX "lease_lease_version_index" ON "leases" ("lease_version");
 CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
 
 CREATE TABLE IF NOT EXISTS "lockers"
@@ -190,3 +191,5 @@ ALTER TABLE "work_orders"
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
 
+INSERT INTO lease_templates (id, lease_template_title, lease_template_pdf)
+VALUES (1, 'Minimal Lease Agreement', pg_read_binary_file('/files/minimalresidentialagreement.pdf'));

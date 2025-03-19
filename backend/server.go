@@ -92,7 +92,12 @@ func main() {
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
-			r.Get("/leases/{leaseID}/pdf", leaseHandler.GetLeasePDF)
+			r.Route("/leases", func(r chi.Router) {
+				r.Get("/templates", leaseHandler.GetLeaseTemplateTitles)
+				// r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)
+				r.Post("/generate-pdf", leaseHandler.GeneratePDFHandler)
+				r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)
+			})
 
 		})
 	})

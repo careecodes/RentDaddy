@@ -53,3 +53,9 @@ RETURNING id, lease_version, external_doc_id, tenant_id, landlord_id, apartment_
     lease_start_date, lease_end_date, rent_amount, lease_status, 
     updated_by, updated_at;
 
+
+-- name: StoreGeneratedLeasePDF :exec
+UPDATE leases
+SET lease_pdf = $1, external_doc_id = $2
+WHERE id = $3
+RETURNING lease_pdf;

@@ -1,10 +1,6 @@
 services:
   postgres:
     image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-appuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apppassword}
-      POSTGRES_DB: ${POSTGRES_DB:-appdb}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     container_name: rentdaddy-postgres
@@ -12,6 +8,7 @@ services:
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
+      - ./backend/assets/minimalresidentialagreement.pdf:/files/minimalresidentialagreement.pdf
     healthcheck:
        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}"]
        interval: 5s
@@ -26,6 +23,7 @@ services:
       dockerfile: Dockerfile
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
+      - "2345:2345" 
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,6 +32,7 @@ services:
     volumes:
       - ./backend:/app
       - /app/tmp
+      - ./backend/assets/minimalresidentialagreement.pdf:/files/minimalresidentialagreement.pdf
     env_file: .env
     networks:
       - app-network
