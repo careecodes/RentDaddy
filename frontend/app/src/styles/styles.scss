@@ -277,3 +277,11 @@ body {
     padding: 10px !important; // Adds spacing
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); // Adds a slight shadow for contrast
 }
+
+.hover-lift {
+    transition: transform 0.3s ease-in-out;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+}
