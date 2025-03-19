@@ -129,13 +129,7 @@ SELECT id,
   lease_id
 FROM apartments
 ORDER BY unit_number DESC
-LIMIT $1 OFFSET $2
 `
-
-type ListApartmentsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
 
 type ListApartmentsRow struct {
 	ID           int64          `json:"id"`
@@ -147,8 +141,8 @@ type ListApartmentsRow struct {
 	LeaseID      int64          `json:"lease_id"`
 }
 
-func (q *Queries) ListApartments(ctx context.Context, arg ListApartmentsParams) ([]ListApartmentsRow, error) {
-	rows, err := q.db.Query(ctx, listApartments, arg.Limit, arg.Offset)
+func (q *Queries) ListApartments(ctx context.Context) ([]ListApartmentsRow, error) {
+	rows, err := q.db.Query(ctx, listApartments)
 	if err != nil {
 		return nil, err
 	}
@@ -181,17 +175,16 @@ SET price = $2,
   management_id = $3,
   availability = $4,
   lease_id = $5,
-  updated_at = $6
+  updated_at = now()
 WHERE id = $1
 `
 
 type UpdateApartmentParams struct {
-	ID           int64            `json:"id"`
-	Price        pgtype.Numeric   `json:"price"`
-	ManagementID int64            `json:"management_id"`
-	Availability bool             `json:"availability"`
-	LeaseID      int64            `json:"lease_id"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID           int64          `json:"id"`
+	Price        pgtype.Numeric `json:"price"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) UpdateApartment(ctx context.Context, arg UpdateApartmentParams) error {
@@ -201,7 +194,6 @@ func (q *Queries) UpdateApartment(ctx context.Context, arg UpdateApartmentParams
 		arg.ManagementID,
 		arg.Availability,
 		arg.LeaseID,
-		arg.UpdatedAt,
 	)
 	return err
 }

@@ -58,12 +58,8 @@ func (h ApartmentHandler) GetApartmentHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h ApartmentHandler) ListApartmentsHandler(w http.ResponseWriter, r *http.Request) {
-	props := db.ListApartmentsParams{
-		Limit:  10,
-		Offset: 0,
-	}
 
-	apartments, err := h.queries.ListApartments(r.Context(), props)
+	apartments, err := h.queries.ListApartments(r.Context())
 	if err != nil {
 		log.Printf("Error fetching apartments: %v", err)
 		http.Error(w, "Failed to fetch apartments", http.StatusInternalServerError)

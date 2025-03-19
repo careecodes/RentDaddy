@@ -37,8 +37,7 @@ SELECT id,
   availability,
   lease_id
 FROM apartments
-ORDER BY unit_number DESC
-LIMIT $1 OFFSET $2;
+ORDER BY unit_number DESC;
 
 -- name: UpdateApartment :exec
 UPDATE apartments
