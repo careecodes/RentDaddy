@@ -264,22 +264,6 @@ func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request)
 // ADMIN END
 
 // TENANT START
-func (u UserHandler) GetTenantParkingPermits(w http.ResponseWriter, r *http.Request) {
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
-		log.Printf("[USER_HANDLER] No user CTX")
-		http.Error(w, "Error No user CTX", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Current user ID: %s", userCtx.ID)
-
-	// TODO: Finish this
-	// permits, err := u.queries.listParking
-	//
-	w.WriteHeader(http.StatusOK)
-}
-
 func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) {
 	documents, err := u.queries.ListLeases(r.Context())
 	if err != nil {
@@ -296,6 +280,7 @@ func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonDocments))
 }
 
@@ -318,6 +303,7 @@ func (u UserHandler) GetTenantWorkOrders(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonWorkOrders))
 }
 
@@ -340,6 +326,7 @@ func (u UserHandler) GetTenantComplaints(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonComplaints))
 }
 

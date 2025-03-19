@@ -24,6 +24,11 @@ FROM parking_permits
 WHERE permit_number = $1
 LIMIT 1;
 
+-- name: GetTenantParkingPermits :many
+SELECT *
+FROM parking_permits
+WHERE created_by = $1;
+
 -- name: ListParkingPermits :many
 SELECT *
 FROM parking_permits

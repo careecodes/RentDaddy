@@ -84,18 +84,21 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
+
 			r.Route("/tenants", func(r chi.Router) {
 				r.Get("/", userHandler.GetAllTenants)
 				r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 				r.Post("/invite", userHandler.InviteTenant)
 				r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
+
 				// Parking
 				r.Route("/parking", func(r chi.Router) {
 					r.Get("/", parkingPermitHandler.GetParkingPermits)
-					r.Get("/{permit_number}", parkingPermitHandler.GetParkingPermit)
-					r.Post("/{clerk_id}/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
-					r.Delete("/{parking_permit_id}", parkingPermitHandler.DeleteParkingPermit)
+					r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
+					r.Post("/", parkingPermitHandler.CreateParkingPermit)
+					r.Delete("/{permit_id}", parkingPermitHandler.DeleteParkingPermit)
 				})
+
 				// Work Orders
 				r.Route("/work_orders", func(r chi.Router) {
 					r.Get("/", workOrderHandler.ListWorkOrdersHandler)
@@ -113,11 +116,13 @@ func main() {
 		// Tenant Endpoints
 		r.Route("/", func(r chi.Router) {
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
-			r.Get("/parking", userHandler.GetTenantParkingPermits)
-			r.Post("/parking", parkingPermitHandler.TenantCreateParkingPermitHandler)
 			r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
 			r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
 			r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
+				// r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
+			})
 		})
 	})
 

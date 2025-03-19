@@ -95,6 +95,38 @@ func (q *Queries) GetParkingPermit(ctx context.Context, permitNumber int64) (Get
 	return i, err
 }
 
+const getTenantParkingPermits = `-- name: GetTenantParkingPermits :many
+SELECT id, permit_number, created_by, updated_at, expires_at
+FROM parking_permits
+WHERE created_by = $1
+`
+
+func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) ([]ParkingPermit, error) {
+	rows, err := q.db.Query(ctx, getTenantParkingPermits, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ParkingPermit
+	for rows.Next() {
+		var i ParkingPermit
+		if err := rows.Scan(
+			&i.ID,
+			&i.PermitNumber,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listParkingPermits = `-- name: ListParkingPermits :many
 SELECT id, permit_number, created_by, updated_at, expires_at
 FROM parking_permits
