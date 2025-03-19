@@ -7,7 +7,6 @@ function App() {
         <>
             <div className="container">
                 <HeroBanner />
-
                 <div className="my-2 flex-container">
                     <HomePageFeaturesComponent />
                 </div>

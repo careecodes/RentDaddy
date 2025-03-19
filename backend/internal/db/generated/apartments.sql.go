@@ -18,27 +18,18 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id,
-    lease_start_date,
-    lease_end_date,
-    updated_at,
-    created_at
-  )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
-RETURNING id, unit_number, price, size, management_id, availability, lease_id, lease_start_date, lease_end_date, updated_at, created_at
+    lease_id
+  ) VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
 `
 
 type CreateApartmentParams struct {
-	UnitNumber     int16            `json:"unit_number"`
-	Price          pgtype.Numeric   `json:"price"`
-	Size           int16            `json:"size"`
-	ManagementID   int64            `json:"management_id"`
-	Availability   bool             `json:"availability"`
-	LeaseID        int64            `json:"lease_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UnitNumber   int16          `json:"unit_number"`
+	Price        pgtype.Numeric `json:"price"`
+	Size         int16          `json:"size"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams) (Apartment, error) {
@@ -49,10 +40,6 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 		arg.ManagementID,
 		arg.Availability,
 		arg.LeaseID,
-		arg.LeaseStartDate,
-		arg.LeaseEndDate,
-		arg.UpdatedAt,
-		arg.CreatedAt,
 	)
 	var i Apartment
 	err := row.Scan(
@@ -63,8 +50,6 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 		&i.ManagementID,
 		&i.Availability,
 		&i.LeaseID,
-		&i.LeaseStartDate,
-		&i.LeaseEndDate,
 		&i.UpdatedAt,
 		&i.CreatedAt,
 	)
@@ -88,24 +73,20 @@ SELECT id,
   size,
   management_id,
   availability,
-  lease_id,
-  lease_start_date,
-  lease_end_date
+  lease_id
 FROM apartments
 WHERE id = $1
 LIMIT 1
 `
 
 type GetApartmentRow struct {
-	ID             int64          `json:"id"`
-	UnitNumber     int16          `json:"unit_number"`
-	Price          pgtype.Numeric `json:"price"`
-	Size           int16          `json:"size"`
-	ManagementID   int64          `json:"management_id"`
-	Availability   bool           `json:"availability"`
-	LeaseID        int64          `json:"lease_id"`
-	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
+	ID           int64          `json:"id"`
+	UnitNumber   int16          `json:"unit_number"`
+	Price        pgtype.Numeric `json:"price"`
+	Size         int16          `json:"size"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) GetApartment(ctx context.Context, id int64) (GetApartmentRow, error) {
@@ -119,8 +100,6 @@ func (q *Queries) GetApartment(ctx context.Context, id int64) (GetApartmentRow, 
 		&i.ManagementID,
 		&i.Availability,
 		&i.LeaseID,
-		&i.LeaseStartDate,
-		&i.LeaseEndDate,
 	)
 	return i, err
 }
@@ -145,9 +124,7 @@ SELECT id,
   size,
   management_id,
   availability,
-  lease_id,
-  lease_start_date,
-  lease_end_date
+  lease_id
 FROM apartments
 ORDER BY unit_number DESC
 LIMIT $1 OFFSET $2
@@ -159,15 +136,13 @@ type ListApartmentsParams struct {
 }
 
 type ListApartmentsRow struct {
-	ID             int64          `json:"id"`
-	UnitNumber     int16          `json:"unit_number"`
-	Price          pgtype.Numeric `json:"price"`
-	Size           int16          `json:"size"`
-	ManagementID   int64          `json:"management_id"`
-	Availability   bool           `json:"availability"`
-	LeaseID        int64          `json:"lease_id"`
-	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
+	ID           int64          `json:"id"`
+	UnitNumber   int16          `json:"unit_number"`
+	Price        pgtype.Numeric `json:"price"`
+	Size         int16          `json:"size"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) ListApartments(ctx context.Context, arg ListApartmentsParams) ([]ListApartmentsRow, error) {
@@ -187,8 +162,6 @@ func (q *Queries) ListApartments(ctx context.Context, arg ListApartmentsParams) 
 			&i.ManagementID,
 			&i.Availability,
 			&i.LeaseID,
-			&i.LeaseStartDate,
-			&i.LeaseEndDate,
 		); err != nil {
 			return nil, err
 		}
@@ -206,21 +179,17 @@ SET price = $2,
   management_id = $3,
   availability = $4,
   lease_id = $5,
-  lease_start_date = $6,
-  lease_end_date = $7,
-  updated_at = $8
+  updated_at = $6
 WHERE id = $1
 `
 
 type UpdateApartmentParams struct {
-	ID             int64            `json:"id"`
-	Price          pgtype.Numeric   `json:"price"`
-	ManagementID   int64            `json:"management_id"`
-	Availability   bool             `json:"availability"`
-	LeaseID        int64            `json:"lease_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	ID           int64            `json:"id"`
+	Price        pgtype.Numeric   `json:"price"`
+	ManagementID int64            `json:"management_id"`
+	Availability bool             `json:"availability"`
+	LeaseID      int64            `json:"lease_id"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 }
 
 func (q *Queries) UpdateApartment(ctx context.Context, arg UpdateApartmentParams) error {
@@ -230,8 +199,6 @@ func (q *Queries) UpdateApartment(ctx context.Context, arg UpdateApartmentParams
 		arg.ManagementID,
 		arg.Availability,
 		arg.LeaseID,
-		arg.LeaseStartDate,
-		arg.LeaseEndDate,
 		arg.UpdatedAt,
 	)
 	return err

@@ -1,3 +1,4 @@
+SET time zone 'UTC';
 CREATE TYPE "Complaint_Category" AS ENUM (
     'maintenance',
     'noise',
@@ -47,43 +48,43 @@ CREATE TYPE "Work_Category" AS ENUM (
 CREATE TABLE IF NOT EXISTS "parking_permits"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "permit_number" BIGINT                         NOT NULL,
-    "created_by"    BIGINT                         NOT NULL,
-    "updated_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "expires_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
+    "permit_number" BIGINT       NOT NULL,
+    "created_by"    BIGINT       NOT NULL,
+    "updated_at"    TIMESTAMP(0) DEFAULT now(),
+    "expires_at"    TIMESTAMP(0) NOT NULL
 );
 
 COMMENT ON COLUMN "parking_permits"."expires_at" IS '5 days long';
 CREATE TABLE IF NOT EXISTS "complaints"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "complaint_number" BIGINT                         NOT NULL,
-    "created_by"       BIGINT                         NOT NULL,
-    "category"         "Complaint_Category"           NOT NULL DEFAULT "Complaint_Category" 'other',
-    "title"            VARCHAR                        NOT NULL,
-    "description"      TEXT                           NOT NULL,
-    "unit_number"      SMALLINT                       NOT NULL,
-    "status"           "Status"                       NOT NULL DEFAULT "Status" 'open',
-    "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
+    "complaint_number" BIGINT               NOT NULL,
+    "created_by"       BIGINT               NOT NULL,
+    "category"         "Complaint_Category" NOT NULL DEFAULT "Complaint_Category" 'other',
+    "title"            VARCHAR              NOT NULL,
+    "description"      TEXT                 NOT NULL,
+    "unit_number"      SMALLINT             NOT NULL,
+    "status"           "Status"             NOT NULL DEFAULT "Status" 'open',
+    "updated_at"       TIMESTAMP(0)                  DEFAULT now(),
+    "created_at"       TIMESTAMP(0)                  DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "work_orders"
 (
     "id"           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "created_by"   BIGINT                         NOT NULL,
-    "order_number" BIGINT                         NOT NULL,
-    "category"     "Work_Category"                NOT NULL,
-    "title"        VARCHAR                        NOT NULL,
-    "description"  TEXT                           NOT NULL,
-    "unit_number"  SMALLINT                       NOT NULL,
-    "status"       "Status"                       NOT NULL DEFAULT "Status" 'open',
-    "updated_at"   TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "created_at"   TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
+    "created_by"   BIGINT          NOT NULL,
+    "order_number" BIGINT          NOT NULL,
+    "category"     "Work_Category" NOT NULL,
+    "title"        VARCHAR         NOT NULL,
+    "description"  TEXT            NOT NULL,
+    "unit_number"  SMALLINT        NOT NULL,
+    "status"       "Status"        NOT NULL DEFAULT "Status" 'open',
+    "updated_at"   TIMESTAMP(0)             DEFAULT now(),
+    "created_at"   TIMESTAMP(0)             DEFAULT now()
 );
 
 CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
-CREATE TYPE "Role" AS ENUM ('tenant', 'admin', 'landlord');
+CREATE TYPE "Role" AS ENUM ('tenant', 'admin');
 CREATE TABLE IF NOT EXISTS "users"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
@@ -92,10 +93,10 @@ CREATE TABLE IF NOT EXISTS "users"
     "last_name"     VARCHAR                        NOT NULL,
     "email"         VARCHAR                        NOT NULL,
     "phone"         VARCHAR                        NULL,
+    "image_url"     TEXT                           NULL, --Avatar picture
     "unit_number"   SMALLINT                       NULL,
     "role"          "Role"                         NOT NULL DEFAULT "Role" 'tenant',
     "status"        "Account_Status"               NOT NULL DEFAULT "Account_Status" 'active',
-    "last_login"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     "updated_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     "created_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );
@@ -112,33 +113,32 @@ CREATE TABLE IF NOT EXISTS "apartments"
     "management_id"    BIGINT                         NOT NULL,
     "availability"     BOOLEAN                        NOT NULL DEFAULT false,
     "lease_id"         BIGINT                         NOT NULL,
-    "lease_start_date" DATE                           NOT NULL,
-    "lease_end_date"   DATE                           NOT NULL,
     "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
     "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
 );
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
-CREATE TABLE IF NOT EXISTS "leases" (
-    "id" BIGSERIAL PRIMARY KEY,
-    "lease_number" BIGINT UNIQUE NOT NULL, 
-    "external_doc_id" TEXT NOT NULL UNIQUE, -- Maps to Documenso's externalId
-    "tenant_id" BIGINT NOT NULL REFERENCES users(id),
-    "landlord_id" BIGINT NOT NULL REFERENCES users(id),
-    "apartment_id" BIGINT,
-    "lease_start_date" DATE NOT NULL,
-    "lease_end_date" DATE NOT NULL,
-    "rent_amount" DECIMAL(10,2) NOT NULL,
-    "lease_status" "Lease_Status" NOT NULL DEFAULT 'active',
-    "created_by" BIGINT NOT NULL,
-    "updated_by" BIGINT NOT NULL,
-    "created_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "updated_at" TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
+CREATE TABLE IF NOT EXISTS "leases"
+(
+    "id"               BIGSERIAL PRIMARY KEY,
+    "lease_number"     BIGINT UNIQUE  NOT NULL,
+    "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
+    "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
+    "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
+    "apartment_id"     BIGINT,
+    "lease_start_date" DATE           NOT NULL,
+    "lease_end_date"   DATE           NOT NULL,
+    "rent_amount"      DECIMAL(10, 2) NOT NULL,
+    "lease_status"     "Lease_Status" NOT NULL DEFAULT 'active',
+    "created_by"       BIGINT         NOT NULL,
+    "updated_by"       BIGINT         NOT NULL,
+    "created_at"       TIMESTAMP(0)            DEFAULT now(),
+    "updated_at"       TIMESTAMP(0)            DEFAULT now()
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
-CREATE INDEX "lease_apartment_id_index" ON "leases" ("id");
+CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
 
 CREATE TABLE IF NOT EXISTS "lockers"
 (

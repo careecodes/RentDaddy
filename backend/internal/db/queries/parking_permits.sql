@@ -2,14 +2,12 @@
 INSERT INTO parking_permits (
     permit_number,
     created_by,
-    updated_at, 
     expires_at
 )
 VALUES (
     $1,
     $2,
-    $3,
-    $4
+    $3
 )
 RETURNING *;
 

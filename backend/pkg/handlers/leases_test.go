@@ -18,14 +18,16 @@ import (
 )
 
 // Global variables for DB connection
-var testDB *pgxpool.Pool
-var queries *db.Queries
+var (
+	testDB  *pgxpool.Pool
+	queries *db.Queries
+)
 
 // Initialize the test database connection
 func TestMain(m *testing.M) {
 	dbURL := os.Getenv("PG_URL")
 	if dbURL == "" {
-		log.Fatal("PG_URL is not set")
+		log.Fatal("PG_URL environment variable is required for tests")
 	}
 
 	var err error

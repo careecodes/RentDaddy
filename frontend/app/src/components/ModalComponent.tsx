@@ -1,8 +1,8 @@
 // Comment to git add .
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
-import { Button, Divider, Form, Input, Modal } from "antd";
-import { PlusOutlined } from "@ant-design/icons";
+import { Button, Divider, Form, Input, Modal, Select } from "antd";
+import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
 type InviteTenant = {
@@ -11,15 +11,29 @@ type InviteTenant = {
     management_id: string;
 };
 
+interface Lease {
+    id: string | number;
+    title: string;
+}
+
+type Building = {
+    buildingNumber: number;
+    floorNumbers: number;
+    numberOfRooms: number;
+};
+
 interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
-    type: "default" | "Smart Locker" | "Guest Parking" | "Invite Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders";
+    type: "default" | "Smart Locker" | "Guest Parking" | "Invite Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
     handleOkay: () => void;
     modalTitle?: string;
+    apartmentBuildingEditProps?: Building;
+    apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
     setInviteTenantObjProps?: React.Dispatch<React.SetStateAction<InviteTenant>>;
+    leases?: Lease[];
 }
 
 // In code we are sending management_id
@@ -47,6 +61,7 @@ const ModalComponent = (props: ModalComponentProps) => {
         "Edit Tenant": "Edit Tenant",
         "View Tenant Complaints": "View Tenant Complaints",
         "View Tenant Work Orders": "View Tenant Work Orders",
+        "Send Tenant Lease": "Send Tenant Lease",
     };
 
     const getAdminSmartLocker = () => {
@@ -229,6 +244,72 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     </Button>
                                 </Form.Item>
                             </div>
+                        </Form>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Edit Apartment Building" && (
+                <>
+                    <Button
+                        type="primary"
+                        onClick={showModal}>
+                        <EditOutlined />
+                        {props.buttonTitle}
+                    </Button>
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <Form>
+                            <Form.Item name="Building #">
+                                <Input
+                                    placeholder={props.apartmentBuildingEditProps?.buildingNumber.toString() || ""}
+                                    type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.apartmentBuildingSetEditBuildingState({
+                                            ...props.apartmentBuildingEditProps!,
+                                            buildingNumber: updatedValue,
+                                        });
+                                    }}
+                                />
+                            </Form.Item>
+                            <Form.Item name="Amount of Floors">
+                                <Input
+                                    placeholder={props.apartmentBuildingEditProps?.floorNumbers.toString() || ""}
+                                    type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.apartmentBuildingSetEditBuildingState({
+                                            ...props.apartmentBuildingEditProps!,
+                                            floorNumbers: updatedValue,
+                                        });
+                                    }}
+                                />
+                            </Form.Item>
+                            <Form.Item name="# of Rooms/Floor">
+                                <Input
+                                    placeholder={props.apartmentBuildingEditProps?.numberOfRooms.toString() || ""}
+                                    type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.apartmentBuildingSetEditBuildingState({
+                                            ...props.apartmentBuildingEditProps!,
+                                            numberOfRooms: updatedValue,
+                                        });
+                                    }}
+                                />
+                            </Form.Item>
+                            <Divider />
                         </Form>
                     </Modal>
                 </>
@@ -417,6 +498,41 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 Confirm
                             </Button>
                         </div>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Send Tenant Lease" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // leases={leaseTemplates || []} // Add null check
+                        okButtonProps={{ disabled: !props.leases?.length }}
+                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                    >
+                        <Form>
+                            {/* Pick a Lease */}
+                            <Form.Item name="lease-template">
+                                <Select
+                                    placeholder="Select a Lease Template"
+                                    options={
+                                        props.leases?.map((lease) => ({
+                                            label: lease.title,
+                                            value: lease.id,
+                                        })) || []
+                                    }
+                                />
+                            </Form.Item>
+                            <p>Please go create a template in Documenso.</p>
+                        </Form>
                     </Modal>
                 </>
             )}

@@ -5,13 +5,8 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id,
-    lease_start_date,
-    lease_end_date,
-    updated_at,
-    created_at
-  )
-VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+    lease_id
+  ) VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetApartmentByUnitNumber :one
@@ -26,9 +21,7 @@ SELECT id,
   size,
   management_id,
   availability,
-  lease_id,
-  lease_start_date,
-  lease_end_date
+  lease_id
 FROM apartments
 WHERE id = $1
 LIMIT 1;
@@ -40,9 +33,7 @@ SELECT id,
   size,
   management_id,
   availability,
-  lease_id,
-  lease_start_date,
-  lease_end_date
+  lease_id
 FROM apartments
 ORDER BY unit_number DESC
 LIMIT $1 OFFSET $2;
@@ -53,9 +44,7 @@ SET price = $2,
   management_id = $3,
   availability = $4,
   lease_id = $5,
-  lease_start_date = $6,
-  lease_end_date = $7,
-  updated_at = $8
+  updated_at = $6
 WHERE id = $1;
 
 -- name: DeleteApartment :exec

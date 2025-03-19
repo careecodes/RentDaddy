@@ -5,25 +5,36 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"strconv"
-	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/careecodes/RentDaddy/internal/utils"
+	"github.com/careecodes/RentDaddy/middleware"
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/invitation"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type UpdateTenantProfileType struct {
-	ClerkID      string         `json:"clerk_id"`
-	FirstName    string         `json:"first_name"`
-	LastName     string         `json:"last_name"`
-	Email        string         `json:"email"`
-	Phone        string         `json:"phone"`
-	LeaseStatus  db.LeaseStatus `json:"lease_status"`
-	LeaseEndDate time.Time      `json:"lease_end_date"`
+type AdminOverviewRequest struct {
+	WorkeOrders []db.WorkOrder `json:"work_orders"`
+	Complaints  []db.Complaint `json:"complaints"`
+	Leases      []db.Lease     `json:"tenants"`
+}
+
+type InviteUserRequest struct {
+	Email        string `json:"email"`
+	UnitNumber   int    `json:"unit_number"`
+	ManagementId string `json:"management_id"` // Amdin clerk_id
+}
+
+type TenantUpdateProfileRequest struct {
+	ClerkID               string `json:"clerk_id"`
+	FirstName             string `json:"first_name"`
+	LastName              string `json:"last_name"`
+	Phone                 string `json:"phone"`
+	PrimaryEmail          string `json:"primary_email"`
+	PrimaryEmailAddressId string `json:"primary_enmail_id"`
 }
 
 type UserHandler struct {
@@ -38,63 +49,10 @@ func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
 	}
 }
 
-func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
-	adminClerkId := r.URL.Query().Get("admin_clerk_id")
-	tenantEmail := chi.URLParam(r, "tenant_email")
-	tenantUnitNumberStr := chi.URLParam(r, "tenant_unit_number")
-
-	if tenantEmail == "" {
-		log.Println("[USER_HANDLER] Provide a valid tenant_email")
-		http.Error(w, "Error no valid tenant email", http.StatusBadRequest)
-		return
-	}
-	if tenantUnitNumberStr == "" {
-		log.Println("[USER_HANDLER] Provide a valid unit_number")
-		http.Error(w, "Error no valid unit_number", http.StatusBadRequest)
-		return
-	}
-
-	tenantUnitInt, err := strconv.Atoi(tenantUnitNumberStr)
-	if err != nil {
-		log.Printf("[USER_HANDLER] Failed converting tenants unit number to Int: %v", err)
-		http.Error(w, "Error converting tenants unit number to Int", http.StatusBadRequest)
-		return
-	}
-
-	publicMetadata := &ClerkUserPublicMetaData{
-		UnitNumber:   tenantUnitInt,
-		ManagementId: adminClerkId,
-	}
-	publicMetadataBytes, err := json.Marshal(publicMetadata)
-	if err != nil {
-		log.Printf("[USER_HANDLER] Failed converting tenants metadata to RAW JSON: %v", err)
-		http.Error(w, "Error converting metadata to JSON", http.StatusInternalServerError)
-		return
-	}
-	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
-
-	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
-		EmailAddress:   tenantEmail,
-		PublicMetadata: &publicMetadataRawJson,
-		// NOTE: update URL
-		RedirectURL:    clerk.String(utils.GetAbsoluteUrl("/auth/login")),
-		IgnoreExisting: clerk.Bool(true), // If pending invite already out will re-invite them
-	})
-
-	if invite.Response != nil && invite.Response.StatusCode == http.StatusOK {
-		w.WriteHeader(http.StatusOK)
-		w.Write([]byte("Success"))
-		return
-	}
-
-	log.Printf("[USER_HANDLER] Failed inviting tenant: %v", err)
-	http.Error(w, "Error inviting tenant", http.StatusInternalServerError)
-}
-
-func (u UserHandler) GetTenantByClerkId(w http.ResponseWriter, r *http.Request) {
+// PUBLIC START
+func (u UserHandler) GetUserByClerkId(w http.ResponseWriter, r *http.Request) {
 	userClerkId := r.URL.Query().Get("clerk_id")
-
-	res, err := u.queries.GetTenantByClerkID(r.Context(), userClerkId)
+	res, err := u.queries.GetUser(r.Context(), userClerkId)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Get tenant by ClerkId failed: %v", err)
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
@@ -113,35 +71,100 @@ func (u UserHandler) GetTenantByClerkId(w http.ResponseWriter, r *http.Request) 
 	w.Write([]byte(jsonRes))
 }
 
-func (u UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
-	limitStr := r.URL.Query().Get("limit")
-	offsetStr := r.URL.Query().Get("offset")
+// PUBLIC END
 
-	limit := 20
-	if limitStr != "" {
-		parsedLimit, err := strconv.Atoi(limitStr)
-		if err == nil {
-			limit = parsedLimit
-		} else {
-			log.Printf("[USER_HANDLER] Inavlid Limit value: %v", err)
-		}
+// ADMIN START
+func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed reading body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
 	}
 
-	offset := 0
-	if offsetStr != "" {
-		parsedOffset, err := strconv.Atoi(offsetStr)
-		if err == nil {
-			offset = parsedOffset
-		} else {
-			log.Printf("[USER_HANDLER] Inavlid offset value: %v", err)
-		}
+	var tenantPayload InviteUserRequest
+	if err := json.Unmarshal(body, &tenantPayload); err != nil {
+		log.Printf("[USER_HANDLER] Failed to parse JSON payload: %v", err)
+		http.Error(w, "Error JSON payload", http.StatusBadRequest)
+		return
 	}
 
-	res, err := u.queries.GetUsers(r.Context(), db.GetUsersParams{
-		Role:   typeOfUser,
-		Limit:  int32(limit),
-		Offset: int32(offset),
+	publicMetadata := &ClerkUserPublicMetaData{
+		UnitNumber:   tenantPayload.UnitNumber,
+		ManagementId: tenantPayload.ManagementId,
+	}
+	publicMetadataBytes, err := json.Marshal(publicMetadata)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed converting tenants metadata to JSON: %v", err)
+		http.Error(w, "Error converting metadata to JSON", http.StatusInternalServerError)
+		return
+	}
+	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
+
+	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
+		EmailAddress:   tenantPayload.Email,
+		PublicMetadata: &publicMetadataRawJson,
+		IgnoreExisting: clerk.Bool(true),
 	})
+
+	if invite.Response != nil && invite.Response.StatusCode == http.StatusOK {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Successfully invited user"))
+		return
+	}
+
+	log.Printf("[USER_HANDLER] Failed inviting tenant: %v", err)
+	http.Error(w, "Error inviting tenant", http.StatusInternalServerError)
+}
+
+func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
+	leases, err := u.queries.ListLeases(r.Context())
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying tenants for adminOverview: %v", err)
+		http.Error(w, "Error querying tenants", http.StatusInternalServerError)
+		return
+	}
+
+	complaints, err := u.queries.ListComplaints(r.Context(), db.ListComplaintsParams{
+		Limit:  5,
+		Offset: 0,
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying complaints for adminOverview: %v", err)
+		http.Error(w, "Error querying complaints", http.StatusInternalServerError)
+		return
+	}
+
+	workOrders, err := u.queries.ListWorkOrders(r.Context(), db.ListWorkOrdersParams{
+		Limit:  5,
+		Offset: 0,
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying work_orders for adminOverview: %v", err)
+		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
+		return
+	}
+
+	adminOverview := &AdminOverviewRequest{
+		WorkeOrders: workOrders,
+		Complaints:  complaints,
+		Leases:      leases,
+	}
+
+	adminOverviewData, err := json.Marshal(adminOverview)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Get tenant by ClerkId failed: %v", err)
+		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(adminOverviewData))
+}
+
+func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
+	tenants, err := u.queries.ListUsersByRole(r.Context(), db.RoleTenant)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed getting tenants: %v", err)
 		http.Error(w, "Failed getting tenants", http.StatusInternalServerError)
@@ -149,7 +172,7 @@ func (u UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request, typeOfU
 
 	}
 
-	jsonRes, err := json.Marshal(res)
+	jsonRes, err := json.Marshal(tenants)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed parsing tenants to JSON: %v", err)
 		http.Error(w, "Failed parsing to JSON", http.StatusInternalServerError)
@@ -161,48 +184,25 @@ func (u UserHandler) GetAllUsers(w http.ResponseWriter, r *http.Request, typeOfU
 	w.Write([]byte(jsonRes))
 }
 
-func (u UserHandler) UpdateTenantCredentials(w http.ResponseWriter, r *http.Request) {
-	userClerkId := r.URL.Query().Get("clerk_id")
-	body, err := io.ReadAll(r.Body)
-	if err != nil {
-		log.Printf("[USER_HANDLER] Failed reading request body: %v", err)
-		http.Error(w, "Error reading request body", http.StatusInternalServerError)
+func (u UserHandler) GetTenantEmailAddresses(w http.ResponseWriter, r *http.Request) {
+	tenantsClerkId := chi.URLParam(r, "clerk_id")
+	tenantEmailAddresses := make([]EmailEntry, 0)
+
+	clerkRes, err := user.Get(r.Context(), tenantsClerkId)
+	if err != nil || clerkRes.Response.StatusCode != http.StatusOK {
+		log.Printf("[USER_HANDLER] Failed querying clerk user data: %v", err)
+		http.Error(w, "Error querying clerk user data", http.StatusInternalServerError)
 		return
 	}
 
-	var updatePayload db.UpdateUserCredentialsParams
-	updatePayload.ClerkID = userClerkId
-	err = json.Unmarshal(body, &updatePayload)
-	if err != nil {
-		log.Printf("[USER_HANDLER] Failed parsing payload to JSON: %v", err)
-		http.Error(w, "Error parsing payload to JSON", http.StatusInternalServerError)
-		return
+	for _, email := range clerkRes.EmailAddresses {
+		tenantEmailAddresses = append(tenantEmailAddresses, EmailEntry{Id: email.ID, EmailAddress: email.EmailAddress, Verification: EmailVerification{Status: email.Verification.Status, Strategy: email.Verification.Strategy}})
 	}
 
-	err = u.queries.UpdateUserCredentials(r.Context(), updatePayload)
+	jsonRes, err := json.Marshal(tenantEmailAddresses)
 	if err != nil {
-		log.Printf("[USER_HANDLER] Failed updating user credentials: %v", err)
-		http.Error(w, "Error updating user credentials", http.StatusInternalServerError)
-		return
-	}
-
-	w.WriteHeader(http.StatusOK)
-}
-
-func (u UserHandler) GetAdminByClerkId(w http.ResponseWriter, r *http.Request) {
-	userClerkId := chi.URLParam(r, "clerk_id")
-
-	res, err := u.queries.GetAdminByClerkID(r.Context(), userClerkId)
-	if err != nil {
-		log.Printf("[USER_HANDLER] Error Get admin by clerk_id failed: %v", err)
-		http.Error(w, "Error querying user data", http.StatusInternalServerError)
-		return
-	}
-
-	jsonRes, err := json.Marshal(res)
-	if err != nil {
-		log.Printf("[USER_HANDLER] Failed converting JSON: %v", err)
-		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+		log.Printf("[USER_HANDLER] Failed converting to JSON: %v", err)
+		http.Error(w, "Error converting to JSON", http.StatusInternalServerError)
 		return
 	}
 
@@ -211,8 +211,13 @@ func (u UserHandler) GetAdminByClerkId(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(jsonRes))
 }
 
-func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.Pool, quries *db.Queries) {
-	userClerkId := r.URL.Query().Get("clerk_id")
+func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request) {
+	// clerkUser, err := middleware.GetClerkUser(r)
+	// if err != nil {
+	// 	log.Printf("[USER_HANDLER] No user CTX")
+	// 	http.Error(w, "Error No user CTX", http.StatusInternalServerError)
+	// 	return
+	// }
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed reading request body: %v", err)
@@ -220,8 +225,7 @@ func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 		return
 	}
 
-	var updatedUserInfo UpdateTenantProfileType
-	updatedUserInfo.ClerkID = userClerkId
+	var updatedUserInfo TenantUpdateProfileRequest
 	err = json.Unmarshal(body, &updatedUserInfo)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed parsing body to JSON: %v", err)
@@ -229,37 +233,114 @@ func UpdateTenantProfile(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 		return
 	}
 
-	tx, err := pool.Begin(r.Context())
-	if err != nil {
-		log.Printf("[USER_HANDLER] Failed instablishing a database transaction: %v", err)
-		http.Error(w, "Error database transaction", http.StatusInternalServerError)
-		return
-	}
-	defer tx.Rollback(r.Context())
-	qtx := quries.WithTx(tx)
-
-	err = qtx.UpdateUserCredentials(r.Context(), db.UpdateUserCredentialsParams{
+	err = u.queries.UpdateUser(r.Context(), db.UpdateUserParams{
 		ClerkID:   updatedUserInfo.ClerkID,
 		FirstName: updatedUserInfo.FirstName,
 		LastName:  updatedUserInfo.LastName,
-		Email:     updatedUserInfo.Email,
+		Email:     updatedUserInfo.PrimaryEmail,
+		Phone:     pgtype.Text{String: updatedUserInfo.Phone, Valid: true},
 	})
 	if err != nil {
-		log.Printf("[USER_HANDLER] Failed updating user %s : %v", userClerkId, err)
+		log.Printf("[USER_HANDLER] Failed updating %s : %v", updatedUserInfo.ClerkID, err)
 		http.Error(w, "Error database transaction", http.StatusInternalServerError)
 		return
 	}
-	// update lease table
-	// NOTE: Need tenant_id in this
-	// _, err = qtx.RenewLease(r.Context(), db.RenewLeaseParams{
-	// 	LeaseEndDate: pgtype.Date{Time: updatedUserInfo.LeaseEndDate, Valid: true},
-	// 	// ???
-	// 	DocumentID: 0,
-	// })
 
-	// updatedUserInfo.LeaseStatus
-	// updatedUserInfo.LeaseEndDate
-	tx.Commit(r.Context())
+	clerkRes, err := user.Update(r.Context(), updatedUserInfo.ClerkID, &user.UpdateParams{
+		FirstName:             &updatedUserInfo.FirstName,
+		LastName:              &updatedUserInfo.LastName,
+		PrimaryEmailAddressID: &updatedUserInfo.PrimaryEmailAddressId,
+	})
+	if err != nil && clerkRes.Response.StatusCode != http.StatusOK {
+		log.Printf("[USER_HANDLER] Failed updating Clerk data for %s : %v", updatedUserInfo.ClerkID, err)
+		http.Error(w, "Error database transaction", http.StatusInternalServerError)
+		return
+	}
 
-	// w.WriteHeader(http.StatusOK)
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Successfully updated tenant"))
 }
+
+// ADMIN END
+
+// TENANT START
+func (u UserHandler) GetTenantParkingPermits(w http.ResponseWriter, r *http.Request) {
+	userCtx, err := middleware.GetClerkUser(r)
+	if err != nil {
+		log.Printf("[USER_HANDLER] No user CTX")
+		http.Error(w, "Error No user CTX", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Current user ID: %s", userCtx.ID)
+
+	// TODO: Finish this
+	// permits, err := u.queries.listParking
+	//
+	w.WriteHeader(http.StatusOK)
+}
+
+func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) {
+	documents, err := u.queries.ListLeases(r.Context())
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying documents for tenant: %v", err)
+		http.Error(w, "Error querying documents for tenant", http.StatusInternalServerError)
+		return
+	}
+
+	jsonDocments, err := json.Marshal(documents)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying documents for tenant: %v", err)
+		http.Error(w, "Error querying documents for tenant", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonDocments))
+}
+
+func (u UserHandler) GetTenantWorkOrders(w http.ResponseWriter, r *http.Request) {
+	workOrders, err := u.queries.ListWorkOrders(r.Context(), db.ListWorkOrdersParams{
+		Limit:  25,
+		Offset: 0,
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying work_orders for tenant: %v", err)
+		http.Error(w, "Error querying work_orders for tenant", http.StatusInternalServerError)
+		return
+	}
+
+	jsonWorkOrders, err := json.Marshal(workOrders)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying work_orders for tenant: %v", err)
+		http.Error(w, "Error querying work_orders for tenant", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonWorkOrders))
+}
+
+func (u UserHandler) GetTenantComplaints(w http.ResponseWriter, r *http.Request) {
+	complaints, err := u.queries.ListComplaints(r.Context(), db.ListComplaintsParams{
+		Limit:  25,
+		Offset: 0,
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying complaints for tenant: %v", err)
+		http.Error(w, "Error querying complaints for tenant", http.StatusInternalServerError)
+		return
+	}
+
+	jsonComplaints, err := json.Marshal(complaints)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying complaints for tenant: %v", err)
+		http.Error(w, "Error querying complaints for tenant", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte(jsonComplaints))
+}
+
+// TENANT END
