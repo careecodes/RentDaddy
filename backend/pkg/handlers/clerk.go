@@ -99,7 +99,9 @@ func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	default:
 		log.Printf("[CLERK_WEBHOOK] Unhandled event: %s", payload.Type)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"received"}`))
+		if _, err := w.Write([]byte(`{"status":"received"}`)); err != nil {
+			log.Printf("[CLERK_WEBHOOK] Failed writing response: %v", err)
+		}
 		return
 	}
 }

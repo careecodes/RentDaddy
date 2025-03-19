@@ -39,6 +39,9 @@ Lease Termination Summary:
 Lease Renewal Summary:
 
 */
+// Temp dir for storing generated leases
+var tempDir = os.Getenv("TEMP_DIR")
+
 // LeaseHandler encapsulates dependencies for lease-related handlers
 type LeaseHandler struct {
 	pool             *pgxpool.Pool
@@ -50,6 +53,10 @@ type LeaseHandler struct {
 func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	baseURL := os.Getenv("DOCUMENSO_API_URL")
 	apiKey := os.Getenv("DOCUMENSO_API_KEY")
+
+	if tempDir == "" {
+		tempDir = "/app/tmp" // Default fallback
+	}
 	return &LeaseHandler{
 		pool:             pool,
 		queries:          queries,
@@ -292,7 +299,7 @@ func (h LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request)
 
 	// Iterate over form values and update fields in Documenso
 	for field, value := range formValues {
-		err := h.documenso_client.SetField(documentID, field, value)
+		err := h.documenso_client.SetField(documentID, field, value, tempDir)
 		if err != nil {
 			http.Error(w, fmt.Sprintf("Failed to update field %s: %v", field, err), http.StatusInternalServerError)
 			return
@@ -303,52 +310,6 @@ func (h LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprintln(w, "Lease fields updated successfully in Documenso")
 }
-func (h LeaseHandler) GeneratePDFHandler(w http.ResponseWriter, r *http.Request) {
-	var req struct {
-		TenantName      string  `json:"tenant_name"`
-		RentAmount      float64 `json:"rent_amount"`
-		PropertyAddress string  `json:"property_address"`
-	}
-
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "Invalid request payload", http.StatusBadRequest)
-		return
-	}
-
-	leasePDF, err := h.GenerateLeaseTemplatePDF("Residential Lease", req.TenantName, req.RentAmount, req.PropertyAddress)
-	if err != nil {
-		http.Error(w, "Failed to generate lease PDF", http.StatusInternalServerError)
-		return
-	}
-
-	// Send generated PDF to client
-	w.Header().Set("Content-Type", "application/pdf")
-	w.WriteHeader(http.StatusOK)
-	if _, err := w.Write(leasePDF); err != nil {
-		http.Error(w, "Failed to write lease PDF to response", http.StatusInternalServerError)
-		return
-	}
-
-}
-
-// // Discarding Lease Template functionality for now.
-// func (h LeaseHandler) GetLeaseTemplateTitles(w http.ResponseWriter, r *http.Request) {
-// 	log.Println("[DEBUG] GetLeaseTemplateTitles endpoint hit")
-// 	ctx := context.Background()
-// 	lease, err := h.queries.GetLeaseTemplateTitles(ctx)
-// 	if err != nil {
-// 		log.Printf("[ERROR] Failed to fetch templates: %v", err)
-// 		http.Error(w, "Error fetching templates", http.StatusNotFound)
-// 		return
-// 	}
-// 	log.Printf("[DEBUG] Found %d lease templates", len(lease))
-
-//		w.Header().Set("Content-Type", "application/json")
-//		if err := json.NewEncoder(w).Encode(lease); err != nil {
-//			log.Printf("[ERROR] Failed to encode response: %v", err)
-//			http.Error(w, "Error parsing database content", http.StatusInternalServerError)
-//		}
-//	}
 func (h *LeaseHandler) GenerateAndUploadLeasePDF(w http.ResponseWriter, r *http.Request) {
 	var req struct {
 		TenantName      string  `json:"tenant_name"`
@@ -654,21 +615,30 @@ func (h *LeaseHandler) UploadLeaseWithSigners(w http.ResponseWriter, r *http.Req
 	} else {
 		// Use fallback landlord info for development
 		signers = append(signers, documenso.Signer{
-			Name:  "Property Manager",
-			Email: "manager@example.com",
+			Name:  "FIRST_ADMIN",
+			Email: os.Getenv("ADMIN_EMAIL"),
 			Role:  documenso.SignerRoleViewer,
 		})
 	}
 
 	// 8. Upload to Documenso with signers
 	docID, err := h.documenso_client.UploadDocumentWithSigners(leasePDF, req.DocumentTitle, signers)
+
 	if err != nil {
 		log.Printf("Error uploading to Documenso: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to upload lease PDF: %v", err), http.StatusInternalServerError)
 		return
 	}
 
-	// 9. Store lease in database with all validated data
+	// 9. Verify document creation
+	exists, err := h.documenso_client.VerifyDocumentExists(docID)
+	if err != nil {
+		log.Printf("Error verifying document: %v", err)
+	} else if !exists {
+		log.Printf("WARNING: Document %s was created but cannot be verified!", docID)
+	}
+
+	// 10. Store lease in database with all validated data
 	leaseParams := db.CreateLeaseParams{
 		LeaseVersion:   1,
 		ExternalDocID:  docID,
@@ -690,8 +660,10 @@ func (h *LeaseHandler) UploadLeaseWithSigners(w http.ResponseWriter, r *http.Req
 		http.Error(w, fmt.Sprintf("Failed to store lease in database: %v", err), http.StatusInternalServerError)
 		return
 	}
+	// 11. Automatically update lease fields in Documenso
+	h.GetLeaseWithFields(w, r)
 
-	// 10. Return success response with lease details
+	// 12. Return success response with lease details
 	resp := map[string]interface{}{
 		"lease_id":        leaseID,
 		"external_doc_id": docID,
@@ -706,4 +678,5 @@ func (h *LeaseHandler) UploadLeaseWithSigners(w http.ResponseWriter, r *http.Req
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		log.Printf("Error encoding response: %v", err)
 	}
+
 }

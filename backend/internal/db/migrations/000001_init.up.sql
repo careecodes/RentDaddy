@@ -125,7 +125,7 @@ CREATE TABLE IF NOT EXISTS "leases"
 (
     "id"               BIGSERIAL PRIMARY KEY,
     "is_signed" BOOLEAN NOT NULL DEFAULT false,
-    "lease_version"     BIGINT UNIQUE  NOT NULL,
+    "lease_version"     BIGINT  NOT NULL,
     "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
     "lease_pdf"   BYTEA         NOT NULL,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
@@ -196,7 +196,7 @@ ALTER TABLE "leases"
 INSERT INTO users (
   id, clerk_id, first_name, last_name, email, phone, unit_number, role, status, created_at, updated_at
 ) OVERRIDING SYSTEM VALUE VALUES
-  (1, 'user_grace1', 'Grace', 'Hall', 'grace.hall@example.com', '+15551234001', 218, 'tenant', 'active', NOW(), NOW()),
+  (1, 'user_grace1', 'Grace', 'Hall', 'wrldconnect1@gmail.com', '+15551234001', 218, 'tenant', 'active', NOW(), NOW()),
   (2, 'user_james1', 'James', 'Smith', 'james.smith@example.com', '+15551234002', 212, 'tenant', 'active', NOW(), NOW()),
   (3, 'user_diego1', 'Diego', 'Lewis', 'diego.lewis@example.com', '+15551234003', 466, 'tenant', 'active', NOW(), NOW()),
   (4, 'user_hector1', 'Hector', 'Wilson', 'hector.wilson@example.com', '+15551234004', 179, 'tenant', 'active', NOW(), NOW()),

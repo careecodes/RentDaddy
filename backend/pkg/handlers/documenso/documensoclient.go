@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
 	"strings"
 	"time"
 )
@@ -14,6 +15,7 @@ import (
 // DocumensoClientInterface defines interactions with the Documenso API
 type DocumensoClientInterface interface {
 	UploadDocument(pdfData []byte, title string) (string, error)
+
 	UploadDocumentWithSigners(pdfData []byte, title string, signers []Signer) (string, error)
 	SetField(documentID, field, value string) error
 }
@@ -70,6 +72,7 @@ func (c *DocumensoClient) UploadDocument(pdfData []byte, title string) (string, 
 	}
 	defer resp.Body.Close()
 
+	c.debugLog("Document creation response status: %d", resp.StatusCode)
 	// Check for errors
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
@@ -86,6 +89,7 @@ func (c *DocumensoClient) UploadDocument(pdfData []byte, title string) (string, 
 		return "", fmt.Errorf("failed to parse response: %w", err)
 	}
 
+	c.debugLog("Document created with ID: %d", response.DocumentID)
 	// Step 2: Upload the actual PDF file
 	uploadReq, err := http.NewRequest("PUT", response.UploadURL, bytes.NewReader(pdfData))
 	if err != nil {
@@ -100,8 +104,11 @@ func (c *DocumensoClient) UploadDocument(pdfData []byte, title string) (string, 
 	}
 	defer uploadResp.Body.Close()
 
+	c.debugLog("PDF upload response status: %d", uploadResp.StatusCode)
+
 	if uploadResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(uploadResp.Body)
+		c.debugLog("Upload error response: %s", string(body))
 		return "", fmt.Errorf("Upload failed with status: %d, response: %s", uploadResp.StatusCode, string(body))
 	}
 
@@ -145,12 +152,15 @@ func (c *DocumensoClient) UploadDocumentWithSigners(pdfData []byte, title string
 	requestBody := map[string]interface{}{
 		"title":      title,
 		"recipients": recipients,
+		"meta":       map[string]interface{}{},
 	}
 
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
 		return "", fmt.Errorf("failed to marshal request body: %w", err)
 	}
+
+	c.debugLog("Request payload: %s", string(requestBodyJSON))
 
 	// Create request
 	req, err := http.NewRequest("POST", createDocumentURL, bytes.NewBuffer(requestBodyJSON))
@@ -205,6 +215,7 @@ func (c *DocumensoClient) UploadDocumentWithSigners(pdfData []byte, title string
 
 	// Step 3: Send the document for signing
 	sendURL := fmt.Sprintf("%s/documents/%d/send", c.BaseURL, response.DocumentID)
+	c.debugLog("Sending document with URL: %s", sendURL)
 	sendReq, err := http.NewRequest("POST", sendURL, bytes.NewBufferString("{}"))
 	if err != nil {
 		return "", fmt.Errorf("failed to create send request: %w", err)
@@ -218,28 +229,33 @@ func (c *DocumensoClient) UploadDocumentWithSigners(pdfData []byte, title string
 		return "", fmt.Errorf("send request failed: %w", err)
 	}
 	defer sendResp.Body.Close()
+	c.debugLog("Send document response status: %d", sendResp.StatusCode)
 
 	if sendResp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(sendResp.Body)
 		return "", fmt.Errorf("Send failed with status: %d, response: %s", sendResp.StatusCode, string(body))
 	}
-
+	c.debugLog("Document %d successfully created and sent", response.DocumentID)
 	return fmt.Sprintf("%d", response.DocumentID), nil
 }
 
 // SetField updates a form field in a document
-func (c *DocumensoClient) SetField(documentID, field, value string) error {
-	url := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, documentID)
+// SetField updates an existing field in a document or adds a new one if not found
+// SetField updates or adds a field in a Documenso document
+func (c *DocumensoClient) SetField(documentID, field, value string, tempDir string) error {
+	log.Printf("📌 Calling SetField for field: %s, document: %s, tempDir: %s", field, documentID, tempDir)
+	// Define file path
+	filePath := fmt.Sprintf("%s/documenso_request.json", tempDir)
 
-	// Define field positions based on field name
+	// Step 1: Define positioning for new fields
 	var (
-		pageX  float64 = 140
-		pageY  float64
-		width  float64 = 160
-		height float64 = 30
+		pageX      float64 = 140
+		pageY      float64
+		width      float64 = 160
+		height     float64 = 30
+		pageNumber int     = 1
 	)
 
-	// Adjust Y position based on field type
 	switch field {
 	case "agreement_date":
 		pageY = 93
@@ -272,15 +288,14 @@ func (c *DocumensoClient) SetField(documentID, field, value string) error {
 	case "tenant_date":
 		pageY = 606
 	default:
-		// Default placement in the middle of the document
 		pageY = 300
 	}
 
-	// Create a field to update
+	// Step 2: Construct request payload
 	payload := map[string]interface{}{
-		"recipientId": 1, // You might need to get the actual recipient ID
+		"recipientId": 1,
 		"type":        "TEXT",
-		"pageNumber":  1,
+		"pageNumber":  pageNumber,
 		"pageX":       pageX,
 		"pageY":       pageY,
 		"pageWidth":   width,
@@ -294,12 +309,32 @@ func (c *DocumensoClient) SetField(documentID, field, value string) error {
 		},
 	}
 
-	body, err := json.Marshal(payload)
+	// Step 3: Save request payload to /temp/documenso_request.json
+	requestJSON, err := json.MarshalIndent(payload, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to encode request: %w", err)
+		return fmt.Errorf("failed to marshal request payload: %w", err)
 	}
 
-	req, err := http.NewRequest("POST", url, bytes.NewBuffer(body))
+	// Ensure directory exists
+	if tempDir == "" {
+		log.Println("⚠️ TEMP_DIR is not set, falling back to /app/tmp")
+		tempDir = "/app/tmp"
+		filePath = fmt.Sprintf("%s/documenso_request.json", tempDir)
+	} else {
+		log.Printf("✅ TEMP_DIR found: %s", tempDir)
+	}
+
+	// Write to file
+	err = os.WriteFile(filePath, requestJSON, 0644)
+	if err != nil {
+		return fmt.Errorf("failed to write request to file: %w", err)
+	}
+
+	log.Printf("Request saved to: %s", filePath)
+
+	// Step 4: Send request to Documenso API
+	apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, documentID)
+	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
 	if err != nil {
 		return fmt.Errorf("failed to create request: %w", err)
 	}
@@ -321,9 +356,9 @@ func (c *DocumensoClient) SetField(documentID, field, value string) error {
 }
 
 // Helper method to set all lease fields
-func (c *DocumensoClient) SetLeaseFields(documentID string, leaseData map[string]string) error {
+func (c *DocumensoClient) SetLeaseFields(documentID string, leaseData map[string]string, tempDir string) error {
 	for field, value := range leaseData {
-		if err := c.SetField(documentID, field, value); err != nil {
+		if err := c.SetField(documentID, field, value, tempDir); err != nil {
 			return fmt.Errorf("failed to set field %s: %w", field, err)
 		}
 	}
@@ -345,3 +380,41 @@ leaseData := map[string]string{
 
 err := client.SetLeaseFields(documentID, leaseData)
 */
+
+// VerifyDocumentExists checks if a document ID is valid in Documenso
+func (c *DocumensoClient) VerifyDocumentExists(documentID string) (bool, error) {
+	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
+	c.debugLog("Verifying document existence: %s", url)
+
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return false, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return false, fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	c.debugLog("Document verification status: %d", resp.StatusCode)
+
+	if resp.StatusCode == http.StatusOK {
+		c.debugLog("Document %s exists in Documenso", documentID)
+		return true, nil
+	} else if resp.StatusCode == http.StatusNotFound {
+		c.debugLog("Document %s does NOT exist in Documenso", documentID)
+		return false, nil
+	}
+
+	body, _ := io.ReadAll(resp.Body)
+	c.debugLog("Unexpected response: %s", string(body))
+	return false, fmt.Errorf("API returned unexpected status: %d, response: %s",
+		resp.StatusCode, string(body))
+}
+
+func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
+	log.Printf("DOCUMENSO DEBUG: "+format, args...)
+}
