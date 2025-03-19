@@ -1,7 +1,6 @@
 import { LockOutlined, InboxOutlined, CarOutlined, MobileOutlined } from "@ant-design/icons";
 import { CardComponent } from "./reusableComponents/CardComponent";
 
-
 /**
  * HomePageFeaturesComponent - Displays a grid of feature cards highlighting smart living amenities
  * Uses Ant Design's Card, Row, and Col components for responsive layout

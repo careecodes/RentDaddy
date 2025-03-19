@@ -1,46 +1,46 @@
 import { useMutation } from "@tanstack/react-query";
 import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
+
+export interface Complaint {
+    complaintNumber: number;
+    createdBy: number;
+    category: any;
+    title: string;
+    description: string;
+    unitNumber: number;
+    status: any;
+}
 
 const TenantComplaintsAndWorkOrders = () => {
     const [requestType, setRequestType] = useState("complaint");
     const [form] = Form.useForm();
 
+    const [complaints, setComplaints] = useState<Complaint[]>([]);
+
     const { mutate: getComplaints } = useMutation({
         mutationFn: async () => {
-            const res = await fetch("http://localhost:5432/complaints", {
+            const res = await fetch("http://localhost:8080/complaints", {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
-                //   body: JSON.stringify({ id: "1" }),
             });
+            const data = await res.json();
+            setComplaints([data]);
             return res;
         },
         onSuccess: () => {
-            // Invalidate and refetch
-            console.log("success");
+            console.log(complaints);
         },
         onError: (e: any) => {
             console.log("error ", e);
         },
     });
 
-    const complaints = [
-        {
-            id: 1,
-            type: "Complaint",
-            title: "Complaint 1 Title",
-            description: "Complaint 1 Description",
-            votes: 10,
-        },
-        {
-            id: 2,
-            type: "Complaint",
-            title: "Complaint 2 Title",
-            description: "Complaint 2 Description",
-            votes: 5,
-        },
-    ];
+    // useEffect(() => {
+    //     getComplaints();
+    //     console.log("c", complaints);
+    // }, []);
 
     const workOrders = [
         {
@@ -125,12 +125,12 @@ const TenantComplaintsAndWorkOrders = () => {
                         <div className="bg-gray-50 p-4 rounded-lg">
                             <h3 className="text-lg font-medium mb-4">Recent Complaints</h3>
                             <div className="space-y-3 mb-4">
-                                {complaints.map((complaint) => (
+                                {complaints?.map((complaint) => (
                                     <div className="flex flex-row items-center p-3 bg-white rounded shadow-sm mb-3 border border-gray-200 justify-content-evenly">
                                         <p>{complaint.title}</p>
                                         <p>{complaint.description}</p>
-                                        <p>Type: {complaint.type}</p>
-                                        <p>{complaint.votes}</p>
+                                        <p>Type: {complaint.category}</p>
+                                        <p>{complaint.status}</p>
                                     </div>
                                 ))}
                                 {complaints.length === 0 && <div className="text-gray-500 italic">No complaints found</div>}

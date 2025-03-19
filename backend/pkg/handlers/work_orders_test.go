@@ -5,14 +5,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
+	"net/http/httptest"
+	"testing"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/go-faker/faker/v4"
 	"github.com/jackc/pgx/v5/pgtype"
-	"net/http"
-	"net/http/httptest"
-	"testing"
-	"time"
 )
 
 func TestBasic(t *testing.T) {
@@ -24,13 +24,12 @@ func TestBasic(t *testing.T) {
 	} else {
 		t.Logf("Test passed: expected %s and got %s", expect, result)
 	}
-
 }
 
 func setupTestUser(t *testing.T) int64 {
 	// Create a new test user
 	clerkID := "clerk_user_id"
-	user, err := queries.GetUserByClerkID(context.Background(), clerkID)
+	user, err := queries.GetUser(context.Background(), clerkID)
 	if err == nil {
 		t.Logf("User already exists with ClerkID: %s", clerkID)
 		t.Logf("User details: %v", user)
@@ -45,7 +44,6 @@ func setupTestUser(t *testing.T) int64 {
 			Email:     faker.Email(),
 			Phone:     pgtype.Text{String: "1234567890"},
 			Role:      db.RoleTenant,
-			LastLogin: pgtype.Timestamp{Time: time.Now(), Valid: true},
 		}
 		user, err := queries.CreateUser(context.Background(), userParams)
 		if err != nil {
