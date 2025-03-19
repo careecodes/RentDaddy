@@ -91,12 +91,12 @@ func main() {
 				r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 				r.Post("/invite", userHandler.InviteTenant)
 				r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
-				r.Post("/{clerk_id}/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
 				// Parking
 				r.Route("/parking", func(r chi.Router) {
 					r.Get("/", parkingPermitHandler.GetParkingPermits)
-					r.Post("/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
 					r.Get("/{permit_number}", parkingPermitHandler.GetParkingPermit)
+					r.Post("/{permit_number}", parkingPermitHandler.CreateParkingPermitHandler)
+					r.Delete("/{permit_number}", parkingPermitHandler.DeleteParkingPermit)
 				})
 			})
 		})

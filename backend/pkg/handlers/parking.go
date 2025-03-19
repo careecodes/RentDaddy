@@ -105,7 +105,7 @@ func (p ParkingPermitHandler) GetParkingPermits(w http.ResponseWriter, r *http.R
 func (p ParkingPermitHandler) GetParkingPermit(w http.ResponseWriter, r *http.Request) {
 	permitNumberStr := chi.URLParam(r, "permit_number")
 	if permitNumberStr == "" {
-		log.Println("[PARKING_HANDLER] invalid permit_number param")
+		log.Println("[PARKING_HANDLER] Invalid permit_number param")
 		http.Error(w, "Error invalid permit_number param", http.StatusBadRequest)
 		return
 	}
@@ -134,4 +134,30 @@ func (p ParkingPermitHandler) GetParkingPermit(w http.ResponseWriter, r *http.Re
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(res))
+}
+
+func (p ParkingPermitHandler) DeleteParkingPermit(w http.ResponseWriter, r *http.Request) {
+	parkingPermitIdStr := chi.URLParam(r, "parking_permit_id")
+
+	if parkingPermitIdStr == "" {
+		log.Println("[PARKING_HANDLER] Invalid parking_permit_id")
+		http.Error(w, "Error converting param", http.StatusBadRequest)
+		return
+	}
+
+	parkingPermitId, err := strconv.Atoi(parkingPermitIdStr)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failedconverting param: %v", err)
+		http.Error(w, "Error converting param", http.StatusInternalServerError)
+		return
+	}
+
+	if err = p.queries.DeleteParkingPermit(r.Context(), int64(parkingPermitId)); err != nil {
+		log.Printf("[PARKING_HANDLER] Failed deleting parking permit: %v", err)
+		http.Error(w, "Error deleting parking permit", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Successfully deleted"))
 }
