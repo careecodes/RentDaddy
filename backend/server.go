@@ -74,6 +74,10 @@ func main() {
 
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
+
+	// Locker Handler
+	lockerHandler := handlers.NewLockerHandler(pool, queries)
+
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
@@ -118,7 +122,18 @@ func main() {
 				})
 			})
 
-			// Apartment
+			// Start of Locker Handlers
+			r.Route("/lockers", func(r chi.Router) {
+				r.Get("/", lockerHandler.GetLockers)
+				r.Get("/{id}", lockerHandler.GetLocker)
+				// Used to change the user assigned to a locker or the status of a locker
+				r.Patch("/{id}", lockerHandler.UpdateLocker)
+				// Used to set up the initial lockers for an apartment
+				r.Post("/", lockerHandler.CreateManyLockers)
+			})
+			// End of Locker Handlers
+
+			// Start of Apartment Handlers
 			r.Route("/apartments", func(r chi.Router) {
 				r.Get("/", apartmentHandler.ListApartmentsHandler)
 				r.Get("/{apartment}", apartmentHandler.GetApartmentHandler)
@@ -126,6 +141,7 @@ func main() {
 				r.Patch("/{apartment}", apartmentHandler.UpdateApartmentHandler)
 				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 			})
+			// End of Apartment Handlers
 		})
 		// End Admin
 
@@ -135,6 +151,12 @@ func main() {
 			r.Get("/documents", userHandler.GetTenantDocuments)
 			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
 			r.Get("/complaints", userHandler.GetTenantComplaints)
+
+			// Locker Endpoints
+			r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
+			r.Post("/lockers/{user_id}/unlock", lockerHandler.UnlockLocker)
+
+			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {
 				r.Get("/", parkingPermitHandler.TenantGetParkingPermits)
 				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)

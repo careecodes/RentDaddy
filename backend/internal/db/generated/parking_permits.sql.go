@@ -70,23 +70,17 @@ func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int6
 }
 
 const getParkingPermit = `-- name: GetParkingPermit :one
-SELECT permit_number, created_by, updated_at, expires_at
+SELECT id, permit_number, created_by, updated_at, expires_at
 FROM parking_permits
 WHERE id = $1
 LIMIT 1
 `
 
-type GetParkingPermitRow struct {
-	PermitNumber int64            `json:"permit_number"`
-	CreatedBy    int64            `json:"created_by"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
-}
-
-func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (GetParkingPermitRow, error) {
+func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (ParkingPermit, error) {
 	row := q.db.QueryRow(ctx, getParkingPermit, id)
-	var i GetParkingPermitRow
+	var i ParkingPermit
 	err := row.Scan(
+		&i.ID,
 		&i.PermitNumber,
 		&i.CreatedBy,
 		&i.UpdatedAt,
