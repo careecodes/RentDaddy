@@ -33,7 +33,7 @@ WHERE id = $1;
 SELECT *
 FROM lockers
 ORDER BY id DESC
-LIMIT $1 OFFSET $2;
+LIMIT (SELECT COUNT(*) FROM lockers);
 
 -- name: GetLocker :one
 SELECT *
@@ -46,3 +46,4 @@ SELECT *
 FROM lockers
 WHERE user_id = $1
 LIMIT 1;
+

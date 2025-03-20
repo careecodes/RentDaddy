@@ -95,16 +95,11 @@ const getLockers = `-- name: GetLockers :many
 SELECT id, access_code, in_use, user_id
 FROM lockers
 ORDER BY id DESC
-LIMIT $1 OFFSET $2
+LIMIT (SELECT COUNT(*) FROM lockers)
 `
 
-type GetLockersParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) GetLockers(ctx context.Context, arg GetLockersParams) ([]Locker, error) {
-	rows, err := q.db.Query(ctx, getLockers, arg.Limit, arg.Offset)
+func (q *Queries) GetLockers(ctx context.Context) ([]Locker, error) {
+	rows, err := q.db.Query(ctx, getLockers)
 	if err != nil {
 		return nil, err
 	}
