@@ -1,12 +1,8 @@
 import { HomeOutlined, UserOutlined } from "@ant-design/icons";
-import { useEffect } from "react";
 import { Link, useLocation } from "react-router";
 
 {
     /* Todo: If the user is on the sidebar link, make the link black */
-}
-{
-    /* Todo: Hover effects, make the text white or something */
 }
 const SidebarLinks = () => {
     const location = useLocation();
@@ -29,24 +25,24 @@ const SidebarLinks = () => {
     };
 
     return (
-        <div className="menu-container d-flex flex-column gap-3 mx-auto py-4 px-1 vh-100">
+        <div className="menu-container d-flex flex-column gap-3 px-1 overflow-y-auto">
             {/* Home Menu Item */}
-            <div className="menu-item hover-lift transition-all rounded-lg p-3">
+            <div className="menu-item rounded-lg p-2 p-md-3">
                 <div className="d-flex align-items-center">
                     <HomeOutlined
-                        className="menu-icon text-white me-3"
-                        style={{ fontSize: "1.25rem" }}
+                        className="menu-icon text-white me-2 me-md-3"
+                        style={{ fontSize: "1.125rem" }}
                     />
                     <Link
                         to="/"
-                        className="text-white text-decoration-none hover:text-primary">
+                        className="text-white text-decoration-none hover:text-primary hover-lift transition-all">
                         Home
                     </Link>
                 </div>
             </div>
 
             {/* Admin Menu Item */}
-            <div className="menu-item hover-lift transition-all rounded-lg p-3">
+            <div className="menu-item rounded-lg p-3">
                 <div className="d-flex align-items-center">
                     <UserOutlined
                         className="menu-icon text-white me-3"
@@ -54,46 +50,46 @@ const SidebarLinks = () => {
                     />
                     <Link
                         to="/admin"
-                        className="text-white text-decoration-none hover:text-secondary">
+                        className="text-white text-decoration-none hover:text-secondary hover-lift transition-all">
                         Admin
                     </Link>
                 </div>
                 <div className="mt-2 ps-4 d-flex flex-column gap-2">
                     <Link
                         to="/admin"
-                        className={getLinkClass("/admin") + (path === "/admin" ? "" : " text-white-50 hover:text-secondary")}>
+                        className={getLinkClass("/admin") + (path === "/admin" ? "" : " text-white-50 hover:text-secondary") + " hover-lift transition-all"}>
                         Dashboard
                     </Link>
                     <Link
                         to="/admin/init-apartment-complex"
-                        className={getLinkClass("/admin/init-apartment-complex")}>
+                        className={getLinkClass("/admin/init-apartment-complex") + " hover-lift transition-all"}>
                         Apartment Setup
                     </Link>
                     <Link
                         to="/admin/add-tenant"
-                        className={getLinkClass("/admin/add-tenant")}>
+                        className={getLinkClass("/admin/add-tenant") + " hover-lift transition-all"}>
                         Add Tenant
                     </Link>
                     <Link
                         to="/admin/admin-view-and-edit-leases"
-                        className={getLinkClass("/admin/admin-view-and-edit-leases")}>
+                        className={getLinkClass("/admin/admin-view-and-edit-leases") + " hover-lift transition-all"}>
                         View Digital Leases
                     </Link>
                     <Link
                         to="/admin/admin-view-and-edit-work-orders-and-complaints"
-                        className={getLinkClass("/admin/admin-view-and-edit-work-orders-and-complaints")}>
+                        className={getLinkClass("/admin/admin-view-and-edit-work-orders-and-complaints") + " hover-lift transition-all"}>
                         Work Orders & Complaints
                     </Link>
                     <Link
                         to="/components/settings"
-                        className={getLinkClass("/components/settings")}>
+                        className={getLinkClass("/components/settings") + " hover-lift transition-all"}>
                         Settings
                     </Link>
                 </div>
             </div>
 
             {/* Tenant Menu Item */}
-            <div className="menu-item hover-lift transition-all rounded-lg p-3">
+            <div className="menu-item rounded-lg p-3">
                 <div className="d-flex align-items-center">
                     <UserOutlined
                         className="menu-icon text-white me-3"
@@ -101,34 +97,35 @@ const SidebarLinks = () => {
                     />
                     <Link
                         to="/tenant"
-                        className="text-white text-decoration-none hover:text-warning">
+                        className="text-white text-decoration-none hover:text-warning hover-lift transition-all">
                         Tenant
                     </Link>
                 </div>
                 <div className="mt-2 ps-4 d-flex flex-column gap-2">
                     <Link
                         to="/tenant"
-                        className={getLinkClass("/tenant") + (path === "/tenant" ? "" : " text-white-50 hover:text-secondary")}>
+                        className={getLinkClass("/tenant") + (path === "/tenant" ? "" : " text-white-50 hover:text-secondary") + " hover-lift transition-all"}>
                         Dashboard
                     </Link>
-                    <Link
+                    {/* We are using a modal instead of this page  */}
+                    {/* <Link
                         to="/tenant/guest-parking"
-                        className={getLinkClass("/tenant/guest-parking")}>
+                        className={getLinkClass("/tenant/guest-parking") + " hover-lift transition-all"}>
                         Guest Parking
-                    </Link>
+                    </Link> */}
                     <Link
                         to="/tenant/tenant-view-and-edit-leases"
-                        className={getLinkClass("/tenant/tenant-view-and-edit-leases")}>
+                        className={getLinkClass("/tenant/tenant-view-and-edit-leases") + " hover-lift transition-all"}>
                         View Digital Leases
                     </Link>
                     <Link
                         to="/tenant/tenant-work-orders-and-complaints"
-                        className={getLinkClass("/tenant/tenant-work-orders-and-complaints")}>
+                        className={getLinkClass("/tenant/tenant-work-orders-and-complaints") + " hover-lift transition-all"}>
                         Work Orders & Complaints
                     </Link>
                     <Link
                         to="/tenant/settings"
-                        className={getLinkClass("/tenant/settings")}>
+                        className={getLinkClass("/tenant/settings") + " hover-lift transition-all"}>
                         Settings
                     </Link>
                 </div>
