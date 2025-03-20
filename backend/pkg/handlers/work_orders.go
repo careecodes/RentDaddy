@@ -88,7 +88,7 @@ func (h WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.R
 }
 
 type WorkOrdersRequest struct {
-	OrderNumber int64  `json:"order_id"`
+	OrderId     int64  `json:"order_id"`
 	Status      string `json:"status"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
