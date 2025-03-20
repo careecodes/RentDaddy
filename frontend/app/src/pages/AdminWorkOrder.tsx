@@ -12,6 +12,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TableProps, TablePaginationConfig } from "antd";
 import Title from "antd/es/typography/Title";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const today = dayjs();
 
@@ -562,7 +563,8 @@ const AdminWorkOrder = () => {
 
     return (
         <div className="container">
-            <h1 className="mb-4 text-center">Work-Orders & Complaints</h1>
+            {/* <h1 className="mb-4 text-center">Work-Orders & Complaints</h1> */}
+            <PageTitleComponent title="Work Order & Complaints" />
             {/* Alerts headers */}
             <div className="d-flex w-100 justify-content-between mb-4">
                 {overdueServiceCount > 0 ? <AlertComponent description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`} /> : null}
