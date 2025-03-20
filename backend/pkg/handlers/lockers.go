@@ -74,7 +74,7 @@ func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
 	// 	}
 	// }
 
-	lockers, err := l.queries.GetLockers(r.Context(), db.GetLockersParams{})
+	lockers, err := l.queries.GetLockers(r.Context())
 	if err != nil {
 		log.Printf("Error getting lockers: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
