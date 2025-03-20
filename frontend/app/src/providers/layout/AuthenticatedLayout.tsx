@@ -9,12 +9,11 @@ import SidebarLinks from "../../components/SidebarLinks";
 const { Header, Content, Footer, Sider } = Layout;
 
 const siderStyle: React.CSSProperties = {
-    overflow: "auto",
+    overflow: "auto", // If we don't want the scrollbar to be scrollable, we can set this to hidden
     height: "100vh",
     position: "sticky",
     insetInlineStart: 0,
     top: 0,
-    // bottom: 0,
     scrollbarWidth: "thin",
     scrollbarGutter: "stable",
     backgroundColor: "#00674f",
@@ -100,7 +99,7 @@ const AuthenticatedLayout: React.FC = () => {
     const isAdmin = path.includes("/admin");
     const isTenant = path.includes("/tenant");
 
-    const defaultSelectedKey = isAdmin ? "admin" : isTenant ? "tenant" : "dashboard";
+    // const defaultSelectedKey = isAdmin ? "admin" : isTenant ? "tenant" : "dashboard";
 
     console.log(isAdmin, isTenant, "isAdmin, isTenant");
 
@@ -111,7 +110,7 @@ const AuthenticatedLayout: React.FC = () => {
             {/* Sidebar Container */}
             <Sider style={siderStyle}>
                 {/* Logo and Title Container */}
-                <div className="logo-container flex flex-column align-items-center justify-content-center py-4">
+                <div className="logo-container flex flex-column align-items-center justify-content-center py-3 py-md-4">
                     <Divider className="divider-text border-white" />
                     <Link
                         to="/"
@@ -131,36 +130,41 @@ const AuthenticatedLayout: React.FC = () => {
                 {/* Menu Container */}
                 {/* <Menu theme='dark' style={{ backgroundColor: '#7789f4', color: '#000000' }} mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} /> */}
 
-                <SidebarLinks />
+                {/* We can change the h-100 here once we show only the admin or tenant menu items based off the user role */}
+                <div className="sidebar-content position-relative h-100 d-flex flex-column">
+                    <div className="flex-grow-1 overflow-y-auto">
+                        <SidebarLinks />
+                    </div>
 
-                {/* Avatar and Login Container */}
-                <div className="avatar-container flex flex-column position-absolute bottom-0 w-100">
-                    <Divider className="divider-text border-white" />
-                    {isSignedIn ? (
-                        <SignOutButton>
-                            <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
-                                <p className="login-text text-white m-0">Sign Out</p>
-                                <Avatar
-                                    className="avatar-icon"
-                                    size={48}
-                                    src={user?.imageUrl}
-                                />
-                            </div>
-                        </SignOutButton>
-                    ) : (
-                        <Link
-                            to="/auth/login"
-                            className="text-decoration-none">
-                            <div className="flex align-items-center justify-content-center gap-2 mb-4">
-                                <p className="login-text text-white m-0">Login</p>
-                                <Avatar
-                                    className="avatar-icon"
-                                    size={48}
-                                    icon={<UserOutlined />}
-                                />
-                            </div>
-                        </Link>
-                    )}
+                    {/* Avatar and Login Container */}
+                    <div className="avatar-container mt-auto pb-3">
+                        <Divider className="divider-text border-white" />
+                        {isSignedIn ? (
+                            <SignOutButton>
+                                <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
+                                    <p className="login-text text-white m-0">Sign Out</p>
+                                    <Avatar
+                                        className="avatar-icon"
+                                        size={48}
+                                        src={user?.imageUrl}
+                                    />
+                                </div>
+                            </SignOutButton>
+                        ) : (
+                            <Link
+                                to="/auth/login"
+                                className="text-decoration-none">
+                                <div className="flex align-items-center justify-content-center gap-2 mb-4">
+                                    <p className="login-text text-white m-0">Login</p>
+                                    <Avatar
+                                        className="avatar-icon"
+                                        size={48}
+                                        icon={<UserOutlined />}
+                                    />
+                                </div>
+                            </Link>
+                        )}
+                    </div>
                 </div>
             </Sider>
 
