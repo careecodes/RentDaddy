@@ -76,6 +76,7 @@ func main() {
 	userHandler := handlers.NewUserHandler(pool, queries)
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
+	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -85,31 +86,39 @@ func main() {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
 
+			// Tenants
 			r.Route("/tenants", func(r chi.Router) {
 				r.Get("/", userHandler.GetAllTenants)
 				r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 				r.Post("/invite", userHandler.InviteTenant)
 				r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
+			})
+			// ParkingPermits
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/", parkingPermitHandler.GetParkingPermits)
+				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
+				r.Post("/", parkingPermitHandler.CreateParkingPermit)
+				r.Delete("/{permit_id}", parkingPermitHandler.DeleteParkingPermit)
+			})
 
-				// Parking
-				r.Route("/parking", func(r chi.Router) {
-					r.Get("/", parkingPermitHandler.GetParkingPermits)
-					r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
-					r.Post("/", parkingPermitHandler.CreateParkingPermit)
-					r.Delete("/{permit_id}", parkingPermitHandler.DeleteParkingPermit)
+			// Work Orders
+			r.Route("/work_orders", func(r chi.Router) {
+				r.Get("/", workOrderHandler.ListWorkOrdersHandler)
+				r.Post("/", workOrderHandler.CreateWorkOrderHandler)
+				r.Route("/{order_id}", func(r chi.Router) {
+					r.Get("/", workOrderHandler.GetWorkOrderHandler)
+					r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
+					r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
 				})
+			})
 
-				// Work Orders
-				r.Route("/work_orders", func(r chi.Router) {
-					r.Get("/", workOrderHandler.ListWorkOrdersHandler)
-					// Create Order
-					r.Post("/", workOrderHandler.CreateWorkOrderHandler)
-					r.Route("/{order_id}", func(r chi.Router) {
-						r.Get("/", workOrderHandler.GetWorkOrderHandler)
-						r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
-						r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
-					})
-				})
+			// Apartment
+			r.Route("/apartments", func(r chi.Router) {
+				r.Get("/", apartmentHandler.ListApartmentsHandler)
+				r.Get("/{apartment}", apartmentHandler.GetApartmentHandler)
+				r.Post("/", apartmentHandler.CreateApartmentHandler)
+				r.Patch("/{apartment}", apartmentHandler.UpdateApartmentHandler)
+				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 			})
 		})
 
