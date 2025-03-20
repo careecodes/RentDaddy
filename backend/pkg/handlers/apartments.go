@@ -5,7 +5,9 @@ import (
 	"fmt"
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"io"
 	"log"
 	"net/http"
 	"strconv"
@@ -21,6 +23,13 @@ func NewApartmentHandler(pool *pgxpool.Pool, queries *db.Queries) *ApartmentHand
 		pool:    pool,
 		queries: queries,
 	}
+}
+
+type UpdateApartmentParams struct {
+	Price        pgtype.Numeric `json:"price"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (h ApartmentHandler) GetApartmentHandler(w http.ResponseWriter, r *http.Request) {
@@ -123,7 +132,6 @@ func (h ApartmentHandler) CreateApartmentHandler(w http.ResponseWriter, r *http.
 
 func (h ApartmentHandler) UpdateApartmentHandler(w http.ResponseWriter, r *http.Request) {
 	param := chi.URLParam(r, "apartment_id")
-
 	apartmentID, err := strconv.Atoi(param)
 	if err != nil {
 		log.Printf("Error parsing apartment number: %v", err)
@@ -131,14 +139,29 @@ func (h ApartmentHandler) UpdateApartmentHandler(w http.ResponseWriter, r *http.
 		return
 	}
 
-	var updateParams db.UpdateApartmentParams
-	if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
+	reqUpdate, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("Error reading request body: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Unmarshal the request body into the UpdateApartmentParams struct
+	var updateRequestParams UpdateApartmentParams
+	if err := json.Unmarshal(reqUpdate, &updateRequestParams); err != nil {
 		log.Printf("Error decoding request body: %v", err)
 		http.Error(w, "Invalid request payload", http.StatusBadRequest)
 		return
 	}
 
-	updateParams.ID = int64(apartmentID)
+	updateParams := db.UpdateApartmentParams{
+		ID:           int64(apartmentID),
+		Price:        updateRequestParams.Price,
+		ManagementID: updateRequestParams.ManagementID,
+		Availability: updateRequestParams.Availability,
+		LeaseID:      updateRequestParams.LeaseID,
+	}
+
 	err = h.queries.UpdateApartment(r.Context(), updateParams)
 	if err != nil {
 		log.Printf("Error updating apartment %d: %v", apartmentID, err)
