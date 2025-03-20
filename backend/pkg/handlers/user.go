@@ -23,9 +23,8 @@ type AdminOverviewRequest struct {
 }
 
 type InviteUserRequest struct {
-	Email        string `json:"email"`
-	UnitNumber   int    `json:"unit_number"`
-	ManagementId string `json:"management_id"` // Amdin clerk_id
+	Email      string `json:"email"`
+	UnitNumber int    `json:"unit_number"`
 }
 
 type TenantUpdateProfileRequest struct {
@@ -89,9 +88,18 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	adminCtx := middleware.GetUserCtx(r)
+	if adminCtx == nil {
+		log.Println("[PARKING_HANDLER] Failed no user context")
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
+		return
+	}
+
+	// log.Printf("user ctx ID: %d\n", adminCtx.ID)
+
 	publicMetadata := &ClerkUserPublicMetaData{
 		UnitNumber:   tenantPayload.UnitNumber,
-		ManagementId: tenantPayload.ManagementId,
+		ManagementId: adminCtx.ID,
 	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {

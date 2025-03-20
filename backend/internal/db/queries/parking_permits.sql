@@ -19,9 +19,9 @@ FROM parking_permits
 WHERE created_by = $1;
 
 -- name: GetParkingPermit :one
-SELECT permit_number, created_by, updated_at, expires_at
+SELECT *
 FROM parking_permits
-WHERE permit_number = $1
+WHERE id = $1
 LIMIT 1;
 
 -- name: GetTenantParkingPermits :many

@@ -72,7 +72,7 @@ func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int6
 const getParkingPermit = `-- name: GetParkingPermit :one
 SELECT permit_number, created_by, updated_at, expires_at
 FROM parking_permits
-WHERE permit_number = $1
+WHERE id = $1
 LIMIT 1
 `
 
@@ -83,8 +83,8 @@ type GetParkingPermitRow struct {
 	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
 }
 
-func (q *Queries) GetParkingPermit(ctx context.Context, permitNumber int64) (GetParkingPermitRow, error) {
-	row := q.db.QueryRow(ctx, getParkingPermit, permitNumber)
+func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (GetParkingPermitRow, error) {
+	row := q.db.QueryRow(ctx, getParkingPermit, id)
 	var i GetParkingPermitRow
 	err := row.Scan(
 		&i.PermitNumber,

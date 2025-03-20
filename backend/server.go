@@ -104,7 +104,7 @@ func main() {
 					r.Get("/", workOrderHandler.ListWorkOrdersHandler)
 					// Create Order
 					r.Post("/", workOrderHandler.CreateWorkOrderHandler)
-					r.Route("/{order_number}", func(r chi.Router) {
+					r.Route("/{order_id}", func(r chi.Router) {
 						r.Get("/", workOrderHandler.GetWorkOrderHandler)
 						r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
 						r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
@@ -121,7 +121,7 @@ func main() {
 			r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
 			r.Route("/parking", func(r chi.Router) {
 				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
-				// r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
+				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
 			})
 		})
 	})

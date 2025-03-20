@@ -16,9 +16,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-type ParkingPermitRequest struct {
-	UserClerkId         string
-	ParkingPermitNumber int
+type CreateParkingPermitRequest struct {
+	TenantClerkId       string `json:"tenant_clerk_id"`
+	ParkingPermitNumber int    `json:"permit_number"`
 }
 
 type ParkingPermitHandler struct {
@@ -42,7 +42,7 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 		return
 	}
 
-	var parkingPermitReq ParkingPermitRequest
+	var parkingPermitReq CreateParkingPermitRequest
 	err = json.Unmarshal(body, &parkingPermitReq)
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed parsing JSON: %v", err)
@@ -50,7 +50,7 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 		return
 	}
 
-	userCtx, err := user.Get(r.Context(), parkingPermitReq.UserClerkId)
+	userCtx, err := user.Get(r.Context(), parkingPermitReq.TenantClerkId)
 	if err != nil {
 		log.Println("[PARKING_HANDLER] Failed user not found")
 		http.Error(w, "Error user not found", http.StatusNotFound)
@@ -135,21 +135,21 @@ func (p ParkingPermitHandler) GetParkingPermits(w http.ResponseWriter, r *http.R
 }
 
 func (p ParkingPermitHandler) GetParkingPermit(w http.ResponseWriter, r *http.Request) {
-	permitNumberStr := chi.URLParam(r, "permit_number")
-	if permitNumberStr == "" {
+	permitIdStr := chi.URLParam(r, "permit_id")
+	if permitIdStr == "" {
 		log.Println("[PARKING_HANDLER] Invalid permit_number param")
 		http.Error(w, "Error invalid permit_number param", http.StatusBadRequest)
 		return
 	}
 
-	permitNumber, err := strconv.Atoi(permitNumberStr)
+	permitId, err := strconv.Atoi(permitIdStr)
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
 		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
 		return
 	}
 
-	parkingPermit, err := p.queries.GetParkingPermit(r.Context(), int64(permitNumber))
+	parkingPermit, err := p.queries.GetParkingPermit(r.Context(), int64(permitId))
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed querying parking permit: %v", err)
 		http.Error(w, "Error querying parking permit", http.StatusNotFound)
@@ -169,7 +169,7 @@ func (p ParkingPermitHandler) GetParkingPermit(w http.ResponseWriter, r *http.Re
 }
 
 func (p ParkingPermitHandler) DeleteParkingPermit(w http.ResponseWriter, r *http.Request) {
-	parkingPermitIdStr := chi.URLParam(r, "permit_number")
+	parkingPermitIdStr := chi.URLParam(r, "permit_id")
 
 	if parkingPermitIdStr == "" {
 		log.Println("[PARKING_HANDLER] Invalid parking_permit_id")

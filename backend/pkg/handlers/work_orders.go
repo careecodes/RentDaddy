@@ -24,7 +24,7 @@ func NewWorkOrderHandler(pool *pgxpool.Pool, queries *db.Queries) *WorkOrderHand
 }
 
 func (h WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
-	param := chi.URLParam(r, "work_order")
+	param := chi.URLParam(r, "order_id")
 
 	workOrderNumber, err := strconv.Atoi(param)
 	if err != nil {
@@ -64,11 +64,6 @@ func (h WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.R
 	}
 
 	workOrders, err := h.queries.ListWorkOrders(r.Context(), props)
-	if workOrders == nil || len(workOrders) == 0 {
-		log.Printf("No work orders found: %v", err)
-		http.Error(w, "No work orders found", http.StatusNotFound)
-		return
-	}
 	if err != nil {
 		log.Printf("Error fetching work orders: %v", err)
 		http.Error(w, "Failed to fetch work orders", http.StatusInternalServerError)
@@ -93,7 +88,7 @@ func (h WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.R
 }
 
 type WorkOrdersRequest struct {
-	OrderNumber int64  `json:"order_number"`
+	OrderNumber int64  `json:"order_id"`
 	Status      string `json:"status"`
 	Description string `json:"description"`
 	Category    string `json:"category"`
@@ -136,8 +131,8 @@ func (h WorkOrderHandler) CreateWorkOrderHandler(w http.ResponseWriter, r *http.
 }
 
 func (h *WorkOrderHandler) UpdateWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
-	param := chi.URLParam(r, "work_order")
-	workOrderNumber, err := strconv.Atoi(param)
+	param := chi.URLParam(r, "order_id")
+	workOrderId, err := strconv.Atoi(param)
 	if err != nil {
 		log.Printf("Error parsing work order number: %v", err)
 		http.Error(w, "Invalid work order number", http.StatusBadRequest)
@@ -151,10 +146,10 @@ func (h *WorkOrderHandler) UpdateWorkOrderHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	updateParams.ID = int64(workOrderNumber)
+	updateParams.ID = int64(workOrderId)
 	err = h.queries.UpdateWorkOrder(r.Context(), updateParams)
 	if err != nil {
-		log.Printf("Error updating work order %d: %v", workOrderNumber, err)
+		log.Printf("Error updating work order %d: %v", workOrderId, err)
 		http.Error(w, "Failed to update work order", http.StatusInternalServerError)
 		return
 	}
@@ -175,22 +170,21 @@ func (h *WorkOrderHandler) UpdateWorkOrderHandler(w http.ResponseWriter, r *http
 		return
 	}
 
-	log.Printf("Work order %d updated successfully", workOrderNumber)
-
+	log.Printf("Work order %d updated successfully", workOrderId)
 }
 
 func (h *WorkOrderHandler) DeleteWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
-	param := chi.URLParam(r, "work_order")
-	workOrderNumber, err := strconv.Atoi(param)
+	param := chi.URLParam(r, "order_id")
+	workOrderId, err := strconv.Atoi(param)
 	if err != nil {
 		log.Printf("Error parsing work order number: %v", err)
 		http.Error(w, "Invalid work order number", http.StatusBadRequest)
 		return
 	}
 
-	err = h.queries.DeleteWorkOrder(r.Context(), int64(workOrderNumber))
+	err = h.queries.DeleteWorkOrder(r.Context(), int64(workOrderId))
 	if err != nil {
-		log.Printf("Error deleting work order %d: %v", workOrderNumber, err)
+		log.Printf("Error deleting work order %d: %v", workOrderId, err)
 		http.Error(w, "Failed to delete work order", http.StatusInternalServerError)
 		return
 	}
