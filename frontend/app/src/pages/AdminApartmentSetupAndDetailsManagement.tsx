@@ -5,6 +5,7 @@ import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import { useMutation } from "@tanstack/react-query";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const DOMAIN_URL = import.meta.env.DOMAIN_URL;
 const PORT = import.meta.env.PORT;
@@ -112,7 +113,8 @@ const AdminApartmentSetupAndDetailsManagement = () => {
 
     return (
         <div className="container">
-            <h1 className="mb-3">Admin Apartment Setup And Details Management</h1>
+            {/* <h1 className="mb-3">Admin Apartment Setup And Details Management</h1> */}
+            <PageTitleComponent title="Admin Apartment Setup and Details Management" />
             <Form
                 className="admin-apartment-setup-form-container"
                 layout="vertical">

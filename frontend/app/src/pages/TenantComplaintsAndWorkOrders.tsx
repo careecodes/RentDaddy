@@ -1,6 +1,7 @@
 //TODO: Connect Backend whenever that is ready (Get Recent Complaints or Work Orders, and Submit the Form)
 import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd";
 import { useState } from "react";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const TenantComplaintsAndWorkOrders = () => {
     const [requestType, setRequestType] = useState("complaint");
@@ -73,7 +74,8 @@ const TenantComplaintsAndWorkOrders = () => {
     return (
         <div className="container">
             {/* Title */}
-            <h1 className="mb-4">Complaints and Work Orders</h1>
+            {/* <h1 className="mb-4">Complaints and Work Orders</h1> */}
+            <PageTitleComponent title="Complaints and Work Orders" />
 
             {/* Start of Form */}
             <Form

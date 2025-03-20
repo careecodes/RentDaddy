@@ -14,6 +14,7 @@ import { LeaseData } from "../types/types.ts";
 import { ItemType } from "antd/es/menu/interface";
 import { useMutation, useQuery } from "@tanstack/react-query";
 import ModalComponent from "../components/ModalComponent.tsx";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent.tsx";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -302,7 +303,8 @@ export default function AdminViewEditLeases() {
 
     return (
         <div className="container overflow-hidden">
-            <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+            {/* <h1 className="p-3 text-primary">Admin View & Edit Leases</h1> */}
+            <PageTitleComponent title="Admin View & Edit Leases" />
 
             <TableComponent<LeaseData>
                 columns={leaseColumns}

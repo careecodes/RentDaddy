@@ -17,7 +17,7 @@ export const CardComponent = (props: CardComponentProps) => {
             <Card
                 title={
                     <>
-                        <div className="flex flex-row align-items-center">
+                        <div className="flex flex-column align-items-center">
                             <span className="me-2 mt-2">{props.icon}</span>
                             <span>{props.title}</span>
                         </div>
