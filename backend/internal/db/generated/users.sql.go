@@ -20,9 +20,10 @@ INSERT INTO users (
     phone,
     unit_number,
     image_url,
-    role
+    role,
+    updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8
+    $1, $2, $3, $4, $5, $6, $7, $8, now()
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at
 `
 
@@ -176,7 +177,7 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersBy
 
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, image_url = $6
+SET first_name = $2, last_name = $3, email = $4, phone = $5, image_url = $6, updated_at = now()
 WHERE clerk_id = $1
 `
 
