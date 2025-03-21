@@ -43,22 +43,23 @@ func main() {
 	clerk.SetKey(clerkSecretKey)
 	ctx := context.Background()
 	userCount := 10
+	unitNumber := 101
 
 	for i := 0; i < userCount; i++ {
-		if err := createUser(ctx); err != nil {
+		if err := createUser(ctx, unitNumber); err != nil {
 			log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
+			unitNumber = unitNumber + 1
 		}
 	}
 }
 
-func createUser(ctx context.Context) error {
+func createUser(ctx context.Context, unitNumber int) error {
 	// NOTE: watch for dublication / recheck randomUnitNumber logic
-	randomUnitNumbers, err := faker.RandomInt(101, 999)
+	randomUnitNumbers, err := faker.RandomInt(unitNumber, 999)
 	if err != nil {
 		return err
 	}
 
-	unitNumber := 101
 	if len(randomUnitNumbers) > 0 {
 		unitNumber = randomUnitNumbers[0]
 	}
@@ -91,6 +92,8 @@ func createUser(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
+
+	// Make new entries for work_orders and complaints and maybe parking
 
 	return nil
 }
