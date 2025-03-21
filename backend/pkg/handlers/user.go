@@ -220,12 +220,6 @@ func (u UserHandler) GetTenantEmailAddresses(w http.ResponseWriter, r *http.Requ
 }
 
 func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.GetUserCtx(r)
-	if userCtx == nil {
-		log.Println("[PARKING_HANDLER] Failed no user context")
-		http.Error(w, "Error no user context", http.StatusUnauthorized)
-		return
-	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed reading request body: %v", err)
@@ -293,10 +287,22 @@ func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) 
 }
 
 func (u UserHandler) GetTenantWorkOrders(w http.ResponseWriter, r *http.Request) {
-	workOrders, err := u.queries.ListWorkOrders(r.Context(), db.ListWorkOrdersParams{
-		Limit:  25,
-		Offset: 0,
-	})
+	currUserCtx := middleware.GetUserCtx(r)
+	if currUserCtx == nil {
+		log.Println("[USER_HANDLER] Failed no user context")
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
+		return
+	}
+
+	var userMetedata ClerkUserPublicMetaData
+	err := json.Unmarshal(currUserCtx.PublicMetadata, &userMetedata)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
+		return
+	}
+
+	workOrders, err := u.queries.ListTenantWorkOrders(r.Context(), int64(userMetedata.DbId))
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying work_orders for tenant: %v", err)
 		http.Error(w, "Error querying work_orders for tenant", http.StatusInternalServerError)

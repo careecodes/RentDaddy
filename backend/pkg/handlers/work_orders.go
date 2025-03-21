@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 )
@@ -204,4 +205,46 @@ func (h *WorkOrderHandler) DeleteWorkOrderHandler(w http.ResponseWriter, r *http
 		http.Error(w, "Failed to write response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h WorkOrderHandler) GetTenantWorkOrders(w http.ResponseWriter, r *http.Request) {
+	tenantClerkId := chi.URLParam(r, "clerk_id")
+	if tenantClerkId == "" {
+		log.Printf("[USER_HANDLER] Failed no tenant clerk id provided")
+		http.Error(w, "Error no tenant clerk id provided", http.StatusBadRequest)
+		return
+	}
+
+	tenantClerkData, err := user.Get(r.Context(), tenantClerkId)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed getting tenant from Clerk")
+		http.Error(w, "Error getting tenant from Clerk", http.StatusBadRequest)
+		return
+	}
+
+	var tenantMetadata ClerkUserPublicMetaData
+	err = json.Unmarshal(tenantClerkData.PublicMetadata, &tenantMetadata)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
+		return
+	}
+
+	workOrders, err := h.queries.ListTenantWorkOrders(r.Context(), int64(tenantMetadata.DbId))
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying tenant work orders: %v", err)
+		http.Error(w, "Error querying tenant work orders", http.StatusInternalServerError)
+		return
+	}
+
+	jsonWorkOrders, err := json.Marshal(workOrders)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed converting to JSON: %v", err)
+		http.Error(w, "Error converting to JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonWorkOrders))
 }
