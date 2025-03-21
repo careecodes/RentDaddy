@@ -4,9 +4,8 @@ dotenv: ["../.env"]
 
 vars:
   MPATH: "internal/db/migrations/"
-  # PG_URL: postgresql://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
-  PG_URL: postgresql://{{.POSTGRES_USER}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
-
+  PG_URL: postgresql://{{.POSTGRES_USER}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+  DATABASE_URL: .PG_URL
 tasks:
   build:
     cmds:
@@ -85,3 +84,7 @@ tasks:
         fi
         echo "Running all tests in container: $CONTAINER_NAME..."
         psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+  cron:expire-leases:
+    desc: "Run lease expiration job manually in backend container"
+    cmds:
+      - docker exec rentdaddy-backend /app/bin/expire-leases

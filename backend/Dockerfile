@@ -64,6 +64,16 @@ RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
 
 EXPOSE 8080 2345
 
+# Build lease cron binary
+RUN go build -o /app/bin/expire-leases ./cmd/cron/expire_leases.go
+
+# Copy crontab
+COPY ./backend/cron/leases-cron /etc/cron.d/leases-cron
+RUN chmod 0644 /etc/cron.d/leases-cron
+
+# Apply cron job
+RUN crontab /etc/cron.d/leases-cron
+
 # Run entrypoint
 RUN ls -la
 ENTRYPOINT [ "/app/entrypoint.sh" ]

@@ -144,30 +144,11 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
 		return
 	}
-	var fullLeases []db.Lease
-	for _, row := range leases {
-		fullLeases = append(fullLeases, db.Lease{
-			ID:              row.ID,
-			LeaseNumber:     row.LeaseNumber,
-			ExternalDocID:   row.ExternalDocID,
-			LeasePdf:        row.LeasePdf,
-			TenantID:        row.TenantID,
-			LandlordID:      row.LandlordID,
-			ApartmentID:     row.ApartmentID,
-			LeaseStartDate:  row.LeaseStartDate,
-			LeaseEndDate:    row.LeaseEndDate,
-			RentAmount:      row.RentAmount,
-			Status:          row.Status,
-			CreatedBy:       row.CreatedBy,
-			UpdatedBy:       row.UpdatedBy,
-			PreviousLeaseID: row.PreviousLeaseID,
-		})
-	}
 
 	adminOverview := &AdminOverviewRequest{
 		WorkeOrders: workOrders,
 		Complaints:  complaints,
-		Leases:      fullLeases,
+		Leases:      leases,
 	}
 
 	adminOverviewData, err := json.Marshal(adminOverview)
@@ -363,3 +344,56 @@ func (u UserHandler) GetTenantComplaints(w http.ResponseWriter, r *http.Request)
 }
 
 // TENANT END
+
+// LANDLORD START
+
+// GetLandlord returns landlord info by ClerkID
+func (u UserHandler) GetLandlord(w http.ResponseWriter, r *http.Request) {
+	// Get the ClerkID from the URL parameter
+	clerkID := chi.URLParam(r, "clerk_id")
+
+	// Check if the ClerkID is provided
+	if clerkID == "" {
+		log.Printf("[HANDLER] Missing clerk_id parameter")
+		http.Error(w, "Missing clerk_id parameter", http.StatusBadRequest)
+		return
+	}
+
+	// Query the database to get the user by ClerkID
+	landlord, err := u.queries.GetUser(r.Context(), clerkID)
+	if err != nil {
+		log.Printf("[HANDLER] Failed to get user from ClerkID %s: %v", clerkID, err)
+
+		// Check for specific errors
+		if err.Error() == "no rows in result set" {
+			http.Error(w, "User not found", http.StatusNotFound)
+		} else {
+			http.Error(w, "Error fetching user data", http.StatusInternalServerError)
+		}
+		return
+	}
+
+	// Create a response structure with just the needed fields
+	response := struct {
+		ID    int64  `json:"id"`
+		Name  string `json:"name"`
+		Email string `json:"email"`
+	}{
+		ID:    landlord.ID,
+		Name:  landlord.FirstName + " " + landlord.LastName,
+		Email: landlord.Email,
+	}
+
+	// Convert to JSON
+	jsonResponse, err := json.Marshal(response)
+	if err != nil {
+		log.Printf("[HANDLER] Failed to marshal landlord response: %v", err)
+		http.Error(w, "Error processing response", http.StatusInternalServerError)
+		return
+	}
+
+	// Set content type and write response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	w.Write(jsonResponse)
+}

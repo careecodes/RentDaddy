@@ -32,7 +32,9 @@ services:
     volumes:
       - ./backend:/app
       - /app/tmp
+      - /app/temp
       - ./backend/tmp:/app/tmp
+      - ./backend/temp:/app/temp
       - ./backend/assets/minimalresidentialagreement.pdf:/files/minimalresidentialagreement.pdf
     env_file: .env
     networks:

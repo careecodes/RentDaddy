@@ -1,13 +1,19 @@
-
+import dayjs from 'dayjs';
 export interface LeaseData {
-    key: number;
+    id: number;
+    tenantId: number;
+    apartmentId: number;
+    tenantEmail: string;
     tenantName: string;
     apartment: string;
     leaseStartDate: string;
     leaseEndDate: string;
     rentAmount: number;
     status: string;
+    formattedStartDate?: dayjs.Dayjs;
+    formattedEndDate?: dayjs.Dayjs;
 }
+
 
 export interface WorkOrderData {
     key: number;

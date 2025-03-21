@@ -7,10 +7,17 @@ import (
 	"io"
 	"log"
 	"net/http"
-	"os"
 	"strings"
 	"time"
 )
+
+type documensoSendResponse struct {
+	DocumentID int `json:"documentId"`
+	Recipients []struct {
+		Email      string `json:"email"`
+		SigningURL string `json:"signingUrl"`
+	} `json:"recipients"`
+}
 
 // DocumensoClientInterface defines interactions with the Documenso API
 type DocumensoClientInterface interface {
@@ -40,81 +47,6 @@ func NewDocumensoClient(baseURL, apiKey string) *DocumensoClient {
 	}
 }
 
-// UploadDocument uploads a PDF to Documenso and returns the document ID
-func (c *DocumensoClient) UploadDocument(pdfData []byte, title string) (string, error) {
-	// Create the document metadata
-	createDocumentURL := fmt.Sprintf("%s/documents", c.BaseURL)
-
-	// Prepare JSON request body
-	requestBody := map[string]interface{}{
-		"title":      title,
-		"recipients": []map[string]string{},
-	}
-
-	requestBodyJSON, err := json.Marshal(requestBody)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal request body: %w", err)
-	}
-
-	// Create request to get the upload URL
-	req, err := http.NewRequest("POST", createDocumentURL, bytes.NewBuffer(requestBodyJSON))
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	// Send request
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("API request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	c.debugLog("Document creation response status: %d", resp.StatusCode)
-	// Check for errors
-	if resp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(body))
-	}
-
-	// Parse response to get upload URL and document ID
-	var response struct {
-		UploadURL  string `json:"uploadUrl"`
-		DocumentID int    `json:"documentId"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
-	}
-
-	c.debugLog("Document created with ID: %d", response.DocumentID)
-	// Step 2: Upload the actual PDF file
-	uploadReq, err := http.NewRequest("PUT", response.UploadURL, bytes.NewReader(pdfData))
-	if err != nil {
-		return "", fmt.Errorf("failed to create upload request: %w", err)
-	}
-
-	uploadReq.Header.Set("Content-Type", "application/pdf")
-
-	uploadResp, err := http.DefaultClient.Do(uploadReq) // Using DefaultClient for the upload
-	if err != nil {
-		return "", fmt.Errorf("upload request failed: %w", err)
-	}
-	defer uploadResp.Body.Close()
-
-	c.debugLog("PDF upload response status: %d", uploadResp.StatusCode)
-
-	if uploadResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(uploadResp.Body)
-		c.debugLog("Upload error response: %s", string(body))
-		return "", fmt.Errorf("Upload failed with status: %d, response: %s", uploadResp.StatusCode, string(body))
-	}
-
-	return fmt.Sprintf("%d", response.DocumentID), nil
-}
-
 // SignerRole defines the role of a document signer
 type SignerRole string
 
@@ -132,13 +64,17 @@ type Signer struct {
 	Role  SignerRole `json:"role"`
 }
 
-// UploadDocumentWithSigners uploads a document to Documenso with specified signers
-func (c *DocumensoClient) UploadDocumentWithSigners(pdfData []byte, title string, signers []Signer) (string, error) {
+// UploadDocumentWithSigners uploads a document and assigns signers
+func (c *DocumensoClient) UploadDocumentWithSigners(
+	pdfData []byte,
+	title string,
+	signers []Signer,
+) (string, map[string]string, error) {
 	// Step 1: Create document with recipients
 	createDocumentURL := fmt.Sprintf("%s/documents", c.BaseURL)
 	log.Println("Creating document with signers:", createDocumentURL)
 
-	// Convert our signers to the format expected by the API
+	// Convert signers to API-recognized format
 	recipients := make([]map[string]interface{}, len(signers))
 	for i, signer := range signers {
 		recipients[i] = map[string]interface{}{
@@ -148,7 +84,6 @@ func (c *DocumensoClient) UploadDocumentWithSigners(pdfData []byte, title string
 		}
 	}
 
-	// Prepare request body
 	requestBody := map[string]interface{}{
 		"title":      title,
 		"recipients": recipients,
@@ -157,229 +92,254 @@ func (c *DocumensoClient) UploadDocumentWithSigners(pdfData []byte, title string
 
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
-		return "", fmt.Errorf("failed to marshal request body: %w", err)
+		return "", nil, fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
-	c.debugLog("Request payload: %s", string(requestBodyJSON))
+	log.Printf("📌 Request payload:\n%s", string(requestBodyJSON))
 
-	// Create request
 	req, err := http.NewRequest("POST", createDocumentURL, bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", nil, fmt.Errorf("failed to create request: %w", err)
 	}
-
 	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
 	req.Header.Set("Content-Type", "application/json")
 
-	// Send request
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("API request failed: %w", err)
+		return "", nil, fmt.Errorf("API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
-	// Check for errors
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(body))
+		return "", nil, fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(body))
 	}
 
-	// Parse response to get upload URL and document ID
 	var response struct {
 		UploadURL  string `json:"uploadUrl"`
 		DocumentID int    `json:"documentId"`
 	}
-
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", nil, fmt.Errorf("failed to parse response: %w", err)
 	}
 
-	// Step 2: Upload the actual PDF file
+	log.Printf("📌 Documenso Upload URL: %s", response.UploadURL)
+
+	// Step 2: Upload the PDF
 	uploadReq, err := http.NewRequest("PUT", response.UploadURL, bytes.NewReader(pdfData))
 	if err != nil {
-		return "", fmt.Errorf("failed to create upload request: %w", err)
+		return "", nil, fmt.Errorf("failed to create upload request: %w", err)
 	}
-
 	uploadReq.Header.Set("Content-Type", "application/pdf")
 
-	uploadResp, err := http.DefaultClient.Do(uploadReq) // Using DefaultClient for the upload
+	uploadResp, err := http.DefaultClient.Do(uploadReq)
 	if err != nil {
-		return "", fmt.Errorf("upload request failed: %w", err)
+		return "", nil, fmt.Errorf("upload request failed: %w", err)
 	}
 	defer uploadResp.Body.Close()
 
-	if uploadResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(uploadResp.Body)
-		return "", fmt.Errorf("Upload failed with status: %d, response: %s", uploadResp.StatusCode, string(body))
+	body, err := io.ReadAll(uploadResp.Body)
+	if err != nil {
+		log.Printf("❌ Error reading upload response body: %v", err)
+	} else {
+		log.Printf("📌 Documenso Upload Response: Status %d, Body: %s", uploadResp.StatusCode, string(body))
 	}
 
-	// Step 3: Send the document for signing
+	if uploadResp.StatusCode != http.StatusOK {
+		return "", nil, fmt.Errorf("upload failed with status: %d, response: %s", uploadResp.StatusCode, string(body))
+	}
+
+	// Step 3: Send the document
 	sendURL := fmt.Sprintf("%s/documents/%d/send", c.BaseURL, response.DocumentID)
-	c.debugLog("Sending document with URL: %s", sendURL)
+	log.Printf("🚀 Sending document for signing: %s", sendURL)
+
 	sendReq, err := http.NewRequest("POST", sendURL, bytes.NewBufferString("{}"))
 	if err != nil {
-		return "", fmt.Errorf("failed to create send request: %w", err)
+		return "", nil, fmt.Errorf("failed to create send request: %w", err)
 	}
-
 	sendReq.Header.Set("Authorization", "Bearer "+c.ApiKey)
 	sendReq.Header.Set("Content-Type", "application/json")
 
 	sendResp, err := c.Client.Do(sendReq)
 	if err != nil {
-		return "", fmt.Errorf("send request failed: %w", err)
+		return "", nil, fmt.Errorf("send request failed: %w", err)
 	}
 	defer sendResp.Body.Close()
-	c.debugLog("Send document response status: %d", sendResp.StatusCode)
 
-	if sendResp.StatusCode != http.StatusOK {
-		body, _ := io.ReadAll(sendResp.Body)
-		return "", fmt.Errorf("Send failed with status: %d, response: %s", sendResp.StatusCode, string(body))
+	var sendResponse struct {
+		DocumentID int `json:"documentId"`
+		Recipients []struct {
+			Email      string `json:"email"`
+			SigningURL string `json:"signingUrl"`
+		} `json:"recipients"`
 	}
-	c.debugLog("Document %d successfully created and sent", response.DocumentID)
-	return fmt.Sprintf("%d", response.DocumentID), nil
+
+	if err := json.NewDecoder(sendResp.Body).Decode(&sendResponse); err != nil {
+		body, _ := io.ReadAll(sendResp.Body)
+		return "", nil, fmt.Errorf("failed to decode send response: %s", string(body))
+	}
+
+	signingLinks := make(map[string]string)
+	for _, r := range sendResponse.Recipients {
+		log.Printf("🔗 Signing URL for %s: %s", r.Email, r.SigningURL)
+		signingLinks[r.Email] = r.SigningURL
+	}
+
+	log.Printf("✅ Document %d successfully created and sent!", response.DocumentID)
+	return fmt.Sprintf("%d", response.DocumentID), signingLinks, nil
 }
 
 // SetField updates a form field in a document
-// SetField updates an existing field in a document or adds a new one if not found
-// SetField updates or adds a field in a Documenso document
-func (c *DocumensoClient) SetField(documentID, field, value string, tempDir string) error {
-	log.Printf("📌 Calling SetField for field: %s, document: %s, tempDir: %s", field, documentID, tempDir)
-	// Define file path
-	filePath := fmt.Sprintf("%s/documenso_request.json", tempDir)
+func (c *DocumensoClient) SetField(documentID, field, value string) error {
+	log.Printf("📌 Setting field: %s = %s for document: %s", field, value, documentID)
 
-	// Step 1: Define positioning for new fields
-	var (
-		pageX      float64 = 140
-		pageY      float64
-		width      float64 = 160
-		height     float64 = 30
-		pageNumber int     = 1
-	)
-
-	switch field {
-	case "agreement_date":
-		pageY = 93
-	case "landlord_name":
-		pageY = 136
-	case "tenant_name":
-		pageY = 176
-	case "property_address":
-		pageY = 226
-	case "lease_start_date":
-		pageY = 276
-		width = 100
-		pageX = 120
-	case "lease_end_date":
-		pageY = 276
-		width = 100
-		pageX = 280
-	case "rent_amount":
-		pageY = 326
-		width = 100
-	case "security_deposit":
-		pageY = 376
-		width = 100
-	case "landlord_signature":
-		pageY = 456
-	case "landlord_date":
-		pageY = 506
-	case "tenant_signature":
-		pageY = 556
-	case "tenant_date":
-		pageY = 606
-	default:
-		pageY = 300
-	}
-
-	// Step 2: Construct request payload
-	payload := map[string]interface{}{
-		"recipientId": 1,
-		"type":        "TEXT",
-		"pageNumber":  pageNumber,
-		"pageX":       pageX,
-		"pageY":       pageY,
-		"pageWidth":   width,
-		"pageHeight":  height,
-		"fieldMeta": map[string]interface{}{
-			"type":     "text",
-			"label":    field,
-			"text":     value,
-			"fontSize": 12,
-			"required": true,
-		},
-	}
-
-	// Step 3: Save request payload to /temp/documenso_request.json
-	requestJSON, err := json.MarshalIndent(payload, "", "  ")
+	// Step 1: Check if the document exists
+	exists, err := c.VerifyDocumentExists(documentID)
 	if err != nil {
-		return fmt.Errorf("failed to marshal request payload: %w", err)
+		return fmt.Errorf("failed to verify document exists: %w", err)
+	}
+	if !exists {
+		return fmt.Errorf("document %s not found in Documenso", documentID)
 	}
 
-	// Ensure directory exists
-	if tempDir == "" {
-		log.Println("⚠️ TEMP_DIR is not set, falling back to /app/tmp")
-		tempDir = "/app/tmp"
-		filePath = fmt.Sprintf("%s/documenso_request.json", tempDir)
-	} else {
-		log.Printf("✅ TEMP_DIR found: %s", tempDir)
-	}
-
-	// Write to file
-	err = os.WriteFile(filePath, requestJSON, 0644)
+	// Step 2: Get the document to find the first recipient
+	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
+	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return fmt.Errorf("failed to write request to file: %w", err)
-	}
-
-	log.Printf("Request saved to: %s", filePath)
-
-	// Step 4: Send request to Documenso API
-	apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, documentID)
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %w", err)
+		return fmt.Errorf("failed to create document fetch request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
-	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return fmt.Errorf("API request failed: %w", err)
+		return fmt.Errorf("API request to get document failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return fmt.Errorf("Get document API returned status: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse response to get recipients
+	var docResponse struct {
+		Recipients []struct {
+			ID int `json:"id"`
+		} `json:"recipients"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&docResponse); err != nil {
+		return fmt.Errorf("failed to parse document response: %w", err)
+	}
+
+	if len(docResponse.Recipients) == 0 {
+		return fmt.Errorf("document has no recipients")
+	}
+
+	recipientID := docResponse.Recipients[0].ID
+	log.Printf("Using recipient ID: %d for field: %s", recipientID, field)
+
+	// Step 3: Define positioning for fields
+	pageNumber := 1
+	pageX := 50.0
+	pageY := 50.0
+	pageWidth := 50.0
+	pageHeight := 20.0
+
+	// Adjust positioning based on field type
+	// Replace the switch-case block in the SetField function with this improved positioning
+	switch field {
+	case "agreement_date":
+		pageX = 20
+		pageY = 20
+	case "landlord_name":
+		pageX = 20
+		pageY = 40
+	case "tenant_name":
+		pageX = 20
+		pageY = 60
+	case "property_address":
+		pageX = 20
+		pageY = 80
+		pageWidth = 100
+	case "lease_start_date":
+		pageX = 20
+		pageY = 100
+	case "lease_end_date":
+		pageX = 100
+		pageY = 100
+	case "rent_amount":
+		pageX = 20
+		pageY = 120
+	case "security_deposit":
+		pageX = 20
+		pageY = 140
+	default:
+		pageX = 20
+		pageY = 160
+	}
+
+	// Construct field payload according to the API documentation
+	payload := map[string]interface{}{
+		"recipientId": recipientID,
+		"type":        "TEXT",
+		"pageNumber":  pageNumber,
+		"pageX":       pageX,
+		"pageY":       pageY,
+		"pageWidth":   pageWidth,
+		"pageHeight":  pageHeight,
+		"fieldMeta": map[string]interface{}{
+			"type":     "text",
+			"label":    field,
+			"text":     value,
+			"fontSize": 10,
+			"required": false,
+			"readOnly": true,
+		},
+	}
+
+	// Step 5: Send request to create field
+	requestJSON, err := json.Marshal(payload)
+	if err != nil {
+		return fmt.Errorf("failed to marshal field payload: %w", err)
+	}
+
+	apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, documentID)
+	c.debugLog("Sending field creation request to: %s", apiURL)
+
+	req, err = http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
+	if err != nil {
+		return fmt.Errorf("failed to create field request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+	req.Header.Set("Content-Type", "application/json")
+
+	resp, err = c.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("field API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Step 6: Handle response
+	if resp.StatusCode != http.StatusOK {
 		respBody, _ := io.ReadAll(resp.Body)
+		c.debugLog("Error response for field %s: %s", field, string(respBody))
 		return fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(respBody))
 	}
 
-	return nil
-}
-
-// Helper method to set all lease fields
-func (c *DocumensoClient) SetLeaseFields(documentID string, leaseData map[string]string, tempDir string) error {
-	for field, value := range leaseData {
-		if err := c.SetField(documentID, field, value, tempDir); err != nil {
-			return fmt.Errorf("failed to set field %s: %w", field, err)
-		}
+	// Modified to handle array response format
+	var responseBody struct {
+		Fields json.RawMessage `json:"fields"`
 	}
+
+	respBody, _ := io.ReadAll(resp.Body)
+	if err := json.Unmarshal(respBody, &responseBody); err != nil {
+		return fmt.Errorf("failed to parse field response: %w", err)
+	}
+
+	c.debugLog("Successfully set field %s for document %s", field, documentID)
 	return nil
 }
-
-// Example usage:
-/*
-leaseData := map[string]string{
-	"agreement_date":    "March 19, 2025",
-	"landlord_name":     "Property Management LLC",
-	"tenant_name":       "John Doe",
-	"property_address":  "123 Main",
-	"lease_start_date":  "April 1, 2025",
-	"lease_end_date":    "March 31, 2026",
-	"rent_amount":       "1500.00",
-	"security_deposit":  "1500.00",
-}
-
-err := client.SetLeaseFields(documentID, leaseData)
-*/
 
 // VerifyDocumentExists checks if a document ID is valid in Documenso
 func (c *DocumensoClient) VerifyDocumentExists(documentID string) (bool, error) {
@@ -413,6 +373,109 @@ func (c *DocumensoClient) VerifyDocumentExists(documentID string) (bool, error) 
 	c.debugLog("Unexpected response: %s", string(body))
 	return false, fmt.Errorf("API returned unexpected status: %d, response: %s",
 		resp.StatusCode, string(body))
+}
+
+// DeleteDocument deletes a document from Documenso by ID
+func (c *DocumensoClient) DeleteDocument(documentID string) error {
+	// Construct the URL for document deletion
+	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
+	c.debugLog("Deleting document: %s", url)
+
+	// Create DELETE request
+	req, err := http.NewRequest("DELETE", url, nil)
+	if err != nil {
+		return fmt.Errorf("failed to create delete request: %w", err)
+	}
+
+	// Set authorization header
+	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+	// Send the request
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return fmt.Errorf("delete request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check response status
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		c.debugLog("Delete error response: %s", string(body))
+		return fmt.Errorf("document deletion failed with status: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	c.debugLog("Successfully deleted document %s", documentID)
+	return nil
+}
+
+// DownloadDocument downloads a completed document from Documenso by ID
+func (c *DocumensoClient) DownloadDocument(documentID string) ([]byte, error) {
+	// First, get the download URL for the document
+	downloadURL := fmt.Sprintf("%s/documents/%s/download", c.BaseURL, documentID)
+	c.debugLog("Getting download URL: %s", downloadURL)
+
+	req, err := http.NewRequest("GET", downloadURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create download request: %w", err)
+	}
+
+	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+	// Send the request
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("download URL request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Check for errors
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(body))
+	}
+
+	// Parse the response to get the actual download URL
+	var response struct {
+		DownloadURL string `json:"downloadUrl"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
+		return nil, fmt.Errorf("failed to parse download URL response: %w", err)
+	}
+
+	// Now download the actual document
+	docReq, err := http.NewRequest("GET", response.DownloadURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create document download request: %w", err)
+	}
+
+	docResp, err := http.DefaultClient.Do(docReq) // Using DefaultClient for the download
+	if err != nil {
+		return nil, fmt.Errorf("document download request failed: %w", err)
+	}
+	defer docResp.Body.Close()
+
+	if docResp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(docResp.Body)
+		return nil, fmt.Errorf("Document download failed with status: %d, response: %s", docResp.StatusCode, string(body))
+	}
+
+	// Read the document content
+	content, err := io.ReadAll(docResp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read document content: %w", err)
+	}
+
+	return content, nil
+}
+
+// GetSigningURL returns the URL for signing a document
+func (c *DocumensoClient) GetSigningURL(documentID string) string {
+	base := strings.Replace(c.BaseURL, "/api/v1", "", 1)
+	signURL := fmt.Sprintf("%s/sign/%s", base, documentID)
+	log.Printf("[LEASE_UPSERT] Lease signing URL: %s", signURL)
+	return signURL
+
 }
 
 func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
