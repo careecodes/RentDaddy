@@ -26,7 +26,6 @@ LIMIT 1;
 UPDATE leases
 SET 
     status = 'terminated', 
-    status = 'terminated', 
     updated_by = $1, 
     updated_at = now()
 WHERE id = $2
@@ -97,7 +96,6 @@ RETURNING lease_number,
 -- name: StoreGeneratedLeasePDF :exec
 UPDATE leases
 SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
-SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
 WHERE id = $3
 RETURNING lease_pdf;
 
@@ -105,7 +103,6 @@ RETURNING lease_pdf;
 -- name: MarkLeaseAsSignedBothParties :exec
 -- name: MarkLeaseAsSignedBothParties :exec
 UPDATE leases
-SET status = 'active', updated_at = now()
 SET status = 'active', updated_at = now()
 WHERE id = $1
 RETURNING lease_number,
