@@ -125,7 +125,7 @@ COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><
 CREATE TABLE IF NOT EXISTS "leases"
 (
     "id"               BIGSERIAL PRIMARY KEY,
-    "lease_version"     BIGINT  NOT NULL,
+    "lease_number"     BIGINT  NOT NULL,
     "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
     "lease_pdf"        BYTEA         NOT NULL,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
@@ -143,7 +143,7 @@ CREATE TABLE IF NOT EXISTS "leases"
 
 );
 
-CREATE INDEX "lease_lease_version_index" ON "leases" ("lease_version");
+CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
 CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
 
 CREATE TABLE IF NOT EXISTS "lockers"
@@ -251,7 +251,7 @@ INSERT INTO apartments (
 
 -- Insert statements for leases starting after 10 days
 INSERT INTO leases (
-  id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id, 
+  id, lease_number, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id, 
   lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at
 ) OVERRIDING SYSTEM VALUE VALUES
   (16, 1, 'doc_lease_16', decode('','hex'), 16, 100, 16, '2025-03-30', '2026-03-30', 2100.00, 'draft', 100, 100, NOW(), NOW()),
@@ -262,7 +262,7 @@ INSERT INTO leases (
 -- Looping test cases over apartments and tenants with rotating test emails
 
 -- Apartments 10-12: leases ending today (for termination testing)
-INSERT INTO leases (id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
+INSERT INTO leases (id, lease_number, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at)
 VALUES
 -- Lease ending today
@@ -271,7 +271,7 @@ VALUES
 (102, 1, 'doc_102', decode('', 'hex'), 4, 100, 12, CURRENT_DATE - INTERVAL '1 year', CURRENT_DATE, 2200.00, 'active', 100, 100, NOW(), NOW());
 
 -- Apartments 13–15: expired leases (for renewal testing)
-INSERT INTO leases (id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
+INSERT INTO leases (id, lease_number, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at)
 VALUES
 (103, 1, 'doc_103', decode('', 'hex'), 5, 100, 13, CURRENT_DATE - INTERVAL '2 year', CURRENT_DATE - INTERVAL '1 year', 2300.00, 'expired', 100, 100, NOW(), NOW()),
@@ -279,7 +279,7 @@ VALUES
 (105, 1, 'doc_105', decode('', 'hex'), 7, 100, 15, CURRENT_DATE - INTERVAL '2 year', CURRENT_DATE - INTERVAL '1 year', 2950.00, 'expired', 100, 100, NOW(), NOW());
 
 -- Apartments 16–18: future leases (for creation success test)
-INSERT INTO leases (id, lease_version, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
+INSERT INTO leases (id, lease_number, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at)
 VALUES
 (106, 1, 'doc_106', decode('', 'hex'), 8, 100, 16, CURRENT_DATE + INTERVAL '10 days', CURRENT_DATE + INTERVAL '1 year', 2100.00, 'pending_tenant_approval', 100, 100, NOW(), NOW()),

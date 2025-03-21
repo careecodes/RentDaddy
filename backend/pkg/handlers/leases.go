@@ -107,7 +107,7 @@ type LeaseUpsertRequest struct {
 	DocumentTitle   string  `json:"document_title"`
 	CreatedBy       int64   `json:"created_by"`
 	UpdatedBy       int64   `json:"updated_by"`
-	LeaseVersion    int64   `json:"lease_version"`
+	LeaseNumber     int64   `json:"lease_number"`
 	PreviousLeaseID *int64  `json:"previous_lease_id,omitempty"`
 	ReplaceExisting bool    `json:"replace_existing,omitempty"`
 	TenantName      string  `json:"tenant_name"`
@@ -211,7 +211,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 	// Step 4: Create lease record in database
 	log.Println("[LEASE_UPSERT] Inserting lease into database")
 	leaseParams := db.RenewLeaseParams{
-		LeaseVersion:    req.LeaseVersion,
+		LeaseNumber:     req.LeaseNumber,
 		ExternalDocID:   docID,
 		TenantID:        req.TenantID,
 		LandlordID:      req.LandlordID,
@@ -237,7 +237,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 	log.Printf("[LEASE_UPSERT] Lease created/renewed successfully with ID: %d", row.ID)
 	resp := map[string]interface{}{
 		"lease_id":        row.ID,
-		"lease_version":   row.LeaseVersion,
+		"lease_number":    row.LeaseNumber,
 		"external_doc_id": docID,
 		"sign_url":        h.documenso_client.GetSigningURL(docID),
 		"status":          req.Status,
@@ -727,7 +727,7 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	req.LeaseVersion += 1 // Or increment based on lookup if needed
+	req.LeaseNumber += 1 // Or increment based on lookup if needed
 	h.handleLeaseUpsert(w, r, req)
 }
 func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
@@ -745,7 +745,7 @@ func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LEASE_CREATE] Decoded request: %+v", req)
 
 	// fill in defaults
-	req.LeaseVersion = 1
+	req.LeaseNumber = 1
 	req.PreviousLeaseID = nil
 	req.ReplaceExisting = false
 	req.CreatedBy = req.LandlordID
@@ -800,7 +800,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 
 	// 9. Create the lease record in the database
 	leaseParams := db.RenewLeaseParams{
-		LeaseVersion:   1,
+		LeaseNumber:    1,
 		ExternalDocID:  docID,
 		TenantID:       req.TenantID,
 		LandlordID:     landlordID, // TODO: This should be dependent on clerk_id
@@ -816,7 +816,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	}
 
 	leaseID, err := h.queries.RenewLease(r.Context(), db.RenewLeaseParams{
-		LeaseVersion:   leaseParams.LeaseVersion,
+		LeaseNumber:    leaseParams.LeaseNumber,
 		ExternalDocID:  leaseParams.ExternalDocID,
 		TenantID:       leaseParams.TenantID,
 		LandlordID:     leaseParams.LandlordID,

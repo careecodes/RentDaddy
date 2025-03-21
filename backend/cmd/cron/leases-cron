@@ -1,0 +1,2 @@
+# Run at midnight
+0 0 * * * root /app/bin/expire-leases >> /var/log/cron.log 2>&1
