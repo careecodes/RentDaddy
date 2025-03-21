@@ -115,7 +115,7 @@ export default function AdminViewEditLeases() {
                 updated_by: 100, // Replace with actual admin ID if available
             };
 
-            await axios.post(`${API_URL}/admin/tenants/leases/${leaseId}/terminate`, payload, {
+            await axios.post(`${API_URL}/admin/tenants/leases/terminate/${leaseId}`, payload, {
                 headers: {
                     "Content-Type": "application/json",
                 },
