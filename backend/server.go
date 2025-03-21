@@ -97,7 +97,7 @@ func main() {
 					r.Get("/", userHandler.GetUserByClerkId)
 					r.Patch("/", userHandler.UpdateTenantProfile)
 					r.Get("/work_orders", workOrderHandler.GetTenantWorkOrders)
-					// TODO: Clean this up when complaintHandler is made
+					// TODO: Clean this up when complaintHandler is done
 					r.Get("/complaints", func(w http.ResponseWriter, r *http.Request) {
 						tenantClerkId := chi.URLParam(r, "clerk_id")
 						if tenantClerkId == "" {
