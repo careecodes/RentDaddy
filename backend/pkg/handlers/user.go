@@ -143,10 +143,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workOrders, err := u.queries.ListWorkOrders(r.Context(), db.ListWorkOrdersParams{
-		Limit:  5,
-		Offset: 0,
-	})
+	workOrders, err := u.queries.ListWorkOrders(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying work_orders for adminOverview: %v", err)
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
@@ -293,10 +290,7 @@ func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) 
 }
 
 func (u UserHandler) GetTenantWorkOrders(w http.ResponseWriter, r *http.Request) {
-	workOrders, err := u.queries.ListWorkOrders(r.Context(), db.ListWorkOrdersParams{
-		Limit:  25,
-		Offset: 0,
-	})
+	workOrders, err := u.queries.ListWorkOrders(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying work_orders for tenant: %v", err)
 		http.Error(w, "Error querying work_orders for tenant", http.StatusInternalServerError)

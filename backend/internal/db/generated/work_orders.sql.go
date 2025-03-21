@@ -9,6 +9,19 @@ import (
 	"context"
 )
 
+const countWorkOrdersByUser = `-- name: CountWorkOrdersByUser :one
+SELECT COUNT(*)
+FROM work_orders
+WHERE created_by = $1
+`
+
+func (q *Queries) CountWorkOrdersByUser(ctx context.Context, createdBy int64) (int64, error) {
+	row := q.db.QueryRow(ctx, countWorkOrdersByUser, createdBy)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const createWorkOrder = `-- name: CreateWorkOrder :one
 INSERT INTO work_orders (
     created_by,
@@ -98,16 +111,48 @@ const listWorkOrders = `-- name: ListWorkOrders :many
 SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
 `
 
-type ListWorkOrdersParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
+func (q *Queries) ListWorkOrders(ctx context.Context) ([]WorkOrder, error) {
+	rows, err := q.db.Query(ctx, listWorkOrders)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WorkOrder
+	for rows.Next() {
+		var i WorkOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedBy,
+			&i.OrderNumber,
+			&i.Category,
+			&i.Title,
+			&i.Description,
+			&i.UnitNumber,
+			&i.Status,
+			&i.UpdatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
 }
 
-func (q *Queries) ListWorkOrders(ctx context.Context, arg ListWorkOrdersParams) ([]WorkOrder, error) {
-	rows, err := q.db.Query(ctx, listWorkOrders, arg.Limit, arg.Offset)
+const listWorkOrdersByUser = `-- name: ListWorkOrdersByUser :many
+SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
+FROM work_orders
+WHERE created_by = $1
+ORDER BY created_at DESC
+`
+
+func (q *Queries) ListWorkOrdersByUser(ctx context.Context, createdBy int64) ([]WorkOrder, error) {
+	rows, err := q.db.Query(ctx, listWorkOrdersByUser, createdBy)
 	if err != nil {
 		return nil, err
 	}

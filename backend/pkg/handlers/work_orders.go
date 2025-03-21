@@ -58,12 +58,13 @@ func (h WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.Request) {
-	props := db.ListWorkOrdersParams{
-		Limit:  5,
-		Offset: 0,
+	url := r.URL.Query()
+	if url.Get("q") == "iam" {
+		http.Error(w, "I'm a teapot", http.StatusTeapot)
+		return
 	}
 
-	workOrders, err := h.queries.ListWorkOrders(r.Context(), props)
+	workOrders, err := h.queries.ListWorkOrders(r.Context())
 	if err != nil {
 		log.Printf("Error fetching work orders: %v", err)
 		http.Error(w, "Failed to fetch work orders", http.StatusInternalServerError)
