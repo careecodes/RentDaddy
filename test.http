@@ -1,0 +1,174 @@
+@env=development
+
+
+### Get Leases
+GET http://localhost:8080/admin/tenants/leases/get-leases
+
+
+### Get Tenants without Lease
+GET http://localhost:8080/admin/tenants/leases/without-lease
+
+### Test Upload with Signers
+POST http://localhost:8080/admin/tenants/leases/upload-with-signers
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImlhdCI6MTc0MjUwODEyMCwiZXhwIjoxNzQyNTExNzIwLCJyb2xlIjoiYWRtaW4ifQ.a_mX6wOB-_S7HLWlowEx2noHRnVSiI-0iZYP9uRiDPU
+
+{
+  "tenant_id": 1,
+  "apartment_id": 10,
+  "tenant_name": "Diego Lewis",
+  "tenant_email": "reem@reemock.com",
+  "property_address": "Apartment 101, 123 Main Street, Cityville, ST 12345",
+  "rent_amount": 1200.50,
+  "start_date": "2025-04-01",
+  "end_date": "2026-03-31",
+  "document_title": "Residential Lease Agreement - Apt 101"
+}
+
+
+
+### Test New Upload with Signers
+POST http://localhost:8080/admin/tenants/leases/create
+Content-Type: application/json
+Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImlhdCI6MTc0MjUzNDA2OCwiZXhwIjoxNzQyNTM3NjY4LCJyb2xlIjoiYWRtaW4ifQ.5w2Z4VtN6LW9AkmK6JIRvNVdWSnH8d5pCT1eW-GHbzk
+
+{
+  "landlord_id": 100,
+  "lease_version": 1,
+  "tenant_id": 1,
+  "apartment_id": 10,
+  "tenant_name": "Diego Lewis",
+  "tenant_email": "reem@reemock.com",
+  "property_address": "Apartment 101, 123 Main Street, Cityville, ST 12345",
+  "lease_status": "pending_tenant_approval",
+  "rent_amount": 1200.50,
+  "start_date": "2025-04-01",
+  "end_date": "2026-03-31",
+  "document_title": "Residential Lease Agreement - Apt 101",
+  "created_by": 100,
+  "updated_by": 100
+}
+
+
+### Test Documenso - Retrieve Uploaded Lease
+GET http://localhost:3000/api/v1/documents/25
+Authorization: Bearer api_5vwzih7v0wg8uuy4
+
+
+### Test Documenso - Download Uploaded Lease
+GET http://localhost:3000/api/v1/documents/23/download
+Authorization: Bearer api_5vwzih7v0wg8uuy4
+
+### Test Documenso - Mannually Upload PDF
+PUT http://localhost:3000/api/v1/documents/23/upload
+Content-Type: application/pdf
+
+< ./lease_20250320-141525_Diego_Lewis.pdf
+
+### Step 1: Create a Document to Get Upload URL
+POST http://localhost:3000/api/v1/documents
+Authorization: Bearer api_5vwzih7v0wg8uuy4
+Content-Type: application/json
+
+{
+  "title": "Lease Agreement",
+  "externalId": null,
+  "recipients": [
+    {
+      "name": "John Doe",
+      "email": "johndoe@example.com",
+      "role": "SIGNER",
+      "signingOrder": null
+    }
+  ],
+  "meta": {
+    "subject": "Lease Agreement Signing",
+    "message": "Please review and sign the lease agreement.",
+  },
+  "authOptions": {
+    "globalAccessAuth": "ACCOUNT",
+    "globalActionAuth": "ACCOUNT"
+  },
+  "formValues": {}
+}
+
+
+
+
+
+
+### Upload Lease with Signers - Test 1
+POST /admin/tenants/leases/upload-with-signers HTTP/1.1
+Host: localhost:8080
+Content-Type: application/json
+Authorization: Bearer your_clerk_session_token
+
+{
+  "tenant_id": 1,
+  "landlord_id": 2,
+  "apartment_id": 101,
+  "tenant_name": "John Doe",
+  "tenant_email": "john.doe@example.com",
+  "property_address": "Apartment 101, 123 Main Street, Cityville, ST 12345",
+  "rent_amount": 1200.50,
+  "start_date": "2025-04-01",
+  "end_date": "2026-03-31",
+  "document_title": "Residential Lease Agreement - Apt 101"
+}
+
+# ### Upload Lease with Signers - Test 1
+# POST http://localhost:3000/upload-with-signers
+# Content-Type: application/json
+
+# {
+#   "tenant_id": 8,
+#   "landlord_id": 100,
+#   "apartment_id": 1,
+#   "tenant_name": "John Doe",
+#   "tenant_email": "john.doe@example.com",
+#   "property_address": "123 Main St",
+#   "rent_amount": 2000.00,
+#   "start_date": "2025-03-30",
+#   "end_date": "2026-03-30",
+#   "document_title": "Residential Lease Agreement"
+# }
+
+# ### Upload Lease with Signers - Test 2
+# POST http://localhost:3000/upload-with-signers
+# Content-Type: application/json
+
+# {
+#   "tenant_id": 9,
+#   "landlord_id": 100,
+#   "apartment_id": 2,
+#   "tenant_name": "Emily Wildaughter",
+#   "tenant_email": "emily.wildaughter@example.com",
+#   "property_address": "310 Green Ave",
+#   "rent_amount": 1900.00,
+#   "start_date": "2025-04-01",
+#   "end_date": "2026-04-01",
+#   "document_title": "Apartment Lease Agreement"
+# }
+
+# ### Upload Lease with Signers - Test 3
+# POST http://localhost:3000/upload-with-signers
+# Content-Type: application/json
+
+# {
+#   "tenant_id": 10,
+#   "landlord_id": 100,
+#   "apartment_id": 3,
+#   "tenant_name": "Planter Lewis",
+#   "tenant_email": "planter.lewis@example.com",
+#   "property_address": "180 River Rd",
+#   "rent_amount": 1700.00,
+#   "start_date": "2025-04-05",
+#   "end_date": "2026-04-05",
+#   "document_title": "Residential Lease Agreement"
+# }
+
+# ### Fetch Lease Details
+# GET http://localhost:3000/leases/16
+
+# ### Fetch Lease PDF
+# GET http://localhost:3000/leases/16/pdf

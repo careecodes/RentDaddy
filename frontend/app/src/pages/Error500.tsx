@@ -1,6 +1,6 @@
 import { Link } from "react-router";
 
-const ErrorNotFound = () => {
+const ErrorInternalServer = () => {
     return (
         <div className="d-flex justify-content-center align-items-center vh-100">
             <div className="text-center mb-4">
@@ -20,4 +20,4 @@ const ErrorNotFound = () => {
     );
 };
 
-export default ErrorNotFound;
+export default ErrorInternalServer;

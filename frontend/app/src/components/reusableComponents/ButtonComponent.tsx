@@ -9,7 +9,9 @@ export interface ButtonComponentProps {
     icon?: React.ReactNode;
     size?: string; // default, small, large
     onClick?: () => void; //should just be able to post the reference to the function so for example onClick={myFunc} NOT onClick={myFunc()}
+    loading?: boolean; // Added loading prop
 }
+
 
 const ButtonComponent = (props: ButtonComponentProps) => {
     return (

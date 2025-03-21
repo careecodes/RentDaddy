@@ -17,7 +17,6 @@ import (
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 
-	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -78,7 +77,7 @@ func main() {
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
-		r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
+		// r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
 		// NOTE: Uncomment this after
 		// r.Use(mymiddleware.IsAdmin)                // Admin middleware
 		r.Get("/", userHandler.GetAdminOverview)
@@ -93,10 +92,15 @@ func main() {
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 			r.Route("/leases", func(r chi.Router) {
-				r.Post("/upload-with-signers", leaseHandler.UploadLeaseWithSigners)
-				// r.Post("/generate-pdf", leaseHandler.GenerateAndUploadLeasePDF) // Generate & upload lease for signing
+				r.Post("/create", leaseHandler.CreateLease)
+				r.Post("/renew", leaseHandler.RenewLease)
+				r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
+				r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
+				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
+				r.Get("/get-leases", leaseHandler.GetLeases)
 				r.Get("/{leaseID}", leaseHandler.GetLeaseWithFields) // Fetch lease details and populate Documenso fields
-				r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)    // Fetch lease PDF
+				//r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)    // Fetch lease PDF
+				//r.Post("/webhooks/documenso", )
 			})
 			// Webhook for lease signing status updates
 			r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)

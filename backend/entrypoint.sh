@@ -14,6 +14,10 @@ done
 echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 
+
+# Start cron in background
+crond
+
 if [ "$DEBUG_MODE" = "true" ]; then
   echo "Debug mode enabled. Starting Delve debugger..."
   dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /tmp/server
