@@ -49,3 +49,5 @@ log/
 logs/
 logging/
 *.log.*
+
+.local

@@ -148,7 +148,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 	for _, row := range leases {
 		fullLeases = append(fullLeases, db.Lease{
 			ID:              row.ID,
-			LeaseVersion:    row.LeaseVersion,
+			LeaseNumber:     row.LeaseNumber,
 			ExternalDocID:   row.ExternalDocID,
 			LeasePdf:        row.LeasePdf,
 			TenantID:        row.TenantID,
@@ -167,6 +167,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 	adminOverview := &AdminOverviewRequest{
 		WorkeOrders: workOrders,
 		Complaints:  complaints,
+		Leases:      fullLeases,
 		Leases:      fullLeases,
 	}
 

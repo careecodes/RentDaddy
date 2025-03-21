@@ -4,14 +4,18 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
+	"errors"
 	"fmt"
+	"io"
 	"io"
 	"log"
 	"math/big"
 	"net/http"
 	"os"
 	"path/filepath"
+	"path/filepath"
 	"strconv"
+	"strings"
 	"strings"
 	"time"
 
@@ -20,6 +24,9 @@ import (
 	"github.com/jung-kurt/gofpdf"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-chi/chi/v5"
+	"github.com/gorilla/mux"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/gorilla/mux"
 
@@ -45,6 +52,12 @@ var landlordID = int64(100)
 var landlordName = "First Landlord"
 var landlordEmail = "wrldconnect1@gmail.com"
 
+
+// HARDCODED LANDLORD INFO FOR TESTING - need to do this with Clerk
+var landlordID = int64(100)
+var landlordName = "First Landlord"
+var landlordEmail = "wrldconnect1@gmail.com"
+
 // Temp dir for storing generated leases
 var tempDir = os.Getenv("TEMP_DIR")
 
@@ -63,14 +76,25 @@ func derefOrZero(ptr *int64) int64 {
 	return 0
 }
 
+// Helper for Create Lease Request Struct
+func derefOrZero(ptr *int64) int64 {
+	if ptr != nil {
+		return *ptr
+	}
+	return 0
+}
+
 // NewLeaseHandler initializes a LeaseHandler
 func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	baseURL := os.Getenv("DOCUMENSO_API_URL")
 	apiKey := os.Getenv("DOCUMENSO_API_KEY")
 	log.Printf("Documenso API URL: %s", baseURL)
 	log.Printf("Documenso API Key: %s", apiKey)
+	log.Printf("Documenso API URL: %s", baseURL)
+	log.Printf("Documenso API Key: %s", apiKey)
 
 	if tempDir == "" {
+		tempDir = "/app/temp" // Default fallback
 		tempDir = "/app/temp" // Default fallback
 	}
 	return &LeaseHandler{
@@ -84,6 +108,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 type CreateLeaseResponse struct {
 	LeaseID         int64  `json:"lease_id"`
 	ExternalDocID   string `json:"external_doc_id,omitempty"`
+	Status          string `json:"lease_status"`
 	Status          string `json:"lease_status"`
 	LeasePDF        string `json:"lease_pdf,omitempty"`
 	LeaseSigningURL string `json:"lease_signing_url"`
@@ -107,7 +132,7 @@ type LeaseUpsertRequest struct {
 	DocumentTitle   string  `json:"document_title"`
 	CreatedBy       int64   `json:"created_by"`
 	UpdatedBy       int64   `json:"updated_by"`
-	LeaseVersion    int64   `json:"lease_version"`
+	LeaseNumber     int64   `json:"lease_number"`
 	PreviousLeaseID *int64  `json:"previous_lease_id,omitempty"`
 	ReplaceExisting bool    `json:"replace_existing,omitempty"`
 	TenantName      string  `json:"tenant_name"`
@@ -211,7 +236,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 	// Step 4: Create lease record in database
 	log.Println("[LEASE_UPSERT] Inserting lease into database")
 	leaseParams := db.RenewLeaseParams{
-		LeaseVersion:    req.LeaseVersion,
+		LeaseNumber:     req.LeaseNumber,
 		ExternalDocID:   docID,
 		TenantID:        req.TenantID,
 		LandlordID:      req.LandlordID,
@@ -237,7 +262,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 	log.Printf("[LEASE_UPSERT] Lease created/renewed successfully with ID: %d", row.ID)
 	resp := map[string]interface{}{
 		"lease_id":        row.ID,
-		"lease_version":   row.LeaseVersion,
+		"lease_number":    row.LeaseNumber,
 		"external_doc_id": docID,
 		"sign_url":        h.documenso_client.GetSigningURL(docID),
 		"status":          req.Status,
@@ -724,10 +749,16 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LEASE_RENEW] Renewing lease for tenant %d using previous lease ID %v", req.TenantID, req.PreviousLeaseID)
 	if req.PreviousLeaseID == nil {
 		http.Error(w, "Missing previous_lease_id for renewal", http.StatusBadRequest)
+		http.Error(w, "Invalid renewal request", http.StatusBadRequest)
+		return
+	}
+	log.Printf("[LEASE_RENEW] Renewing lease for tenant %d using previous lease ID %v", req.TenantID, req.PreviousLeaseID)
+	if req.PreviousLeaseID == nil {
+		http.Error(w, "Missing previous_lease_id for renewal", http.StatusBadRequest)
 		return
 	}
 
-	req.LeaseVersion += 1 // Or increment based on lookup if needed
+	req.LeaseNumber += 1 // Or increment based on lookup if needed
 	h.handleLeaseUpsert(w, r, req)
 }
 func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
@@ -745,7 +776,7 @@ func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	log.Printf("[LEASE_CREATE] Decoded request: %+v", req)
 
 	// fill in defaults
-	req.LeaseVersion = 1
+	req.LeaseNumber = 1
 	req.PreviousLeaseID = nil
 	req.ReplaceExisting = false
 	req.CreatedBy = req.LandlordID
@@ -763,6 +794,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	// 1-3 inside HandleLeaseRequest: Parse and validate fields, and return response
 	validationResult, err := h.ValidateLeaseRequest(r, landlordID)
 	if err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -800,7 +832,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 
 	// 9. Create the lease record in the database
 	leaseParams := db.RenewLeaseParams{
-		LeaseVersion:   1,
+		LeaseNumber:    1,
 		ExternalDocID:  docID,
 		TenantID:       req.TenantID,
 		LandlordID:     landlordID, // TODO: This should be dependent on clerk_id
@@ -816,7 +848,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	}
 
 	leaseID, err := h.queries.RenewLease(r.Context(), db.RenewLeaseParams{
-		LeaseVersion:   leaseParams.LeaseVersion,
+		LeaseNumber:    leaseParams.LeaseNumber,
 		ExternalDocID:  leaseParams.ExternalDocID,
 		TenantID:       leaseParams.TenantID,
 		LandlordID:     leaseParams.LandlordID,
@@ -832,9 +864,20 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	if err != nil {
 		log.Printf("Error renewing lease in database: %v", err)
 		http.Error(w, "Failed to renew lease in database", http.StatusInternalServerError)
+		log.Printf("Error renewing lease in database: %v", err)
+		http.Error(w, "Failed to renew lease in database", http.StatusInternalServerError)
 		return
 	}
 
+	// 10. Return success response with lease details
+	resp := map[string]interface{}{
+		"lease_id":        leaseID,
+		"external_doc_id": docID,
+		"lease_sign_url":  h.documenso_client.GetSigningURL(docID),
+		"tenant_name":     req.TenantName,
+		"tenant_email":    req.TenantEmail,
+		"status":          "pending_tenant_approval",
+		"message":         "Lease agreement created successfully and sent for signing",
 	// 10. Return success response with lease details
 	resp := map[string]interface{}{
 		"lease_id":        leaseID,
@@ -853,7 +896,15 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		log.Printf("Error encoding response: %v", err)
 		return
 	}
+	w.WriteHeader(http.StatusCreated)
+	if err := json.NewEncoder(w).Encode(resp); err != nil {
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
 }
+
+func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
@@ -875,6 +926,8 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	// Log the webhook event
 	log.Printf("Received Documenso webhook: %s for document %s from %s (%s)",
 		payload.EventType, payload.DocumentID, payload.Signer.Name, payload.Signer.Email)
+	log.Printf("Received Documenso webhook: %s for document %s from %s (%s)",
+		payload.EventType, payload.DocumentID, payload.Signer.Name, payload.Signer.Email)
 
 	// Find leases by external document ID
 	leases, err := h.queries.ListLeases(r.Context())
@@ -888,6 +941,20 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	var targetLease *db.Lease
 	for _, lease := range leases {
 		if lease.ExternalDocID == payload.DocumentID {
+			targetLease = &db.Lease{
+				ID:             lease.ID,
+				ExternalDocID:  lease.ExternalDocID,
+				TenantID:       lease.TenantID,
+				LandlordID:     lease.LandlordID,
+				ApartmentID:    lease.ApartmentID,
+				LeaseStartDate: lease.LeaseStartDate,
+				LeaseEndDate:   lease.LeaseEndDate,
+				RentAmount:     lease.RentAmount,
+				Status:         lease.Status,
+				LeasePdf:       lease.LeasePdf,
+				CreatedBy:      lease.CreatedBy,
+				UpdatedBy:      lease.UpdatedBy,
+			}
 			targetLease = &db.Lease{
 				ID:             lease.ID,
 				ExternalDocID:  lease.ExternalDocID,
@@ -918,8 +985,21 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		// Document has been opened by a recipient
 		log.Printf("Document %s opened by %s", payload.DocumentID, payload.Signer.Email)
 
+	case "document.opened":
+		// Document has been opened by a recipient
+		log.Printf("Document %s opened by %s", payload.DocumentID, payload.Signer.Email)
+
 	case "document.signed":
 		// Document has been signed by someone
+		isLandlord := strings.Contains(strings.ToLower(payload.Signer.Email), "rentdaddy") ||
+			strings.Contains(strings.ToLower(payload.Signer.Email), "admin@")
+
+		if isLandlord {
+			// Landlord has signed
+			log.Printf("Lease %d signed by landlord %s", targetLease.ID, payload.Signer.Name)
+		} else {
+			// If it's the tenant signing, mark the lease as signed
+			err := h.queries.MarkLeaseAsSignedBothParties(r.Context(), targetLease.ID)
 		isLandlord := strings.Contains(strings.ToLower(payload.Signer.Email), "rentdaddy") ||
 			strings.Contains(strings.ToLower(payload.Signer.Email), "admin@")
 
@@ -943,6 +1023,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		params := db.UpdateLeaseParams{
 			ID:             targetLease.ID,
 			TenantID:       targetLease.TenantID,
+			Status:         db.LeaseStatus("active"),
 			Status:         db.LeaseStatus("active"),
 			LeaseStartDate: targetLease.LeaseStartDate,
 			LeaseEndDate:   targetLease.LeaseEndDate,
@@ -1046,7 +1127,15 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		"lease_id":   terminatedLease.ID,
 		"status":     terminatedLease.Status,
 	}); err != nil {
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":    "Lease terminated successfully",
+		"terminated": true,
+		"lease_id":   terminatedLease.ID,
+		"status":     terminatedLease.Status,
+	}); err != nil {
 		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
 }
