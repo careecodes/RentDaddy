@@ -52,6 +52,7 @@ func main() {
 }
 
 func createUser(ctx context.Context) error {
+	// NOTE: watch for dublication / recheck randomUnitNumber logic
 	randomUnitNumbers, err := faker.RandomInt(101, 999)
 	if err != nil {
 		return err
