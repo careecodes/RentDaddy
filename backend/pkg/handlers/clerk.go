@@ -18,12 +18,19 @@ import (
 	svix "github.com/svix/svix-webhooks/go"
 )
 
-type ClerkUserPublicMetaData struct {
-	DbId       int32   `json:"db_id"`
-	Role       db.Role `json:"role"`
-	UnitNumber int     `json:"unit_number"`
+type Apartment struct {
+	UnitNumber int `json:"unit_number"`
+	Price      int `json:"price"`
+	SizeSqFt   int `json:"sqft"`
 	// Admin(clerk_id) inviting tenant
 	ManagementId string `json:"management_id"`
+	LeaseId      int    `json:"lease_id"`
+}
+
+type ClerkUserPublicMetaData struct {
+	DbId      int32     `json:"db_id"`
+	Role      db.Role   `json:"role"`
+	Apartment Apartment `json:"apartment"`
 }
 
 type EmailVerification struct {
@@ -172,12 +179,11 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	}()
 
 	qtx := queries.WithTx(tx)
-	var apartmentUnitNumber int
 
 	// If tenant was invited by admin
-	if userMetadata.ManagementId != "" && userMetadata.UnitNumber != 0 {
+	if userMetadata.Apartment.ManagementId != "" && userMetadata.Apartment.UnitNumber != 0 {
 		log.Println("[CLERK_WEBHOOK] Invited user")
-		adminPayload, err := user.Get(r.Context(), userMetadata.ManagementId)
+		adminPayload, err := user.Get(r.Context(), userMetadata.Apartment.ManagementId)
 		if err != nil {
 			log.Printf("[CLERK_WEBHOOK] Failed querying for management ID: %v", err)
 			http.Error(w, "Error querying managementId", http.StatusInternalServerError)
@@ -192,10 +198,10 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			return
 		}
 
-		_, err = qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.UnitNumber))
+		_, err = qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.Apartment.UnitNumber))
 		// Error out if apartment found
 		if err == nil {
-			log.Printf("[CLERK_WEBHOOK] Apartment already exists with unit number: %d", userMetadata.UnitNumber)
+			log.Printf("[CLERK_WEBHOOK] Apartment already exists with unit number: %d", userMetadata.Apartment.UnitNumber)
 			http.Error(w, "Database error", http.StatusConflict)
 			return
 		}
@@ -206,20 +212,28 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		}
 
 		// Create new apartment entry if no existing apartment with unit_number
-		apartmentRes, err := qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
-			UnitNumber:   int16(userMetadata.UnitNumber),
-			Price:        pgtype.Numeric{Int: big.NewInt(350), Valid: true},
-			Size:         2323,
+		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
+			UnitNumber:   int16(userMetadata.Apartment.UnitNumber),
+			Price:        pgtype.Numeric{Int: big.NewInt(int64(userMetadata.Apartment.Price)), Valid: true},
+			Size:         int16(userMetadata.Apartment.SizeSqFt),
 			ManagementID: int64(managementMetadata.DbId),
 			Availability: false,
-			LeaseID:      2321,
+			LeaseID:      int64(userMetadata.Apartment.LeaseId),
 		})
 		if err != nil {
 			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)
 			http.Error(w, "Error inserting apartment", http.StatusInternalServerError)
 			return
 		}
-		apartmentUnitNumber = int(apartmentRes.UnitNumber)
+	}
+
+	//NOTE:
+	// For our first seeded admin
+	// so we can user there database ID for
+	// new tenant apartment entrys
+	//
+	if userMetadata.Role == db.RoleAdmin {
+		userRole = db.RoleAdmin
 	}
 
 	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
@@ -228,7 +242,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
 		UnitNumber: pgtype.Int2{
-			Int16: int16(userMetadata.UnitNumber),
+			Int16: int16(userMetadata.Apartment.UnitNumber),
 			Valid: true,
 		},
 		// Phone numbers are paid tier
@@ -251,9 +265,15 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 	// Update clerk user metadata with DB ID, role, ect.
 	metadata := &ClerkUserPublicMetaData{
-		DbId:       int32(userRes.ID),
-		Role:       userRes.Role,
-		UnitNumber: apartmentUnitNumber,
+		DbId: int32(userRes.ID),
+		Role: userRes.Role,
+		Apartment: Apartment{
+			UnitNumber:   userMetadata.Apartment.UnitNumber,
+			Price:        userMetadata.Apartment.Price,
+			SizeSqFt:     userMetadata.Apartment.SizeSqFt,
+			ManagementId: userMetadata.Apartment.ManagementId,
+			LeaseId:      userMetadata.Apartment.LeaseId,
+		},
 	}
 
 	// Convert metadata to raw json
