@@ -99,9 +99,7 @@ func ClerkWebhookHandler(w http.ResponseWriter, r *http.Request, pool *pgxpool.P
 	default:
 		log.Printf("[CLERK_WEBHOOK] Unhandled event: %s", payload.Type)
 		w.WriteHeader(http.StatusOK)
-		if _, err := w.Write([]byte(`{"status":"received"}`)); err != nil {
-			log.Printf("[CLERK_WEBHOOK] Failed writing response: %v", err)
-		}
+		w.Write([]byte(`{"status":"received"}`))
 		return
 	}
 }
@@ -214,7 +212,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			Size:         2323,
 			ManagementID: int64(managementMetadata.DbId),
 			Availability: false,
-			LeaseID:      pgtype.Int8{Int64: 2321, Valid: true},
+			LeaseID:      2321,
 		})
 		if err != nil {
 			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)
