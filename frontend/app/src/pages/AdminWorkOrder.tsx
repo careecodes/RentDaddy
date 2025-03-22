@@ -603,12 +603,7 @@ const AdminWorkOrder = () => {
                     dataSource={sortedWorkOrders}
                     style=".lease-table-container"
                     pagination={paginationConfig}
-                    onChange={(
-                        pagination: TablePaginationConfig,
-                        filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
-                        sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3]
-                    ) => {
+                    onChange={(pagination, filters, sorter, extra) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                 />
@@ -623,12 +618,7 @@ const AdminWorkOrder = () => {
                     dataSource={sortedComplaints}
                     style=".lease-table-container"
                     pagination={paginationConfig}
-                    onChange={(
-                        pagination: TablePaginationConfig,
-                        filters: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[1],
-                        sorter: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3]
-                    ) => {
+                    onChange={(pagination, filters, sorter, extra) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                 />
