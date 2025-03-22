@@ -278,7 +278,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         dataIndex: "createdAt",
         key: "createdAt",
         ...getWorkOrderColumnSearchProps("createdAt", "Created"),
-        sorter: (a, b) => dayjs(b.createdAt).unix() - dayjs(a.createdAt).unix(),
+        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
     {
@@ -286,7 +286,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         dataIndex: "updatedAt",
         key: "updatedAt",
         ...getWorkOrderColumnSearchProps("updatedAt", "Updated"),
-        sorter: (a, b) => dayjs(b.updatedAt).unix() - dayjs(a.updatedAt).unix(),
+        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
 ];
@@ -466,14 +466,14 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         title: "Created",
         dataIndex: "createdAt",
         key: "createdAt",
-        sorter: (a, b) => dayjs(b.createdAt).unix() - dayjs(a.createdAt).unix(),
+        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
     {
         title: "Updated",
         dataIndex: "updatedAt",
         key: "updatedAt",
-        sorter: (a, b) => dayjs(b.updatedAt).unix() - dayjs(a.updatedAt).unix(),
+        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
 ];
@@ -535,25 +535,25 @@ const AdminWorkOrder = () => {
         return item.unitNumber;
     };
 
-    const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
+    workOrderDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
         if (priorityDiff !== 0) return priorityDiff;
 
         if (a.status !== "completed" && b.status !== "completed") {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-    const sortedComplaints = complaintsDataRaw.sort((a, b) => {
+    complaintsDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
         if (priorityDiff !== 0) { return priorityDiff; }
 
         if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
