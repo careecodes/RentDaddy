@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
-	gen "github.com/careecodes/RentDaddy/internal/db/generated"
 
-	// mymiddleware "github.com/careecodes/RentDaddy/middleware"
+	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -72,8 +71,51 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 
-	// User Router
+	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
+	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
+	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
+	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
+
+	// Application Routes
+	r.Group(func(r chi.Router) {
+		// Clerk middleware
+		r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
+		// Admin Endpoints
+		r.Route("/admin", func(r chi.Router) {
+			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			r.Get("/", userHandler.GetAdminOverview)
+
+			// Tenants
+			r.Route("/tenants", func(r chi.Router) {
+				r.Get("/", userHandler.GetAllTenants)
+				r.Post("/invite", userHandler.InviteTenant)
+				r.Route("/{clerk_id}", func(r chi.Router) {
+					r.Get("/", userHandler.GetUserByClerkId)
+					r.Patch("/credentials", userHandler.UpdateTenantProfile)
+				})
+			})
+
+			// ParkingPermits
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/", parkingPermitHandler.GetParkingPermits)
+				r.Post("/", parkingPermitHandler.CreateParkingPermit)
+				r.Route("/{permit_id}", func(r chi.Router) {
+					r.Get("/", parkingPermitHandler.GetParkingPermit)
+					r.Delete("/", parkingPermitHandler.DeleteParkingPermit)
+				})
+			})
+
+			// Work Orders
+			r.Route("/work_orders", func(r chi.Router) {
+				r.Get("/", workOrderHandler.ListWorkOrdersHandler)
+				r.Post("/", workOrderHandler.CreateWorkOrderHandler)
+				r.Route("/{order_id}", func(r chi.Router) {
+					r.Get("/", workOrderHandler.GetWorkOrderHandler)
+					r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
+					r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
+				})
+			})
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
@@ -103,10 +145,10 @@ func main() {
 				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
 				r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
 
-				//r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)    // Fetch lease PDF
+			
 				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 			})
-			// Webhook for lease signing status updates
+			
 
 		})
 	})
@@ -137,18 +179,27 @@ func main() {
 			workOrderHandler.CreateWorkOrderHandler(w, r)
 		})
 
-		r.Route("/{order_number}", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Get Order")
-				workOrderHandler.GetWorkOrderHandler(w, r)
+			// Apartment
+			r.Route("/apartments", func(r chi.Router) {
+				r.Get("/", apartmentHandler.ListApartmentsHandler)
+				r.Get("/{apartment}", apartmentHandler.GetApartmentHandler)
+				r.Post("/", apartmentHandler.CreateApartmentHandler)
+				r.Patch("/{apartment}", apartmentHandler.UpdateApartmentHandler)
+				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 			})
-			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Printf("Update Order")
-				workOrderHandler.UpdateWorkOrderHandler(w, r)
-			})
-			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Delete Order")
-				workOrderHandler.DeleteWorkOrderHandler(w, r)
+		})
+		// End Admin
+
+		// Tenant Endpoints
+		r.Route("/", func(r chi.Router) {
+			r.Get("/", userHandler.GetUserByClerkId)
+			r.Get("/documents", userHandler.GetTenantDocuments)
+			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
+			r.Get("/complaints", userHandler.GetTenantComplaints)
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/", parkingPermitHandler.TenantGetParkingPermits)
+				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
+				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
 			})
 		})
 	})

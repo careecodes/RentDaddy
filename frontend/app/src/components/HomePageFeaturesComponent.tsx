@@ -27,7 +27,7 @@ const HomePageFeaturesComponent = () => {
         },
         {
             title: "Resident Portal",
-            icon: <MobileOutlined className="fs-2 text-info mb-3" />,
+            icon: <MobileOutlined className="fs-2 text-warning mb-3" />,
             description: "Manage your entire resident experience from our website - pay rent, submit maintenance requests, and control smart home features.",
         },
     ];
@@ -36,8 +36,8 @@ const HomePageFeaturesComponent = () => {
         <>
             <div className="container mb-3">
                 {/* Title */}
-                <h2 className="my-3 fw-bold">Smart Living</h2>
-                <div className="flex-container">
+                <h2 className="my-5 fw-bold text-center">Smart Living</h2>
+                <div className="d-flex flex-wrap gap-4 justify-content-center align-items-stretch">
                     {/* Grid of feature cards */}
                     {features.map((feature) => (
                         <CardComponent

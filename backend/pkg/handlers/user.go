@@ -23,9 +23,8 @@ type AdminOverviewRequest struct {
 }
 
 type InviteUserRequest struct {
-	Email        string `json:"email"`
-	UnitNumber   int    `json:"unit_number"`
-	ManagementId string `json:"management_id"` // Amdin clerk_id
+	Email      string `json:"email"`
+	UnitNumber int    `json:"unit_number"`
 }
 
 type TenantUpdateProfileRequest struct {
@@ -89,9 +88,18 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	adminCtx := middleware.GetUserCtx(r)
+	if adminCtx == nil {
+		log.Println("[PARKING_HANDLER] Failed no user context")
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
+		return
+	}
+
+	// log.Printf("user ctx ID: %d\n", adminCtx.ID)
+
 	publicMetadata := &ClerkUserPublicMetaData{
 		UnitNumber:   tenantPayload.UnitNumber,
-		ManagementId: tenantPayload.ManagementId,
+		ManagementId: adminCtx.ID,
 	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {
@@ -99,8 +107,8 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Error converting metadata to JSON", http.StatusInternalServerError)
 		return
 	}
-	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
 
+	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
 	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
 		EmailAddress:   tenantPayload.Email,
 		PublicMetadata: &publicMetadataRawJson,
@@ -182,7 +190,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 	w.Write([]byte(adminOverviewData))
 }
 
-func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request, typeOfUser db.Role) {
+func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request) {
 	tenants, err := u.queries.ListUsersByRole(r.Context(), db.RoleTenant)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed getting tenants: %v", err)
@@ -231,12 +239,12 @@ func (u UserHandler) GetTenantEmailAddresses(w http.ResponseWriter, r *http.Requ
 }
 
 func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request) {
-	// clerkUser, err := middleware.GetClerkUser(r)
-	// if err != nil {
-	// 	log.Printf("[USER_HANDLER] No user CTX")
-	// 	http.Error(w, "Error No user CTX", http.StatusInternalServerError)
-	// 	return
-	// }
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
+		log.Println("[PARKING_HANDLER] Failed no user context")
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
+		return
+	}
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed reading request body: %v", err)
@@ -283,22 +291,6 @@ func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request)
 // ADMIN END
 
 // TENANT START
-func (u UserHandler) GetTenantParkingPermits(w http.ResponseWriter, r *http.Request) {
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
-		log.Printf("[USER_HANDLER] No user CTX")
-		http.Error(w, "Error No user CTX", http.StatusInternalServerError)
-		return
-	}
-
-	log.Printf("Current user ID: %s", userCtx.ID)
-
-	// TODO: Finish this
-	// permits, err := u.queries.listParking
-	//
-	w.WriteHeader(http.StatusOK)
-}
-
 func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) {
 	documents, err := u.queries.ListLeases(r.Context())
 	if err != nil {
@@ -315,6 +307,7 @@ func (u UserHandler) GetTenantDocuments(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonDocments))
 }
 
@@ -337,6 +330,7 @@ func (u UserHandler) GetTenantWorkOrders(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonWorkOrders))
 }
 
@@ -359,6 +353,7 @@ func (u UserHandler) GetTenantComplaints(w http.ResponseWriter, r *http.Request)
 	}
 
 	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonComplaints))
 }
 

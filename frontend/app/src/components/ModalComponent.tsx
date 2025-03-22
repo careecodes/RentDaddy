@@ -5,6 +5,12 @@ import { Button, Divider, Form, Input, Modal } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
+type InviteTenant = {
+    email: string;
+    unitNumber: number;
+    management_id: string;
+};
+
 interface Lease {
     id: string | number;
     title: string;
@@ -20,14 +26,17 @@ interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
-    type: "default" | "Smart Locker" | "Guest Parking" | "Add Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
+    type: "default" | "Smart Locker" | "Guest Parking" | "Invite Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
     handleOkay: () => void;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
     apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
+    setInviteTenantObjProps?: React.Dispatch<React.SetStateAction<InviteTenant>>;
     leases?: Lease[];
 }
+
+// In code we are sending management_id
 
 const ModalComponent = (props: ModalComponentProps) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
@@ -48,7 +57,7 @@ const ModalComponent = (props: ModalComponentProps) => {
         default: "Default Modal",
         "Smart Locker": "Smart Locker Modal",
         "Guest Parking": "Register someone in Guest Parking",
-        "Add Tenant": "Add Tenant",
+        "Invite Tenant": "Invite Tenant",
         "Edit Tenant": "Edit Tenant",
         "View Tenant Complaints": "View Tenant Complaints",
         "View Tenant Work Orders": "View Tenant Work Orders",
@@ -305,7 +314,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Modal>
                 </>
             )}
-            {props.type === "Add Tenant" && (
+            {props.type === "Invite Tenant" && (
                 <>
                     <Button
                         type="primary"
@@ -320,48 +329,39 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                        okButtonProps={{ hidden: true, disabled: true }}
-                        cancelButtonProps={{ hidden: true, disabled: true }}>
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
                         <Divider />
                         <Form>
-                            <Form.Item name="tenant-name">
-                                <Input placeholder="Tenant Name" />
-                            </Form.Item>
                             <Form.Item name="tenant-email">
-                                <Input placeholder="Tenant Email" />
-                            </Form.Item>
-                            <Form.Item name="tenant-phone">
                                 <Input
-                                    placeholder="Tenant Phone"
-                                    type="number"
+                                    placeholder="Tenant Email"
+                                    onChange={(e) => {
+                                        const updatedValue = e.target.value;
+
+                                        props.setInviteTenantObjProps!((prev) => ({
+                                            ...prev,
+                                            email: updatedValue,
+                                        }));
+                                    }}
                                 />
                             </Form.Item>
                             <Form.Item name="unit-number">
                                 <Input
                                     placeholder="Unit Number"
                                     type="number"
+                                    onChange={(e) => {
+                                        const updatedValue = Number(e.target.value);
+
+                                        props.setInviteTenantObjProps!((prev) => ({
+                                            ...prev,
+                                            unitNumber: updatedValue,
+                                        }));
+                                    }}
                                 />
                             </Form.Item>
                             <Divider />
-                            <div className="flex justify-content-end gap-2">
-                                {/* Cancel button */}
-                                <Form.Item name="cancel">
-                                    <Button
-                                        type="default"
-                                        onClick={() => {
-                                            setIsModalOpen(false);
-                                        }}>
-                                        Cancel
-                                    </Button>
-                                </Form.Item>
-                                <Form.Item name="submit">
-                                    <Button
-                                        type="primary"
-                                        htmlType="submit">
-                                        Submit
-                                    </Button>
-                                </Form.Item>
-                            </div>
                         </Form>
                     </Modal>
                 </>
