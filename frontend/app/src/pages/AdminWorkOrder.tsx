@@ -10,49 +10,50 @@ import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
-import type { TableProps, TablePaginationConfig } from "antd";
-import Title from "antd/es/typography/Title";
+import type { TablePaginationConfig } from "antd";
+import { useState } from "react";
 
-const today = dayjs();
+const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
+    filterDropdown: (filterDropdownProps) => (
+        <div style={{ padding: 8 }}>
+            <Input
+                placeholder={`Search ${title}`}
+                value={filterDropdownProps.selectedKeys[0]}
+                onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                onPressEnter={() => filterDropdownProps.confirm()}
+                style={{ width: 188, marginBottom: 8, display: "block" }}
+            />
+        </div>
+    ),
+    filterIcon: (filtered) => (
+        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
+    ),
+    onFilter: (value, record) => {
+        const val = record[dataIndex];
+        return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
+    },
+});
 
-// This is the dropdown that performs a search in each column
-const getColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => {
-    return {
-        filterDropdown: (filterDropdownProps) => {
-            return (
-                <div style={{ padding: 8 }}>
-                    <Input
-                        placeholder={"Search " + title}
-                        value={filterDropdownProps.selectedKeys[0]}
-                        onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
-                    />
-                    <ButtonComponent
-                        type="primary"
-                        title="Search"
-                        icon={<SearchOutlined />}
-                        size="small"
-                        onClick={() => filterDropdownProps.confirm()}
-                    />
-                    <ButtonComponent
-                        type="default"
-                        title="Reset"
-                        size="small"
-                        onClick={() => {
-                            filterDropdownProps.clearFilters && filterDropdownProps.clearFilters();
-                            filterDropdownProps.confirm();
-                        }}
-                    />
-                </div>
-            );
-        },
-        filterIcon: function (filtered) {
-            return <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />;
-        },
-        onFilter: function (value, record) {
-            return record[dataIndex].toString().toLowerCase().includes(value.toString().toLowerCase());
-        },
-    };
-};
+const getComplaintColumnSearchProps = (dataIndex: keyof ComplaintsData, title: string): ColumnType<ComplaintsData> => ({
+    filterDropdown: (filterDropdownProps) => (
+        <div style={{ padding: 8 }}>
+            <Input
+                placeholder={`Search ${title}`}
+                value={filterDropdownProps.selectedKeys[0]}
+                onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                onPressEnter={() => filterDropdownProps.confirm()}
+                style={{ width: 188, marginBottom: 8, display: "block" }}
+            />
+        </div>
+    ),
+    filterIcon: (filtered) => (
+        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
+    ),
+    onFilter: (value, record) => {
+        const val = record[dataIndex];
+        return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
+    },
+});
 
 const shortenInput = (input: string, maxLength: number = 30) => {
     if (input.length > maxLength) {
@@ -229,20 +230,12 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         className: "text-center",
     },
     {
-        title: "Unit No.",
-        dataIndex: "apartmentNumber",
-        key: "apartmentNumber",
-        sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
-        ...getColumnSearchProps("apartmentNumber", "Unit No."),
-        className: "text-secondary text-left",
-    },
-    {
-        title: "Inquiry",
+        title: "Title",
         dataIndex: "title",
         key: "title",
         sorter: (a, b) => a.title.localeCompare(b.title),
-        ...getColumnSearchProps("title", "Inquiry"),
-        render: (title) => shortenInput(title, 25),
+        ...getWorkOrderColumnSearchProps("title", "Inquiry"),
+        render: (title: string) => shortenInput(title, 25),
     },
     {
         title: "Description",
@@ -255,7 +248,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         title: "Created",
         dataIndex: "createdAt",
         key: "createdAt",
-        ...getColumnSearchProps("createdAt", "Created"),
+        ...getWorkOrderColumnSearchProps("createdAt", "Created"),
         sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
@@ -263,7 +256,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         title: "Updated",
         dataIndex: "updatedAt",
         key: "updatedAt",
-        ...getColumnSearchProps("createdAt", "Updated"),
+        ...getWorkOrderColumnSearchProps("updatedAt", "Updated"),
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
