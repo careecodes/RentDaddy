@@ -59,14 +59,14 @@ CREATE TABLE IF NOT EXISTS "complaints"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "complaint_number" BIGINT               NOT NULL,
-    "created_by"       BIGINT               NOT NULL,
+    "created_by"       TEXT                 NOT NULL,
     "category"         "Complaint_Category" NOT NULL  DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
     "unit_number"      SMALLINT             NOT NULL,
     "status"           "Status"             NOT NULL  DEFAULT "Status" 'open',
-    "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
+    "updated_at"       TIMESTAMP(0)         DEFAULT now(),
+    "created_at"       TIMESTAMP(0)         DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "work_orders"
@@ -184,4 +184,3 @@ ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
-
