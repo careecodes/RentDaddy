@@ -1,8 +1,8 @@
 import "../styles/styles.scss";
 
-import dayjs from "dayjs";
 import { Tag } from "antd";
-import { Input } from "antd";
+import dayjs from "dayjs";
+import { Input, Select } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
@@ -188,47 +188,10 @@ const workOrderDataRaw: WorkOrderData[] = [
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
     {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in_progress" },
-            { text: "Awaiting Parts", value: "awaiting_parts" },
-            { text: "Completed", value: "completed" },
-        ],
-        onFilter: (value, record) => record.status === value,
-        render: (status) => {
-            let color = "";
-            let text = "";
-
-            // If naming convention here is changed, we will need to change the strings for cases
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in_progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "awaiting_parts":
-                    color = "orange";
-                    text = "Awaiting Parts";
-                    break;
-                case "completed":
-                    color = "green";
-                    text = "Completed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-
-            return <Tag color={color}>{text}</Tag>;
-        },
-        sorter: (a, b) => a.status.localeCompare(b.status),
-        className: "text-center",
+        title: "Work Order #",
+        dataIndex: "workOrderNumber",
+        key: "workOrderNumber",
+        ...getWorkOrderColumnSearchProps("workOrderNumber", "Work Order #"),
     },
     {
         title: "Category",
