@@ -631,7 +631,7 @@ const AdminWorkOrder = () => {
                     onRow={(record: ComplaintsData) => ({
                         onClick: () => {
                             setSelectedItem(record);
-                            setItemType('complaint');
+                            setItemType("complaint");
                             setIsModalVisible(true);
                         }
                     })}
