@@ -85,7 +85,7 @@ func main() {
 		})
 		r.Route("/tenants", func(r chi.Router) {
 			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				userHandler.GetAllTenants(w, r, gen.RoleTenant)
+				// userHandler.GetAllTenants(w, r, gen.RoleTenant)
 			})
 			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
 			r.Post("/invite", userHandler.InviteTenant)
@@ -99,40 +99,12 @@ func main() {
 			w.Write([]byte("Hello this is tenant test"))
 		})
 		r.Post("/{clerk_id}", userHandler.GetUserByClerkId)
-		r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
+		// r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
 		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
 		r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
 		r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
 	})
 	// End of Clerk Rou
-
-	complaintHandler := handlers.NewComplaintHandler(pool, queries)
-	r.Route("/complaints", func (r chi.Router) {
-		//admin/test
-		r.Get("/", func(w http.ResponseWriter, r *http.Request){
-			log.Println("List work orders")
-			complaintHandler.ListComplaintsHandler(w,r,queries)
-		})
-
-		//All
-		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("Post complaint")
-			complaintHandler.CreateComplaintHandler(w, r, queries)
-		})
-
-		r.Route("/{complaint}", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Get Order")
-				complaintHandler.GetComplaintHandler(w, r, queries)
-			})
-
-			r.Delete("/admin/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Delete Order")
-				complaintHandler.DeleteComplaintHandler(w, r, queries)
-			})
-		})
-	})
-
 
 
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
@@ -203,6 +175,33 @@ func main() {
 			})
 		})
 	})
+
+	// complaintHandler := handlers.NewComplaintHandler(pool, queries)
+	// r.Route("/complaints", func (r chi.Router) {
+	// 	//admin/test
+	// 	r.Get("/", func(w http.ResponseWriter, r *http.Request){
+	// 		log.Println("List work orders")
+	// 		complaintHandler.ListComplaintsHandler(w,r,queries)
+	// 	})
+
+	// 	//All
+	// 	r.Post("/", func(w http.ResponseWriter, r *http.Request) {
+	// 		log.Println("Post complaint")
+	// 		complaintHandler.CreateComplaintHandler(w, r, queries)
+	// 	})
+
+	// 	r.Route("/{complaint}", func(r chi.Router) {
+	// 		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+	// 			log.Println("Get Order")
+	// 			complaintHandler.GetComplaintHandler(w, r, queries)
+	// 		})
+
+	// 		r.Delete("/admin/", func(w http.ResponseWriter, r *http.Request) {
+	// 			log.Println("Delete Order")
+	// 			complaintHandler.DeleteComplaintHandler(w, r, queries)
+	// 		})
+	// 	})
+	// })
 
 	// Server config
 	port := os.Getenv("PORT")

@@ -37,7 +37,7 @@ const TenantComplaintsAndWorkOrders = () => {
 
     const { mutate: getComplaints } = useMutation({
         mutationFn: async () => {
-            const res = await fetch("http://localhost:8080/complaints", {
+            const res = await fetch(`http://localhost:8080/${user?.id}/complaints`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
