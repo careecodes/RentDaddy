@@ -23,8 +23,8 @@ type AdminOverviewRequest struct {
 }
 
 type InviteUserRequest struct {
-	Email      string `json:"email"`
-	UnitNumber int    `json:"unit_number"`
+	Email     string    `json:"email"`
+	Apartment Apartment `json:"apartment"`
 }
 
 type TenantUpdateProfileRequest struct {
@@ -98,8 +98,13 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 	// log.Printf("user ctx ID: %d\n", adminCtx.ID)
 
 	publicMetadata := &ClerkUserPublicMetaData{
-		UnitNumber:   tenantPayload.UnitNumber,
-		ManagementId: adminCtx.ID,
+		Apartment: Apartment{
+			UnitNumber:   tenantPayload.Apartment.UnitNumber,
+			Price:        tenantPayload.Apartment.Price,
+			SizeSqFt:     tenantPayload.Apartment.SizeSqFt,
+			ManagementId: adminCtx.ID,
+			LeaseId:      tenantPayload.Apartment.LeaseId,
+		},
 	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {
