@@ -112,12 +112,192 @@ volumes:
 
 ---
 
-## 4. Docker Compose Notes
+## 4. Docker Compose Configuration
 
-Ensure your `docker-compose.yml` matches the provided config. Notable points:
-- Port 3000 is mapped.
-- Certificate mounted at `./cert.p12:/opt/documenso/cert.p12`
-- Uses custom Docker network `documenso-rentdaddy` (make sure it's created).
+### Optional: Exposing Webhooks with ngrok
+If you're self-hosting **both Documenso and your backend** inside Docker and both are on the same Docker network (`documenso-rentdaddy`), then **you do not need ngrok** for Documenso webhooks to reach your backend. You can configure the webhook like so:
+
+```http
+http://rentdaddy-backend:8080/your-webhook-endpoint
+```
+
+However, if:
+- You are accessing Documenso from your browser at `localhost:3000`
+- And Documenso needs to send webhooks to your backend which is not exposed to the public internet
+
+Then you **will need ngrok** to tunnel external access to your local backend.
+
+Here’s how to set it up:
+
+### Ngrok Docker Service Example
+```yaml
+ngrok:
+  image: ngrok/ngrok:latest
+  container_name: ngrok-tunnel
+  restart: unless-stopped
+  environment:
+    - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  command: http rentdaddy-backend:${PORT:-8080}
+  depends_on:
+    - backend
+  networks:
+    - app-network
+```
+
+### How to Get an NGROK_AUTHTOKEN
+1. Sign up at https://ngrok.com/
+2. After logging in, go to your dashboard: https://dashboard.ngrok.com/get-started/setup
+3. Copy your personal authtoken
+4. Add it to your `.env` file like so:
+
+```ini
+NGROK_AUTHTOKEN=your-token-here
+```
+
+Use the public forwarding URL from ngrok in your Documenso webhook configuration.
+
+### Why This Setup Matters
+
+To enable seamless communication between the `rentdaddy-backend` and Documenso containers, both services are connected to a **shared Docker network**: `documenso-rentdaddy`. This allows:
+- The backend to call Documenso’s API using `http://documenso:3000`
+- Webhooks from Documenso to reach the backend when using ngrok
+
+We updated the RentDaddy `docker-compose.yml` to include `documenso-rentdaddy` under the `backend` service:
+
+```yaml
+networks:
+  app-network:
+    driver: bridge
+  documenso-rentdaddy:
+    external: true
+```
+
+And added this to the backend service:
+
+```yaml
+networks:
+  - app-network
+  - documenso-rentdaddy
+```
+
+Additionally, we use **ngrok** to expose the backend locally for receiving Documenso webhook events. Here's the ngrok service block:
+
+```yaml
+ngrok:
+  image: ngrok/ngrok:latest
+  container_name: ngrok-tunnel
+  restart: unless-stopped
+  environment:
+    - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+  command: http rentdaddy-backend:${PORT:-8080}
+  depends_on:
+    - backend
+  networks:
+    - app-network
+```
+
+Make sure to export the `NGROK_AUTHTOKEN` in your `.env` to authenticate your ngrok session.
+
+### How to Get an NGROK_AUTHTOKEN
+1. Sign up at https://ngrok.com/
+2. After logging in, go to your dashboard: https://dashboard.ngrok.com/get-started/setup
+3. Copy your personal authtoken
+4. Add it to your `.env` file like so:
+
+```ini
+NGROK_AUTHTOKEN=your-token-here
+```
+
+This is required for authenticated ngrok tunnels to stay online.
+
+
+Below is the full `docker-compose.yml` used to run Documenso in this setup:
+
+```yaml
+name: documenso-production
+
+services:
+  database:
+    image: postgres:15
+    environment:
+      - POSTGRES_USER=${POSTGRES_USER:?err}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD:?err}
+      - POSTGRES_DB=${POSTGRES_DB:?err}
+      - HOST=0.0.0.0
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - database:/var/lib/postgresql/data
+
+  documenso:
+    image: documenso/documenso:latest
+    depends_on:
+      database:
+        condition: service_healthy
+    environment:
+      - PORT=${PORT:-3000}
+      - NEXT_PRIVATE_INTERNAL_WEBAPP_URL=http://documenso:3000
+      - NEXTAUTH_URL=${NEXTAUTH_URL:-${NEXT_PUBLIC_WEBAPP_URL}}
+      - NEXTAUTH_SECRET=${NEXTAUTH_SECRET:?err}
+      - NEXT_PRIVATE_ENCRYPTION_KEY=${NEXT_PRIVATE_ENCRYPTION_KEY:?err}
+      - NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY=${NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY:?err}
+      - NEXT_PRIVATE_GOOGLE_CLIENT_ID=${NEXT_PRIVATE_GOOGLE_CLIENT_ID}
+      - NEXT_PRIVATE_GOOGLE_CLIENT_SECRET=${NEXT_PRIVATE_GOOGLE_CLIENT_SECRET}
+      - NEXT_PUBLIC_WEBAPP_URL=${NEXT_PUBLIC_WEBAPP_URL:?err}
+      - NEXT_PUBLIC_MARKETING_URL=${NEXT_PUBLIC_MARKETING_URL:-https://documenso.com}
+      - NEXT_PRIVATE_DATABASE_URL=${NEXT_PRIVATE_DATABASE_URL:?err}
+      - NEXT_PRIVATE_DIRECT_DATABASE_URL=${NEXT_PRIVATE_DIRECT_DATABASE_URL:-${NEXT_PRIVATE_DATABASE_URL}}
+      - NEXT_PUBLIC_UPLOAD_TRANSPORT=${NEXT_PUBLIC_UPLOAD_TRANSPORT:-database}
+      - NEXT_PRIVATE_UPLOAD_ENDPOINT=${NEXT_PRIVATE_UPLOAD_ENDPOINT}
+      - NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE=${NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE}
+      - NEXT_PRIVATE_UPLOAD_REGION=${NEXT_PRIVATE_UPLOAD_REGION}
+      - NEXT_PRIVATE_UPLOAD_BUCKET=${NEXT_PRIVATE_UPLOAD_BUCKET}
+      - NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID=${NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID}
+      - NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY=${NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY}
+      - NEXT_PRIVATE_SMTP_TRANSPORT=${NEXT_PRIVATE_SMTP_TRANSPORT:?err}
+      - NEXT_PRIVATE_SMTP_HOST=${NEXT_PRIVATE_SMTP_HOST}
+      - NEXT_PRIVATE_SMTP_PORT=${NEXT_PRIVATE_SMTP_PORT}
+      - NEXT_PRIVATE_SMTP_USERNAME=${NEXT_PRIVATE_SMTP_USERNAME}
+      - NEXT_PRIVATE_SMTP_PASSWORD=${NEXT_PRIVATE_SMTP_PASSWORD}
+      - NEXT_PRIVATE_SMTP_APIKEY_USER=${NEXT_PRIVATE_SMTP_APIKEY_USER}
+      - NEXT_PRIVATE_SMTP_APIKEY=${NEXT_PRIVATE_SMTP_APIKEY}
+      - NEXT_PRIVATE_SMTP_SECURE=${NEXT_PRIVATE_SMTP_SECURE}
+      - NEXT_PRIVATE_SMTP_FROM_NAME=${NEXT_PRIVATE_SMTP_FROM_NAME:?err}
+      - NEXT_PRIVATE_SMTP_FROM_ADDRESS=${NEXT_PRIVATE_SMTP_FROM_ADDRESS:?err}
+      - NEXT_PRIVATE_SMTP_SERVICE=${NEXT_PRIVATE_SMTP_SERVICE}
+      - NEXT_PRIVATE_RESEND_API_KEY=${NEXT_PRIVATE_RESEND_API_KEY}
+      - NEXT_PRIVATE_MAILCHANNELS_API_KEY=${NEXT_PRIVATE_MAILCHANNELS_API_KEY}
+      - NEXT_PRIVATE_MAILCHANNELS_ENDPOINT=${NEXT_PRIVATE_MAILCHANNELS_ENDPOINT}
+      - NEXT_PRIVATE_MAILCHANNELS_DKIM_DOMAIN=${NEXT_PRIVATE_MAILCHANNELS_DKIM_DOMAIN}
+      - NEXT_PRIVATE_MAILCHANNELS_DKIM_SELECTOR=${NEXT_PRIVATE_MAILCHANNELS_DKIM_SELECTOR}
+      - NEXT_PRIVATE_MAILCHANNELS_DKIM_PRIVATE_KEY=${NEXT_PRIVATE_MAILCHANNELS_DKIM_PRIVATE_KEY}
+      - NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT=${NEXT_PUBLIC_DOCUMENT_SIZE_UPLOAD_LIMIT}
+      - NEXT_PUBLIC_POSTHOG_KEY=${NEXT_PUBLIC_POSTHOG_KEY}
+      - NEXT_PUBLIC_DISABLE_SIGNUP=${NEXT_PUBLIC_DISABLE_SIGNUP}
+      - NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH=${NEXT_PRIVATE_SIGNING_LOCAL_FILE_PATH:-/opt/documenso/cert.p12}
+      - NEXT_PRIVATE_SIGNING_PASSPHRASE=${NEXT_PRIVATE_SIGNING_PASSPHRASE}
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./cert.p12:/opt/documenso/cert.p12
+    networks:
+      - default
+      - documenso-rentdaddy
+
+volumes:
+  database:
+
+networks:
+  default:
+    driver: bridge
+  documenso-rentdaddy:
+    external: true
+```
+
+Make sure your Docker network exists:
 
 ```bash
 docker network create documenso-rentdaddy
@@ -192,7 +372,8 @@ If signup confirmation fails:
   - `550 This domain is not associated with your account`
 - Try Forgot Password to force an email
 
-See `SMTP_README.md` for full troubleshooting flow.
+See [SMTP_README.md](./../../../internal/smtp/SMTP_README.md) for full troubleshooting flow.
+ for full troubleshooting flow.
 
 ---
 
@@ -200,4 +381,3 @@ See `SMTP_README.md` for full troubleshooting flow.
 - GitHub: https://github.com/documenso/documenso
 - Docs: https://docs.documenso.com
 - Discord: https://documen.so/discord
-
