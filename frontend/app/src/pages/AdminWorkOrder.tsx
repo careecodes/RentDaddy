@@ -278,7 +278,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         dataIndex: "createdAt",
         key: "createdAt",
         ...getWorkOrderColumnSearchProps("createdAt", "Created"),
-        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+        sorter: (a, b) => dayjs(b.createdAt).unix() - dayjs(a.createdAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
     {
@@ -286,7 +286,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         dataIndex: "updatedAt",
         key: "updatedAt",
         ...getWorkOrderColumnSearchProps("updatedAt", "Updated"),
-        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
+        sorter: (a, b) => dayjs(b.updatedAt).unix() - dayjs(a.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
 ];
@@ -466,14 +466,14 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         title: "Created",
         dataIndex: "createdAt",
         key: "createdAt",
-        sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
+        sorter: (a, b) => dayjs(b.createdAt).unix() - dayjs(a.createdAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
     {
         title: "Updated",
         dataIndex: "updatedAt",
         key: "updatedAt",
-        sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
+        sorter: (a, b) => dayjs(b.updatedAt).unix() - dayjs(a.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
 ];
