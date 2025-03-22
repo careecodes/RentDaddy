@@ -239,8 +239,39 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         title: "Description",
         dataIndex: "description",
         key: "description",
-        ...getColumnSearchProps("description", "Description"),
-        render: (description) => shortenInput(description),
+        ...getWorkOrderColumnSearchProps("description", "Description"),
+        render: (description: string) => shortenInput(description),
+    },
+    {
+        title: "Unit",
+        dataIndex: "apartmentNumber",
+        key: "apartmentNumber",
+        ...getWorkOrderColumnSearchProps("apartmentNumber", "Unit"),
+    },
+    {
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        ...getWorkOrderColumnSearchProps("status", "Status"),
+        render: (status: string) => {
+            let color = "default";
+            switch (status) {
+                case "open":
+                    color = "red";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    break;
+                case "awaiting_parts":
+                    color = "orange";
+                    break;
+                case "completed":
+                    color = "green";
+                    break;
+            }
+            return <Tag color={color}>{status.replace("_", " ").toUpperCase()}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Created",
