@@ -547,6 +547,16 @@ const AdminWorkOrder = () => {
         return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
     }).length;
 
+    let alerts: string[] = [];
+    if (overdueServiceCount > 0) {
+        alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
+    } else if (recentlyCreatedServiceCount > 0) {
+        alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`)
+    } else if (recentlyCompletedServiceCount > 0) {
+        alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`)
+    }
+    const alertDescription: string = alerts.join(" ") ?? "";
+
     const modalContent = selectedItem && (
         <div>
             <div className="mb-4">
@@ -589,10 +599,8 @@ const AdminWorkOrder = () => {
         <div className="container">
             <h1 className="mb-4">Work-Orders & Complaints</h1>
             {/* Alerts headers */}
-            <div className="d-flex w-100 justify-content-between mb-4">
-                {overdueServiceCount > 0 ? <AlertComponent description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`} /> : null}
-                {recentlyCreatedServiceCount > 0 ? <AlertComponent description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`} /> : null}
-                {recentlyCompletedServiceCount > 0 ? <AlertComponent description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`} /> : null}
+            <div className="w-100 justify-content-between mb-4 left-text text-start">
+                {alertDescription ? <AlertComponent description={alertDescription} /> : null}
             </div>
 
             {/* Work Order Table */}
