@@ -506,6 +506,47 @@ const AdminWorkOrder = () => {
         return item.unitNumber;
     };
 
+    const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
+        const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
+        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
+        if (priorityDiff !== 0) return priorityDiff;
+
+        if (a.status !== "completed" && b.status !== "completed") {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+
+    const sortedComplaints = complaintsDataRaw.sort((a, b) => {
+        const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
+        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
+        if (priorityDiff !== 0) return priorityDiff;
+
+        if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
+            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+        }
+
+        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
+    });
+
+    const hoursUntilOverdue: number = 48;
+    const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
+        return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
+    }).length;
+    const hoursSinceRecentlyCreated: number = 24;
+    const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
+        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
+        return hoursSinceCreation <= hoursSinceRecentlyCreated;
+    }).length;
+
+    const hoursSinceRecentlyCompleted: number = 24;
+    const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
+        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
+        return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
+    }).length;
+
     const modalContent = selectedItem && (
         <div>
             <div className="mb-4">
@@ -546,7 +587,7 @@ const AdminWorkOrder = () => {
 
     return (
         <div className="container">
-            <h1 className="mb-4 text-center">Work-Orders & Complaints</h1>
+            <h1 className="mb-4">Work-Orders & Complaints</h1>
             {/* Alerts headers */}
             <div className="d-flex w-100 justify-content-between mb-4">
                 {overdueServiceCount > 0 ? <AlertComponent description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`} /> : null}
