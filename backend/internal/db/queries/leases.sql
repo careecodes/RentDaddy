@@ -136,14 +136,36 @@ WHERE tenant_id = $1
 LIMIT 1;
 
 -- name: ExpireLeasesEndingToday :one
-UPDATE leases
-SET status = 'expired', updated_at = NOW()
-WHERE status = 'active' AND lease_end_date <= CURRENT_DATE
-RETURNING (SELECT COUNT(*) FROM leases WHERE status = 'expired' AND updated_at > NOW() - INTERVAL '1 minute');
-
+WITH expired_leases AS (
+    UPDATE leases
+    SET status = 'expired', updated_at = NOW()
+    WHERE status = 'active' AND lease_end_date <= CURRENT_DATE
+    RETURNING id
+)
+SELECT 
+    COUNT(*) as expired_count,
+    CASE 
+        WHEN COUNT(*) = 0 THEN 'No leases expired today'
+        WHEN COUNT(*) = 1 THEN '1 lease expired today'
+        ELSE COUNT(*) || ' leases expired today'
+    END as message
+FROM expired_leases;
 
 
 -- name: ListActiveLeases :one
 SELECT * FROM leases
 WHERE status = 'active'
 LIMIT 1;
+
+-- name: GetLeaseByExternalDocID :one
+SELECT * FROM leases
+WHERE external_doc_id = $1
+LIMIT 1;
+
+-- name: UpdateLeaseStatus :one
+UPDATE leases
+SET status = $2, updated_by = $3, updated_at = NOW()
+WHERE id = $1
+RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, 
+    lease_start_date, lease_end_date, rent_amount, status, created_by, 
+    updated_by, updated_at, previous_lease_id;

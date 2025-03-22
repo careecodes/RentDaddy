@@ -1,17 +1,3 @@
-FROM golang:1.23-alpine as builder
-
-WORKDIR /build
-
-# Copy only files needed for dependencies first to leverage Docker cache
-COPY go.mod go.sum ./
-RUN go mod download
-
-# Copy the rest of the application code
-COPY . .
-
-# Build the application
-RUN go build -o /tmp/server .
-
 FROM golang:1.23-alpine
 
 # Set working directory
@@ -22,7 +8,15 @@ RUN apk update && apk add --no-cache \
     curl \
     git \
     postgresql-client \
+    nodejs \
+    npm \
     && rm -rf /var/cache/apk/*
+
+# Install ngrok
+RUN curl -Lo ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz \
+    && tar -xzf ngrok.tgz -C /usr/local/bin/ \
+    && rm ngrok.tgz \
+    && chmod +x /usr/local/bin/ngrok
 
 # Install Task CLI
 RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task \
@@ -35,33 +29,30 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
     && chmod +x /usr/local/bin/migrate \
     && rm migrate.tar.gz
 
-# Install Air for development mode (optional)
+# Install Air for development mode
 RUN go install github.com/air-verse/air@latest \
     && mv /go/bin/air /usr/local/bin/air
 
-# Copy compiled binary from builder stage
-COPY --from=builder /tmp/server /app/tmp/server
-
-# Copy application source files (needed for development)
+# Copy application source files
 COPY . .
 
 # Create necessary directories
 RUN mkdir -p /app/tmp /app/temp
+
+# Build the application
+RUN go build -o /app/tmp/server .
 
 # Set up cron job
 COPY ./cmd/cron/leases-cron /etc/cron.d/leases-cron
 RUN chmod 0644 /etc/cron.d/leases-cron \
     && crontab /etc/cron.d/leases-cron
 
-# Copy Air configuration
-COPY .air.toml /app/.air.toml
-
 # Copy entrypoint.sh and set correct permissions
 RUN chmod +x /app/entrypoint.sh
 
 EXPOSE 8080
 
-# Environment variable to control whether to use Air (default: false)
+# Environment variable to control whether to use Air
 ENV USE_AIR=false
 
 ENTRYPOINT ["/app/entrypoint.sh"]

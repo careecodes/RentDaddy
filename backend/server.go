@@ -94,21 +94,18 @@ func main() {
 			r.Route("/leases", func(r chi.Router) {
 				r.Get("/", leaseHandler.GetLeases)
 				r.Post("/create", leaseHandler.CreateLease)
+				r.Post("/send/{leaseID}", leaseHandler.SendLease)
 				r.Post("/renew", leaseHandler.RenewLease)
 				r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
 				r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
 				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
 				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
-				r.Post("/expire", func(w http.ResponseWriter, r *http.Request) {
-					leaseHandler.UpdateAllLeaseStatuses(w, r)
-				})
 				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
 
 				//r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)    // Fetch lease PDF
-				//r.Post("/webhooks/documenso", )
+				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 			})
 			// Webhook for lease signing status updates
-			r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 
 		})
 	})

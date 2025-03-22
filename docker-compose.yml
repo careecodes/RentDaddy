@@ -1,4 +1,15 @@
 services:
+  ngrok:
+      image: ngrok/ngrok:latest
+      container_name: ngrok-tunnel
+      restart: unless-stopped
+      environment:
+        - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+      command: http rentdaddy-backend:${PORT:-8080}
+      depends_on:
+        - backend
+      networks:
+        - app-network
   postgres:
     image: postgres:15
     ports:
@@ -36,10 +47,11 @@ services:
       - ./backend/tmp:/app/tmp
       - ./backend/temp:/app/temp
     env_file: .env
-    networks:
-      - app-network
     command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
-
+    networks:
+        - app-network
+        - documenso-rentdaddy
+        
   frontend:
     build:
       context: ./frontend/app
@@ -57,6 +69,9 @@ services:
 networks:
   app-network:
     driver: bridge
+  documenso-rentdaddy:
+    external: true
 
 volumes:
   postgres_data:
+
