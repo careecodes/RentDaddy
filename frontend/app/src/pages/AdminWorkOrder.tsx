@@ -613,7 +613,7 @@ const AdminWorkOrder = () => {
                         </>
                     ) : (
                         <>
-                            <Select.Option value="pending">Pending</Select.Option>
+                            <Select.Option value="open">Open</Select.Option>
                             <Select.Option value="in_progress">In Progress</Select.Option>
                             <Select.Option value="resolved">Resolved</Select.Option>
                             <Select.Option value="closed">Closed</Select.Option>
