@@ -55,6 +55,8 @@ func main() {
 	userCount := 3
 	unitNumber := 101
 
+	log.Printf("[SEED_USERS] Starting %d users", userCount)
+
 	managementId, err := createAdmin(ctx)
 	if err != nil {
 		log.Printf("[SEED_USERS] Error seeding admin: %v", err)
@@ -134,19 +136,12 @@ func createTenant(ctx context.Context, unitNumber int, managementId *string) err
 	if err != nil {
 		return err
 	}
-
 	if len(sqft) > 0 {
 		apartmentEntry.SizeSqFt = sqft[0]
 	}
 
-	price, err := faker.RandomInt(1500, 8000)
-	if err != nil {
-		return err
-	}
-
-	if len(price) > 0 {
-		apartmentEntry.Price = price[0]
-	}
+	price := (sqft[0]) * 2
+	apartmentEntry.Price = price
 
 	userMetadata := ClerkUserPublicMetaData{
 		DbId: 0,

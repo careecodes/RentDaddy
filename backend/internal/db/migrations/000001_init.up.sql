@@ -88,7 +88,7 @@ CREATE TYPE "Role" AS ENUM ('tenant', 'admin');
 CREATE TABLE IF NOT EXISTS "users"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "clerk_id"      TEXT                           NOT NULL, -- Clerk ID's "user_2u9IV7xs5cUaYv2MsGH3pcI5hzK" cannot be converted to UUID format
+    "clerk_id"      TEXT                         UNIQUE NOT NULL, -- Clerk ID's "user_2u9IV7xs5cUaYv2MsGH3pcI5hzK" cannot be converted to UUID format
     "first_name"    VARCHAR                        NOT NULL,
     "last_name"     VARCHAR                        NOT NULL,
     "email"         VARCHAR                        NOT NULL,
@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS "apartments"
     "size"             SMALLINT                       NOT NULL,
     "management_id"    BIGINT                         NOT NULL,
     "availability"     BOOLEAN                        NOT NULL DEFAULT false,
-    "lease_id"         BIGINT                         NOT NULL,
+    "lease_id"         BIGINT                         NULL,
     "updated_at"       TIMESTAMP(0)            DEFAULT now(),
     "created_at"       TIMESTAMP(0)            DEFAULT now()
 );
