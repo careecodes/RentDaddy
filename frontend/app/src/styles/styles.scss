@@ -247,6 +247,17 @@ body {
     background-color: #00674f;
 }
 
+.hoverable-row {
+    &:hover {
+        background-color: #1890ff20 !important; // Light blue with opacity
+        transition: background-color 0.3s;
+    }
+}
+
+.ant-table-tbody>tr.hoverable-row:hover>td {
+    background-color: #1890ff20 !important;
+}
+
 // Text Sizes
 // H1 Page Titles
 // H2 Section Titles

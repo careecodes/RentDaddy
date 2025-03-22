@@ -619,7 +619,11 @@ const AdminWorkOrder = () => {
                             setSelectedItem(record);
                             setItemType("workOrder");
                             setIsModalVisible(true);
-                        }
+                        },
+                        style: {
+                            cursor: 'pointer',
+                        },
+                        className: 'hoverable-row'
                     })}
                 />
             </div>
@@ -641,7 +645,11 @@ const AdminWorkOrder = () => {
                             setSelectedItem(record);
                             setItemType("complaint");
                             setIsModalVisible(true);
-                        }
+                        },
+                        style: {
+                            cursor: 'pointer',
+                        },
+                        className: 'hoverable-row'
                     })}
                 />
             </div>
