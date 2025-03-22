@@ -16,6 +16,7 @@ import (
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 
+	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -94,6 +95,22 @@ func main() {
 					r.Get("/", userHandler.GetUserByClerkId)
 					r.Patch("/credentials", userHandler.UpdateTenantProfile)
 				})
+				r.Route("/leases", func(r chi.Router) {
+					leaseHandler := handlers.NewLeaseHandler(pool, queries)
+					r.Get("/", leaseHandler.GetLeases)
+					r.Post("/create", leaseHandler.CreateLease)
+					r.Post("/send/{leaseID}", leaseHandler.SendLease)
+					r.Post("/renew", leaseHandler.RenewLease)
+					r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
+					r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
+					r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
+					r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
+					r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
+					r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
+
+					r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+				})
+
 			})
 
 			// ParkingPermits
@@ -116,68 +133,6 @@ func main() {
 					r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
 				})
 			})
-	leaseHandler := handlers.NewLeaseHandler(pool, queries)
-	// Admin Endpoints
-	r.Route("/admin", func(r chi.Router) {
-		// r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
-		// NOTE: Uncomment this after
-		// r.Use(mymiddleware.IsAdmin)                // Admin middleware
-		r.Get("/", userHandler.GetAdminOverview)
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello this is admin test"))
-		})
-		r.Route("/tenants", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				userHandler.GetAllTenants(w, r, gen.RoleTenant)
-			})
-			r.Get("/{clerk_id}", userHandler.GetUserByClerkId)
-			r.Post("/invite", userHandler.InviteTenant)
-			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
-			r.Route("/leases", func(r chi.Router) {
-				r.Get("/", leaseHandler.GetLeases)
-				r.Post("/create", leaseHandler.CreateLease)
-				r.Post("/send/{leaseID}", leaseHandler.SendLease)
-				r.Post("/renew", leaseHandler.RenewLease)
-				r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
-				r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
-				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
-				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
-				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
-				r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
-
-			
-				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
-			})
-			
-
-		})
-	})
-	// Tenant Endpoints
-	r.Route("/tenant", func(r chi.Router) {
-		// r.Use(clerkhttp.WithHeaderAuthorization()) // Clerk middleware
-		r.Get("/test", func(w http.ResponseWriter, r *http.Request) {
-			w.Write([]byte("Hello this is tenant test"))
-		})
-		r.Post("/{clerk_id}", userHandler.GetUserByClerkId)
-		r.Get("/{clerk_id}/permits", userHandler.GetTenantParkingPermits)
-		r.Get("/{clerk_id}/documents", userHandler.GetTenantDocuments)
-		r.Get("/{clerk_id}/work_orders", userHandler.GetTenantWorkOrders)
-		r.Get("/{clerk_id}/complaints", userHandler.GetTenantComplaints)
-	})
-
-	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
-	r.Route("/work_orders", func(r chi.Router) {
-		// Admin route
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("List Orders")
-			workOrderHandler.ListWorkOrdersHandler(w, r)
-		})
-
-		// Create Order
-		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("Create Order")
-			workOrderHandler.CreateWorkOrderHandler(w, r)
-		})
 
 			// Apartment
 			r.Route("/apartments", func(r chi.Router) {
