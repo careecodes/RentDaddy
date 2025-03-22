@@ -196,8 +196,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         title: "Category",
         dataIndex: "category",
         key: "category",
-        sorter: (a, b) => a.category.localeCompare(b.category),
-        ...getColumnSearchProps("category", "Category"),
+        ...getWorkOrderColumnSearchProps("category", "Category"),
         render: (category) => {
             let color = "";
             let text = "";
