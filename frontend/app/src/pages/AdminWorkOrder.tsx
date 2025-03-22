@@ -484,16 +484,45 @@ const paginationConfig: TablePaginationConfig = {
 };
 
 const AdminWorkOrder = () => {
+    const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
+    const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
     const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
+    const [currentStatus, setCurrentStatus] = useState<string>("");
 
     const handleStatusChange = (newStatus: string) => {
-        // TODO: Implement API call to update status
-        if (selectedItem) {
-            console.log(`Updating ${itemType} ${selectedItem.key} status to ${newStatus}`);
-            // After API call success, maybe delete modal. Not sure yet
-            // setIsModalVisible(false);
+        setCurrentStatus(newStatus);
+    };
+
+    const handleConfirm = () => {
+        if (selectedItem && currentStatus) {
+            if (itemType === "workOrder") {
+                const updatedWorkOrders = workOrderData.map(item => {
+                    if (item.key === selectedItem.key) {
+                        return {
+                            ...item,
+                            status: currentStatus,
+                            updatedAt: new Date()
+                        };
+                    }
+                    return item;
+                });
+                setWorkOrderData(updatedWorkOrders);
+            } else {
+                const updatedComplaints = complaintsData.map(item => {
+                    if (item.key === selectedItem.key) {
+                        return {
+                            ...item,
+                            status: currentStatus,
+                            updatedAt: new Date(),
+                        };
+                    }
+                    return item;
+                });
+                setComplaintsData(updatedComplaints);
+            }
+            setIsModalVisible(false);
         }
     };
 
@@ -521,7 +550,7 @@ const AdminWorkOrder = () => {
     const sortedComplaints = complaintsDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) return priorityDiff;
+        if (priorityDiff !== 0) { return priorityDiff; }
 
         if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
             return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
@@ -598,6 +627,7 @@ const AdminWorkOrder = () => {
     return (
         <div className="container">
             <h1 className="mb-4">Work-Orders & Complaints</h1>
+
             {/* Alerts headers */}
             <div className="w-100 justify-content-between mb-4 left-text text-start">
                 {alertDescription ? <AlertComponent description={alertDescription} /> : null}
@@ -608,7 +638,7 @@ const AdminWorkOrder = () => {
                 <h4 className="mb-3">Work Orders</h4>
                 <TableComponent<WorkOrderData>
                     columns={workOrderColumns}
-                    dataSource={sortedWorkOrders}
+                    dataSource={workOrderDataRaw}
                     style=".lease-table-container"
                     pagination={paginationConfig}
                     onChange={(pagination, filters, sorter, extra) => {
@@ -634,7 +664,7 @@ const AdminWorkOrder = () => {
 
                 <TableComponent<ComplaintsData>
                     columns={complaintsColumns}
-                    dataSource={sortedComplaints}
+                    dataSource={complaintsDataRaw}
                     style=".lease-table-container"
                     pagination={paginationConfig}
                     onChange={(pagination, filters, sorter, extra) => {
@@ -660,7 +690,7 @@ const AdminWorkOrder = () => {
                     buttonType="default"
                     content={modalContent}
                     type="default"
-                    handleOkay={() => setIsModalVisible(false)}
+                    handleOkay={handleConfirm}
                     modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
                     isModalOpen={isModalVisible}
                     onCancel={() => setIsModalVisible(false)}
