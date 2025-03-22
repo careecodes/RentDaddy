@@ -13,6 +13,7 @@ export interface Complaint {
     unitNumber: number;
     status: any;
 }
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const TenantComplaintsAndWorkOrders = () => {
     const { user } = useUser();
@@ -127,7 +128,8 @@ const TenantComplaintsAndWorkOrders = () => {
     return (
         <div className="container">
             {/* Title */}
-            <h1 className="mb-4">Complaints and Work Orders</h1>
+            {/* <h1 className="mb-4">Complaints and Work Orders</h1> */}
+            <PageTitleComponent title="Complaints and Work Orders" />
 
             <ButtonComponent
                 title="get complaints"

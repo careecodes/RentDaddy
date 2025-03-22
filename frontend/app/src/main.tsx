@@ -122,16 +122,9 @@ createRoot(document.getElementById("root")!).render(
 
                                 <Route
                                     path="/auth/sign-in/"
-                                    element={<SignIn />}>
-                                    {/* <Route
-                                        path="sign-in"
-                                        element={<SignIn />}
-                                    /> /}
-                                    {/ We probably don't need a register route, but I'll leave it here for now /}
-                                    {/ <Route
-                                        path="register"
-                                        element={<h1>Register</h1>}
-                                    /> */}
+                                    element={<div className="d-flex justify-content-center align-items-center h-100 py-5">
+                                        <SignIn />
+                                    </div>}>
                                 </Route>
 
                                 {/* Testing Routes */}
@@ -204,6 +197,6 @@ createRoot(document.getElementById("root")!).render(
                     </ClerkProvider>
                 </BrowserRouter>
             </QueryClientProvider>
-        </ConfigProvider>
-    </StrictMode>
+        </ConfigProvider >
+    </StrictMode >
 );

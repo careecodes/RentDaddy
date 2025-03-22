@@ -10,9 +10,8 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
-	gen "github.com/careecodes/RentDaddy/internal/db/generated"
 
-	// mymiddleware "github.com/careecodes/RentDaddy/middleware"
+	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -73,7 +72,7 @@ func main() {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
 
-	// User Router
+	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
 	// Admin Endpoints
 	r.Route("/admin", func(r chi.Router) {
@@ -136,32 +135,71 @@ func main() {
 
 
 
+	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
-	r.Route("/work_orders", func(r chi.Router) {
-		// Admin route
-		r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("List Orders")
-			workOrderHandler.ListWorkOrdersHandler(w, r)
-		})
+	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 
-		// Create Order
-		r.Post("/", func(w http.ResponseWriter, r *http.Request) {
-			log.Println("Create Order")
-			workOrderHandler.CreateWorkOrderHandler(w, r)
-		})
+	// Application Routes
+	r.Group(func(r chi.Router) {
+		// Clerk middleware
+		r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
+		// Admin Endpoints
+		r.Route("/admin", func(r chi.Router) {
+			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			r.Get("/", userHandler.GetAdminOverview)
 
-		r.Route("/{order_number}", func(r chi.Router) {
-			r.Get("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Get Order")
-				workOrderHandler.GetWorkOrderHandler(w, r)
+			// Tenants
+			r.Route("/tenants", func(r chi.Router) {
+				r.Get("/", userHandler.GetAllTenants)
+				r.Post("/invite", userHandler.InviteTenant)
+				r.Route("/{clerk_id}", func(r chi.Router) {
+					r.Get("/", userHandler.GetUserByClerkId)
+					r.Patch("/credentials", userHandler.UpdateTenantProfile)
+				})
 			})
-			r.Patch("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Printf("Update Order")
-				workOrderHandler.UpdateWorkOrderHandler(w, r)
+
+			// ParkingPermits
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/", parkingPermitHandler.GetParkingPermits)
+				r.Post("/", parkingPermitHandler.CreateParkingPermit)
+				r.Route("/{permit_id}", func(r chi.Router) {
+					r.Get("/", parkingPermitHandler.GetParkingPermit)
+					r.Delete("/", parkingPermitHandler.DeleteParkingPermit)
+				})
 			})
-			r.Delete("/", func(w http.ResponseWriter, r *http.Request) {
-				log.Println("Delete Order")
-				workOrderHandler.DeleteWorkOrderHandler(w, r)
+
+			// Work Orders
+			r.Route("/work_orders", func(r chi.Router) {
+				r.Get("/", workOrderHandler.ListWorkOrdersHandler)
+				r.Post("/", workOrderHandler.CreateWorkOrderHandler)
+				r.Route("/{order_id}", func(r chi.Router) {
+					r.Get("/", workOrderHandler.GetWorkOrderHandler)
+					r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
+					r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
+				})
+			})
+
+			// Apartment
+			r.Route("/apartments", func(r chi.Router) {
+				r.Get("/", apartmentHandler.ListApartmentsHandler)
+				r.Get("/{apartment}", apartmentHandler.GetApartmentHandler)
+				r.Post("/", apartmentHandler.CreateApartmentHandler)
+				r.Patch("/{apartment}", apartmentHandler.UpdateApartmentHandler)
+				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
+			})
+		})
+		// End Admin
+
+		// Tenant Endpoints
+		r.Route("/", func(r chi.Router) {
+			r.Get("/", userHandler.GetUserByClerkId)
+			r.Get("/documents", userHandler.GetTenantDocuments)
+			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
+			r.Get("/complaints", userHandler.GetTenantComplaints)
+			r.Route("/parking", func(r chi.Router) {
+				r.Get("/", parkingPermitHandler.TenantGetParkingPermits)
+				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
+				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
 			})
 		})
 	})
