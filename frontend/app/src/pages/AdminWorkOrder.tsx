@@ -504,7 +504,7 @@ const AdminWorkOrder = () => {
                             ...item,
                             status: currentStatus,
                             updatedAt: new Date()
-                        };
+                        } as WorkOrderData;
                     }
                     return item;
                 });
@@ -516,7 +516,7 @@ const AdminWorkOrder = () => {
                             ...item,
                             status: currentStatus,
                             updatedAt: new Date(),
-                        };
+                        } as ComplaintsData;
                     }
                     return item;
                 });
