@@ -1100,8 +1100,48 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	// Log the raw payload for debugging
 	log.Printf("[WEBHOOK] Received webhook payload: %s", string(body))
+	type DocumensoEvent struct {
+		Event string `json:"event"`
+		Data  struct {
+			DocumentID string `json:"id"`
+		} `json:"data"`
+	}
 
-	// Rest of your webhook handling code...
+	var event DocumensoEvent
+	if err := json.Unmarshal(body, &event); err != nil {
+		log.Printf("[WEBHOOK] Failed to decode event payload: %v", err)
+		http.Error(w, "Invalid payload", http.StatusBadRequest)
+		return
+	}
+
+	if event.Event == "document.signed.completed" {
+		log.Printf("[WEBHOOK] Document %s signed, marking lease as active", event.Data.DocumentID)
+
+		// Get lease by external_doc_id
+		lease, err := h.queries.GetLeaseByExternalDocID(r.Context(), event.Data.DocumentID)
+		if err != nil {
+			log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", event.Data.DocumentID, err)
+			http.Error(w, "Lease not found", http.StatusNotFound)
+			return
+		}
+
+		// Only update if current status is pending
+		if lease.Status != db.LeaseStatus("active") {
+			_, err := h.queries.UpdateLeaseStatus(r.Context(), db.UpdateLeaseStatusParams{
+				ID:        lease.ID,
+				Status:    db.LeaseStatus("active"),
+				UpdatedBy: landlordID,
+			})
+			if err != nil {
+				log.Printf("[WEBHOOK] Failed to update lease %d to active: %v", lease.ID, err)
+				http.Error(w, "Failed to update lease", http.StatusInternalServerError)
+				return
+			}
+
+			log.Printf("[WEBHOOK] Lease %d marked as active", lease.ID)
+		}
+	}
+
 }
 
 // SendLease updates a lease from draft to pending_tenant_approval state
