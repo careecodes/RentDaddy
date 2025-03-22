@@ -606,6 +606,13 @@ const AdminWorkOrder = () => {
                     onChange={(pagination, filters, sorter, extra) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
+                    onRow={(record: WorkOrderData) => ({
+                        onClick: () => {
+                            setSelectedItem(record);
+                            setItemType("workOrder");
+                            setIsModalVisible(true);
+                        }
+                    })}
                 />
             </div>
 
@@ -621,8 +628,29 @@ const AdminWorkOrder = () => {
                     onChange={(pagination, filters, sorter, extra) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
+                    onRow={(record: ComplaintsData) => ({
+                        onClick: () => {
+                            setSelectedItem(record);
+                            setItemType("complaint");
+                            setIsModalVisible(true);
+                        }
+                    })}
                 />
             </div>
+
+            {selectedItem && (
+                <ModalComponent
+                    buttonTitle=""
+                    buttonType="default"
+                    content={modalContent}
+                    type="default"
+                    handleOkay={() => setIsModalVisible(false)}
+                    modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
+                    isModalOpen={isModalVisible}
+                    onCancel={() => setIsModalVisible(false)}
+                    apartmentBuildingSetEditBuildingState={() => { }}
+                />
+            )}
         </div>
     );
 };
