@@ -191,6 +191,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         dataIndex: "workOrderNumber",
         key: "workOrderNumber",
         ...getWorkOrderColumnSearchProps("workOrderNumber", "Work Order #"),
+        sorter: (a, b) => a.workOrderNumber - b.workOrderNumber,
     },
     {
         title: "Category",
