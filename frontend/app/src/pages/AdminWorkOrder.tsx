@@ -638,7 +638,7 @@ const AdminWorkOrder = () => {
                 <h4 className="mb-3">Work Orders</h4>
                 <TableComponent<WorkOrderData>
                     columns={workOrderColumns}
-                    dataSource={workOrderDataRaw}
+                    dataSource={workOrderData}
                     style=".lease-table-container"
                     pagination={paginationConfig}
                     onChange={(pagination, filters, sorter, extra) => {
@@ -664,7 +664,7 @@ const AdminWorkOrder = () => {
 
                 <TableComponent<ComplaintsData>
                     columns={complaintsColumns}
-                    dataSource={complaintsDataRaw}
+                    dataSource={complaintsData}
                     style=".lease-table-container"
                     pagination={paginationConfig}
                     onChange={(pagination, filters, sorter, extra) => {
