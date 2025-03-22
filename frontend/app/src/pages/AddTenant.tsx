@@ -1,5 +1,6 @@
 import { useMutation } from "@tanstack/react-query";
 import ModalComponent from "../components/ModalComponent";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import { useState } from "react";
 import { useUser } from "@clerk/react-router";
@@ -203,7 +204,8 @@ const AddTenant = () => {
 
     return (
         <div className="container">
-            <h1 className="p-3">View or Add Tenants</h1>
+            {/* <h1 className="p-3">View or Add Tenants</h1> */}
+            <PageTitleComponent title="View or Add Tenants" />
             <div className="mb-3 flex">
                 <ModalComponent
                     type="Invite Tenant"

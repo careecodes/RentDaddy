@@ -2,6 +2,7 @@
 import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd";
 import { useState } from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const TenantComplaintsAndWorkOrders = () => {
     const [requestType, setRequestType] = useState("complaint");
@@ -9,67 +10,67 @@ const TenantComplaintsAndWorkOrders = () => {
 
     const complaintColumns = [
         {
-            title: 'ID',
-            dataIndex: 'id',
-            key: 'id',
+            title: "ID",
+            dataIndex: "id",
+            key: "id",
         },
         {
-            title: 'Title',
-            dataIndex: 'title',
-            key: 'title',
+            title: "Title",
+            dataIndex: "title",
+            key: "title",
         },
         {
-            title: 'Description',
-            dataIndex: 'description',
-            key: 'description',
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
         },
         {
-            title: 'Type',
-            dataIndex: 'type',
-            key: 'type',
+            title: "Type",
+            dataIndex: "type",
+            key: "type",
         },
         {
-            title: 'Votes',
-            dataIndex: 'votes',
-            key: 'votes',
+            title: "Votes",
+            dataIndex: "votes",
+            key: "votes",
         },
     ];
 
     const workOrderColumns = [
         {
-            title: 'ID',
-            dataIndex: 'id',
-            key: 'id',
+            title: "ID",
+            dataIndex: "id",
+            key: "id",
         },
         {
-            title: 'Title',
-            dataIndex: 'title',
-            key: 'title',
+            title: "Title",
+            dataIndex: "title",
+            key: "title",
         },
         {
-            title: 'Description',
-            dataIndex: 'description',
-            key: 'description',
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
         },
         {
-            title: 'Type',
-            dataIndex: 'type',
-            key: 'type',
+            title: "Type",
+            dataIndex: "type",
+            key: "type",
         },
         {
-            title: 'Votes',
-            dataIndex: 'votes',
-            key: 'votes',
+            title: "Votes",
+            dataIndex: "votes",
+            key: "votes",
         },
         {
-            title: 'Importance',
-            dataIndex: 'importance',
-            key: 'importance',
+            title: "Importance",
+            dataIndex: "importance",
+            key: "importance",
             render: (importance: string) => {
                 const statusMap: Record<string, "error" | "warning" | "default"> = {
                     High: "error",
                     Medium: "warning",
-                    Low: "default"
+                    Low: "default",
                 };
                 return (
                     <Badge
@@ -77,7 +78,7 @@ const TenantComplaintsAndWorkOrders = () => {
                         text={importance}
                     />
                 );
-            }
+            },
         },
     ];
 
@@ -105,7 +106,7 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Work Order 1 Title",
             description: "Work Order 1 Description",
             votes: 10,
-            importance: "High"
+            importance: "High",
         },
         {
             id: 2,
@@ -113,7 +114,7 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Work Order 2 Title",
             description: "Work Order 2 Description",
             votes: 5,
-            importance: "Medium"
+            importance: "Medium",
         },
         {
             id: 3,
@@ -121,7 +122,7 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Work Order 3 Title",
             description: "Work Order 3 Description",
             votes: 3,
-            importance: "Low"
+            importance: "Low",
         },
     ];
 
@@ -133,7 +134,8 @@ const TenantComplaintsAndWorkOrders = () => {
     return (
         <div className="container">
             {/* Title */}
-            <h1 className="mb-4">Complaints and Work Orders</h1>
+            {/* <h1 className="mb-4">Complaints and Work Orders</h1> */}
+            <PageTitleComponent title="Complaints and Work Orders" />
 
             {/* Start of Form */}
             <Form
