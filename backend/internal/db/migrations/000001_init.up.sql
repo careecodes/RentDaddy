@@ -26,7 +26,8 @@ CREATE TYPE "Type" AS ENUM (
     );
 CREATE TYPE "Lease_Status" AS ENUM (
     'draft',
-    'pending_approval',
+    'pending_tenant_approval',
+    'pending_landlord_approval',
     'active',
     'expired',
     'terminated',
@@ -119,22 +120,27 @@ CREATE TABLE IF NOT EXISTS "apartments"
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
+
+
 CREATE TABLE IF NOT EXISTS "leases"
 (
     "id"               BIGSERIAL PRIMARY KEY,
-    "lease_number"     BIGINT UNIQUE  NOT NULL,
+    "lease_number"     BIGINT  NOT NULL,
     "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
+    "lease_pdf_s3" TEXT,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
     "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
-    "apartment_id"     BIGINT,
+    "apartment_id"     BIGINT         NOT NULL ,
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
     "rent_amount"      DECIMAL(10, 2) NOT NULL,
-    "lease_status"     "Lease_Status" NOT NULL DEFAULT 'active',
+    "status"            "Lease_Status" NOT NULL DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
     "created_at"       TIMESTAMP(0)            DEFAULT now(),
-    "updated_at"       TIMESTAMP(0)            DEFAULT now()
+    "updated_at"       TIMESTAMP(0)            DEFAULT now(),
+    "previous_lease_id" BIGINT REFERENCES leases(id),
+    "tenant_signing_url" TEXT
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
@@ -182,4 +188,3 @@ ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
-

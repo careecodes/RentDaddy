@@ -1,7 +1,7 @@
 // Comment to git add .
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
-import { Button, Divider, Form, Input, Modal, Select } from "antd";
+import { Button, Divider, Form, Input, Modal } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
@@ -262,8 +262,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -498,41 +498,6 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 Confirm
                             </Button>
                         </div>
-                    </Modal>
-                </>
-            )}
-            {props.type === "Send Tenant Lease" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
-                        // leases={leaseTemplates || []} // Add null check
-                        okButtonProps={{ disabled: !props.leases?.length }}
-                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
-                    >
-                        <Form>
-                            {/* Pick a Lease */}
-                            <Form.Item name="lease-template">
-                                <Select
-                                    placeholder="Select a Lease Template"
-                                    options={
-                                        props.leases?.map((lease) => ({
-                                            label: lease.title,
-                                            value: lease.id,
-                                        })) || []
-                                    }
-                                />
-                            </Form.Item>
-                            <p>Please go create a template in Documenso.</p>
-                        </Form>
                     </Modal>
                 </>
             )}

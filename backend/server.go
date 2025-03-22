@@ -97,6 +97,22 @@ func main() {
 					r.Get("/work_orders", userHandler.GetTenantWorkOrders)
 					r.Get("/complaints", userHandler.GetTenantComplaints)
 				})
+				r.Route("/leases", func(r chi.Router) {
+					leaseHandler := handlers.NewLeaseHandler(pool, queries)
+					r.Get("/", leaseHandler.GetLeases)
+					r.Post("/create", leaseHandler.CreateLease)
+					r.Post("/send/{leaseID}", leaseHandler.SendLease)
+					r.Post("/renew", leaseHandler.RenewLease)
+					r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
+					r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
+					r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
+					r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
+					r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
+					r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
+
+					r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+				})
+
 			})
 
 			// ParkingPermits

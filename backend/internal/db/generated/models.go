@@ -151,12 +151,13 @@ func (ns NullComplianceStatus) Value() (driver.Value, error) {
 type LeaseStatus string
 
 const (
-	LeaseStatusDraft           LeaseStatus = "draft"
-	LeaseStatusPendingApproval LeaseStatus = "pending_approval"
-	LeaseStatusActive          LeaseStatus = "active"
-	LeaseStatusExpired         LeaseStatus = "expired"
-	LeaseStatusTerminated      LeaseStatus = "terminated"
-	LeaseStatusRenewed         LeaseStatus = "renewed"
+	LeaseStatusDraft                   LeaseStatus = "draft"
+	LeaseStatusPendingTenantApproval   LeaseStatus = "pending_tenant_approval"
+	LeaseStatusPendingLandlordApproval LeaseStatus = "pending_landlord_approval"
+	LeaseStatusActive                  LeaseStatus = "active"
+	LeaseStatusExpired                 LeaseStatus = "expired"
+	LeaseStatusTerminated              LeaseStatus = "terminated"
+	LeaseStatusRenewed                 LeaseStatus = "renewed"
 )
 
 func (e *LeaseStatus) Scan(src interface{}) error {
@@ -402,20 +403,23 @@ type Complaint struct {
 }
 
 type Lease struct {
-	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
-	ExternalDocID  string           `json:"external_doc_id"`
-	TenantID       int64            `json:"tenant_id"`
-	LandlordID     int64            `json:"landlord_id"`
-	ApartmentID    pgtype.Int8      `json:"apartment_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	LeaseStatus    LeaseStatus      `json:"lease_status"`
-	CreatedBy      int64            `json:"created_by"`
-	UpdatedBy      int64            `json:"updated_by"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+	ID               int64            `json:"id"`
+	LeaseNumber      int64            `json:"lease_number"`
+	ExternalDocID    string           `json:"external_doc_id"`
+	LeasePdfS3       pgtype.Text      `json:"lease_pdf_s3"`
+	TenantID         int64            `json:"tenant_id"`
+	LandlordID       int64            `json:"landlord_id"`
+	ApartmentID      int64            `json:"apartment_id"`
+	LeaseStartDate   pgtype.Date      `json:"lease_start_date"`
+	LeaseEndDate     pgtype.Date      `json:"lease_end_date"`
+	RentAmount       pgtype.Numeric   `json:"rent_amount"`
+	Status           LeaseStatus      `json:"status"`
+	CreatedBy        int64            `json:"created_by"`
+	UpdatedBy        int64            `json:"updated_by"`
+	CreatedAt        pgtype.Timestamp `json:"created_at"`
+	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
+	PreviousLeaseID  pgtype.Int8      `json:"previous_lease_id"`
+	TenantSigningUrl pgtype.Text      `json:"tenant_signing_url"`
 }
 
 type LeaseTenant struct {

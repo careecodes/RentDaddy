@@ -1,10 +1,17 @@
 services:
+  ngrok:
+      image: ngrok/ngrok:latest
+      container_name: ngrok-tunnel
+      restart: unless-stopped
+      environment:
+        - NGROK_AUTHTOKEN=${NGROK_AUTHTOKEN}
+      command: http rentdaddy-backend:${PORT:-8080}
+      depends_on:
+        - backend
+      networks:
+        - app-network
   postgres:
     image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-appuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apppassword}
-      POSTGRES_DB: ${POSTGRES_DB:-appdb}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     container_name: rentdaddy-postgres
@@ -19,13 +26,13 @@ services:
        retries: 5
     networks:
       - app-network
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
+      - "2345:2345" 
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,10 +41,15 @@ services:
     volumes:
       - ./backend:/app
       - /app/tmp
+      - /app/temp
+      - ./backend/tmp:/app/tmp
+      - ./backend/temp:/app/temp
     env_file: .env
     networks:
-      - app-network
+        - app-network
+        - documenso-rentdaddy
     command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
+    
 
   frontend:
     build:
@@ -52,10 +64,11 @@ services:
       - app-network
     env_file:
       - .env  # Load .env file
-
 networks:
   app-network:
     driver: bridge
+  documenso-rentdaddy:
+    external: true
 
 volumes:
   postgres_data:

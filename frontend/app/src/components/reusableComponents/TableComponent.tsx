@@ -12,7 +12,7 @@ interface TableComponentProps<T> {
     pagination?: TablePaginationConfig;
 }
 const useStyle = createStyles(({ css, token }) => {
-    const { antCls } = token; //ignore the warning
+    const antCls = token.antCls || ""; // Ensure compatibility if antCls is undefined
     return {
         customTable: css`
             ${antCls}-table {
