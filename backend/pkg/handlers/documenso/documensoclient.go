@@ -609,6 +609,44 @@ func (c *DocumensoClient) withRetry(maxRetries int, operation func() error) erro
 	return fmt.Errorf("operation failed after %d attempts: %w", maxRetries, err)
 }
 
+func (c *DocumensoClient) GetTenantSigningURL(documentID string, tenantEmail string) (string, error) {
+	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
+	req, err := http.NewRequest("GET", url, nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+	resp, err := c.Client.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("API request failed: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return "", fmt.Errorf("Documenso returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	var result struct {
+		Recipients []struct {
+			Email      string `json:"email"`
+			SigningURL string `json:"signingUrl"`
+		} `json:"recipients"`
+	}
+	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+		return "", fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	for _, r := range result.Recipients {
+		if strings.EqualFold(r.Email, tenantEmail) {
+			return r.SigningURL, nil
+		}
+	}
+
+	return "", fmt.Errorf("tenant %s not found in document %s", tenantEmail, documentID)
+}
+
 func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
 	log.Printf("DOCUMENSO DEBUG: "+format, args...)
 }

@@ -237,7 +237,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 
 	// Step 3: Upload to Documenso and populate fields
 	log.Println("[LEASE_UPSERT] Uploading lease PDF to Documenso")
-	docID, err := h.handleDocumensoUploadAndSetup(
+	docID, _, tenantSigningURL, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		LeaseWithSignersRequest{
 			TenantName:      req.TenantName,
@@ -276,6 +276,10 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 		CreatedBy:       req.CreatedBy,
 		UpdatedBy:       req.UpdatedBy,
 		PreviousLeaseID: pgtype.Int8{Int64: derefOrZero(req.PreviousLeaseID), Valid: req.PreviousLeaseID != nil},
+		TenantSigningUrl: pgtype.Text{
+			String: tenantSigningURL,
+			Valid:  tenantSigningURL != "",
+		},
 	}
 	log.Printf(" [LEASE_UPSERT] Status: %v ", leaseParams.Status)
 	row, err := h.queries.RenewLease(r.Context(), leaseParams)
@@ -702,7 +706,10 @@ func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
 
 }
 
-func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWithSignersRequest, landlordName, landlordEmail string) (string, error) {
+func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWithSignersRequest, landlordName, landlordEmail string) (docID string,
+	tenantRecipientID int,
+	tenantSigningURL string,
+	err error) {
 	// Prepare signers
 	signers := []documenso.Signer{
 		{
@@ -724,9 +731,11 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 	}
 
 	log.Printf("Uploading lease %v to Documenso...\n", documentTitle)
-	docID, _, err := h.documenso_client.UploadDocumentWithSigners(pdfData, documentTitle, signers)
+	docID, recipientInfoMap, err := h.documenso_client.UploadDocumentWithSigners(pdfData, documentTitle, signers)
+
 	if err != nil {
-		return "", fmt.Errorf("upload to Documenso failed: %w", err)
+		return "", 0, "", fmt.Errorf("upload to Documenso failed: %w", err)
+
 	}
 
 	// Save PDF to disk in background
@@ -743,14 +752,14 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 	docURL := fmt.Sprintf("%s/documents/%s", h.documenso_client.BaseURL, docID)
 	docReq, err := http.NewRequest("GET", docURL, nil)
 	if err != nil {
-		return docID, nil // Return docID even if we can't add fields
+		return docID, 0, "", nil // Return docID even if we can't add fields
 	}
 	docReq.Header.Set("Authorization", "Bearer "+h.documenso_client.ApiKey)
 
 	docResp, err := h.documenso_client.Client.Do(docReq)
 	if err != nil {
 		log.Printf("Warning: Failed to get document details: %v", err)
-		return docID, nil
+		return docID, 0, "", nil
 	}
 	defer docResp.Body.Close()
 
@@ -764,7 +773,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 
 	if err := json.NewDecoder(docResp.Body).Decode(&docResponse); err != nil {
 		log.Printf("Warning: Failed to parse document response: %v", err)
-		return docID, nil
+		return docID, 0, "", nil
 	}
 
 	// Map emails to recipient IDs
@@ -797,7 +806,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		log.Printf("Warning: Could not find valid landlord ID for email %s", landlordEmail)
 	}
 
-	return docID, nil
+	return docID, tenantID, recipientInfoMap[req.TenantEmail].SigningURL, nil
 }
 func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
@@ -886,7 +895,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		return
 	}
 	//5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
-	docID, err := h.handleDocumensoUploadAndSetup(
+	docID, _, tenantSigningURL, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		req,
 		landlordName,
@@ -911,23 +920,27 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		Status:         db.LeaseStatus("pending_tenant_approval"),
 		LeasePdf:       pdfData,
 		CreatedBy:      landlordID, // Use landlord ID from database
-		UpdatedBy:      landlordID, // TODO: This is correct here.
-		//TODO: take previous id ptr and place here.
+		UpdatedBy:      landlordID,
+		TenantSigningUrl: pgtype.Text{
+			String: tenantSigningURL,
+			Valid:  tenantSigningURL != "",
+		},
 	}
 
 	leaseID, err := h.queries.RenewLease(r.Context(), db.RenewLeaseParams{
-		LeaseNumber:    leaseParams.LeaseNumber,
-		ExternalDocID:  leaseParams.ExternalDocID,
-		TenantID:       leaseParams.TenantID,
-		LandlordID:     leaseParams.LandlordID,
-		ApartmentID:    leaseParams.ApartmentID,
-		LeaseStartDate: leaseParams.LeaseStartDate,
-		LeaseEndDate:   leaseParams.LeaseEndDate,
-		RentAmount:     leaseParams.RentAmount,
-		Status:         leaseParams.Status,
-		LeasePdf:       leaseParams.LeasePdf,
-		CreatedBy:      leaseParams.CreatedBy,
-		UpdatedBy:      leaseParams.UpdatedBy,
+		LeaseNumber:      leaseParams.LeaseNumber,
+		ExternalDocID:    leaseParams.ExternalDocID,
+		TenantID:         leaseParams.TenantID,
+		LandlordID:       leaseParams.LandlordID,
+		ApartmentID:      leaseParams.ApartmentID,
+		LeaseStartDate:   leaseParams.LeaseStartDate,
+		LeaseEndDate:     leaseParams.LeaseEndDate,
+		RentAmount:       leaseParams.RentAmount,
+		Status:           leaseParams.Status,
+		LeasePdf:         leaseParams.LeasePdf,
+		CreatedBy:        leaseParams.CreatedBy,
+		UpdatedBy:        leaseParams.UpdatedBy,
+		TenantSigningUrl: leaseParams.TenantSigningUrl,
 	})
 	if err != nil {
 		log.Printf("Error renewing lease in database: %v", err)
@@ -1162,7 +1175,7 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 
 	log.Printf("[LEASE_SEND] Sending lease ID %d for signing", leaseID)
 
-	// First, get the current lease to verify it's in draft state
+	// First, get the current lease
 	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
 	if err != nil {
 		log.Printf("[LEASE_SEND] Error fetching lease %d: %v", leaseID, err)
@@ -1170,18 +1183,44 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Verify lease is in draft status
+	// Verify lease is in draft or pending_tenant_approval status
 	if string(lease.Status) != "draft" && string(lease.Status) != "pending_tenant_approval" {
-		log.Printf("[LEASE_SEND] Cannot send lease %d with status %s, must be draft or pending_tenant_approval", leaseID, lease.Status)
-		http.Error(w, "Only leases in draft or pending approval status can be sent for signing", http.StatusBadRequest)
+		log.Printf("[LEASE_SEND] Cannot send lease %d with status %s", leaseID, lease.Status)
+		http.Error(w, "Only leases in draft or pending approval status can be sent", http.StatusBadRequest)
 		return
 	}
 
-	// Update the lease status to pending_tenant_approval
+	// Get tenant info
+	tenant, err := h.queries.GetUserByID(r.Context(), lease.TenantID)
+	if err != nil {
+		log.Printf("[LEASE_SEND] Failed to get tenant info: %v", err)
+		http.Error(w, "Tenant not found", http.StatusInternalServerError)
+		return
+	}
+
+	// Fetch latest tenant signing URL from Documenso
+	tenantSigningURL, err := h.documenso_client.GetTenantSigningURL(lease.ExternalDocID, tenant.Email)
+	if err != nil {
+		log.Printf("[LEASE_SEND] Failed to get tenant signing URL: %v", err)
+		http.Error(w, "Failed to fetch signing URL", http.StatusInternalServerError)
+		return
+	}
+
+	// Persist the signing URL in the database
+	err = h.queries.UpdateTenantSigningURL(r.Context(), db.UpdateTenantSigningURLParams{
+		ID:               leaseID,
+		TenantSigningUrl: pgtype.Text{String: tenantSigningURL, Valid: true},
+	})
+	if err != nil {
+		log.Printf("[LEASE_SEND] Failed to persist signing URL: %v", err)
+		// Continue anyway; not fatal to sending
+	}
+
+	// Update lease status to pending_tenant_approval
 	updateParams := db.UpdateLeaseStatusParams{
 		ID:        leaseID,
 		Status:    db.LeaseStatus("pending_tenant_approval"),
-		UpdatedBy: landlordID,
+		UpdatedBy: landlordID, // ⚠️ Make sure landlordID is set correctly here
 	}
 
 	updatedLease, err := h.queries.UpdateLeaseStatus(r.Context(), updateParams)
@@ -1191,11 +1230,11 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Return success response with lease details
+	// Return success
 	resp := map[string]interface{}{
 		"lease_id":        leaseID,
 		"status":          "pending_tenant_approval",
-		"sign_url":        h.documenso_client.GetSigningURL(updatedLease.ExternalDocID),
+		"sign_url":        tenantSigningURL,
 		"external_doc_id": updatedLease.ExternalDocID,
 		"message":         "Lease has been sent for signing",
 	}
@@ -1207,4 +1246,37 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *LeaseHandler) GetTenantSigningURL(w http.ResponseWriter, r *http.Request) {
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	tenantEmail := r.URL.Query().Get("email")
+
+	if leaseIDStr == "" || tenantEmail == "" {
+		http.Error(w, "Missing leaseID or email", http.StatusBadRequest)
+		return
+	}
+
+	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid leaseID", http.StatusBadRequest)
+		return
+	}
+
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+	if err != nil {
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
+	}
+
+	signingURL, err := h.documenso_client.GetTenantSigningURL(lease.ExternalDocID, tenantEmail)
+	if err != nil {
+		http.Error(w, "Failed to retrieve signing URL: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	json.NewEncoder(w).Encode(map[string]string{
+		"email":       tenantEmail,
+		"signing_url": signingURL,
+	})
 }
