@@ -445,9 +445,6 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         render: (status: string) => {
             let color = "default";
             switch (status) {
-                case "pending":
-                    color = "red";
-                    break;
                 case "in_progress":
                     color = "blue";
                     break;
@@ -456,6 +453,9 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
                     break;
                 case "closed":
                     color = "gray";
+                    break;
+                case "open":
+                    color = "red";
                     break;
             }
             return <Tag color={color}>{status.replace("_", " ").toUpperCase()}</Tag>;
@@ -484,54 +484,65 @@ const paginationConfig: TablePaginationConfig = {
 };
 
 const AdminWorkOrder = () => {
-    const handleAddWorkOrder = () => {
-        console.log("Added package successfully.");
+    const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
+
+    const handleStatusChange = (newStatus: string) => {
+        // TODO: Implement API call to update status
+        if (selectedItem) {
+            console.log(`Updating ${itemType} ${selectedItem.key} status to ${newStatus}`);
+            // After API call success, maybe delete modal. Not sure yet
+            // setIsModalVisible(false);
+        }
     };
 
-    const handleAddComplaint = () => {
-        console.log("Added complaint successfully.");
+    const getUnitNumber = (item: WorkOrderData | ComplaintsData): string => {
+        // I HAVE NO CLUE WHAT THE NAMING CONVENTION IS NOW SO ADDING THIS SINCE I'VE SEEN BOTH
+        // FOR WORK ORDER AND COMPLAINTS
+        if ("apartmentNumber" in item) {
+            return item.apartmentNumber;
+        }
+        return item.unitNumber;
     };
 
-    const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
-        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) return priorityDiff;
-
-        if (a.status !== "completed" && b.status !== "completed") {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        }
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
-    const sortedComplaints = complaintsDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
-        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) return priorityDiff;
-
-        if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
-        }
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
-    const hoursUntilOverdue: number = 48;
-    const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
-        return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
-    }).length;
-    const hoursSinceRecentlyCreated: number = 24;
-    const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
-        return hoursSinceCreation <= hoursSinceRecentlyCreated;
-    }).length;
-
-    const hoursSinceRecentlyCompleted: number = 24;
-    const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
-        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
-        return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
-    }).length;
+    const modalContent = selectedItem && (
+        <div>
+            <div className="mb-4">
+                <strong>Title:</strong> {selectedItem.title}
+            </div>
+            <div className="mb-4">
+                <strong>Description:</strong> {selectedItem.description}
+            </div>
+            <div className="mb-4">
+                <strong>Unit Number:</strong> {getUnitNumber(selectedItem)}
+            </div>
+            <div>
+                <strong>Status:</strong>
+                <Select
+                    defaultValue={selectedItem.status}
+                    style={{ width: 200, marginLeft: 10 }}
+                    onChange={handleStatusChange}
+                >
+                    {itemType === "workOrder" ? (
+                        <>
+                            <Select.Option value="open">Open</Select.Option>
+                            <Select.Option value="in_progress">In Progress</Select.Option>
+                            <Select.Option value="awaiting_parts">Awaiting Parts</Select.Option>
+                            <Select.Option value="completed">Completed</Select.Option>
+                        </>
+                    ) : (
+                        <>
+                            <Select.Option value="pending">Pending</Select.Option>
+                            <Select.Option value="in_progress">In Progress</Select.Option>
+                            <Select.Option value="resolved">Resolved</Select.Option>
+                            <Select.Option value="closed">Closed</Select.Option>
+                        </>
+                    )}
+                </Select>
+            </div>
+        </div>
+    );
 
     return (
         <div className="container">
