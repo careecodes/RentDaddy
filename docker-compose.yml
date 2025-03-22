@@ -19,7 +19,6 @@ services:
     env_file: .env
     volumes:
       - postgres_data:/var/lib/postgresql/data
-      - ./backend/assets/minimalresidentialagreement.pdf:/files/minimalresidentialagreement.pdf
     healthcheck:
        test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}"]
        interval: 5s
@@ -27,7 +26,6 @@ services:
        retries: 5
     networks:
       - app-network
-
   backend:
     build:
       context: ./backend
@@ -47,11 +45,12 @@ services:
       - ./backend/tmp:/app/tmp
       - ./backend/temp:/app/temp
     env_file: .env
-    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
     networks:
         - app-network
         - documenso-rentdaddy
-        
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
+    
+
   frontend:
     build:
       context: ./frontend/app
@@ -65,7 +64,6 @@ services:
       - app-network
     env_file:
       - .env  # Load .env file
-
 networks:
   app-network:
     driver: bridge
@@ -74,4 +72,3 @@ networks:
 
 volumes:
   postgres_data:
-
