@@ -21,7 +21,6 @@ const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: st
                 value={filterDropdownProps.selectedKeys[0]}
                 onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
                 onPressEnter={() => filterDropdownProps.confirm()}
-                style={{ width: 188, marginBottom: 8, display: "block" }}
             />
         </div>
     ),
@@ -42,7 +41,6 @@ const getComplaintColumnSearchProps = (dataIndex: keyof ComplaintsData, title: s
                 value={filterDropdownProps.selectedKeys[0]}
                 onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
                 onPressEnter={() => filterDropdownProps.confirm()}
-                style={{ width: 188, marginBottom: 8, display: "block" }}
             />
         </div>
     ),
