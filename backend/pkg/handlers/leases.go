@@ -1220,7 +1220,7 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 	updateParams := db.UpdateLeaseStatusParams{
 		ID:        leaseID,
 		Status:    db.LeaseStatus("pending_tenant_approval"),
-		UpdatedBy: landlordID, // ⚠️ Make sure landlordID is set correctly here
+		UpdatedBy: landlordID, // TODO: Make sure landlordID is set correctly here
 	}
 
 	updatedLease, err := h.queries.UpdateLeaseStatus(r.Context(), updateParams)
