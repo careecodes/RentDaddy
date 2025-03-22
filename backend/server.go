@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"log"
 	"net/http"
 	"os"
@@ -18,7 +17,6 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
-	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -96,49 +94,8 @@ func main() {
 				r.Route("/{clerk_id}", func(r chi.Router) {
 					r.Get("/", userHandler.GetUserByClerkId)
 					r.Patch("/", userHandler.UpdateTenantProfile)
-					r.Get("/work_orders", workOrderHandler.GetTenantWorkOrders)
-					// TODO: Clean this up when complaintHandler is done
-					r.Get("/complaints", func(w http.ResponseWriter, r *http.Request) {
-						tenantClerkId := chi.URLParam(r, "clerk_id")
-						if tenantClerkId == "" {
-							log.Printf("[USER_HANDLER] Failed no tenant clerk id provided")
-							http.Error(w, "Error no tenant clerk id provided", http.StatusBadRequest)
-							return
-						}
-
-						tenantClerkData, err := user.Get(r.Context(), tenantClerkId)
-						if err != nil {
-							log.Printf("[COMPLAINT_HANDLER] Failed getting tenant from Clerk")
-							http.Error(w, "Error getting tenant from Clerk", http.StatusBadRequest)
-							return
-						}
-
-						var tenantMetadata handlers.ClerkUserPublicMetaData
-						err = json.Unmarshal(tenantClerkData.PublicMetadata, &tenantMetadata)
-						if err != nil {
-							log.Printf("[COMPLAINT_HANDLER] Failed parsing JSON: %v", err)
-							http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
-							return
-						}
-
-						complaints, err := queries.ListTenantComplaints(r.Context(), int64(tenantMetadata.DbId))
-						if err != nil {
-							log.Printf("[COMPLAINT_HANDLER] Failed querying tenant complaints: %v", err)
-							http.Error(w, "Error querying tenant complaints", http.StatusInternalServerError)
-							return
-						}
-
-						jsonComplaints, err := json.Marshal(complaints)
-						if err != nil {
-							log.Printf("[COMPLAINT_HANDLER] Failed querying documents for tenant: %v", err)
-							http.Error(w, "Error querying documents for tenant", http.StatusInternalServerError)
-							return
-						}
-
-						w.WriteHeader(http.StatusOK)
-						w.Header().Set("Content-Type", "application/json")
-						w.Write([]byte(jsonComplaints))
-					})
+					r.Get("/work_orders", userHandler.GetTenantWorkOrders)
+					r.Get("/complaints", userHandler.GetTenantComplaints)
 				})
 			})
 
