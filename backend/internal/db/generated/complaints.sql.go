@@ -154,6 +154,43 @@ func (q *Queries) ListComplaints(ctx context.Context, arg ListComplaintsParams) 
 	return items, nil
 }
 
+const listTenantComplaints = `-- name: ListTenantComplaints :many
+SELECT id, complaint_number, created_by, category, title, description, unit_number, status, updated_at, created_at
+FROM complaints
+WHERE created_by = $1
+`
+
+func (q *Queries) ListTenantComplaints(ctx context.Context, createdBy int64) ([]Complaint, error) {
+	rows, err := q.db.Query(ctx, listTenantComplaints, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Complaint
+	for rows.Next() {
+		var i Complaint
+		if err := rows.Scan(
+			&i.ID,
+			&i.ComplaintNumber,
+			&i.CreatedBy,
+			&i.Category,
+			&i.Title,
+			&i.Description,
+			&i.UnitNumber,
+			&i.Status,
+			&i.UpdatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const updateComplaint = `-- name: UpdateComplaint :exec
 UPDATE complaints
 SET

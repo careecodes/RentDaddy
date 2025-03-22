@@ -23,6 +23,11 @@ FROM work_orders
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: ListTenantWorkOrders :many
+SELECT *
+FROM work_orders
+WHERE created_by = $1;
+
 -- name: UpdateWorkOrder :exec
 UPDATE work_orders
 SET
