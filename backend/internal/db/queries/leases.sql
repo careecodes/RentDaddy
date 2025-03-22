@@ -1,6 +1,6 @@
 -- name: CreateLease :one
 INSERT INTO leases (
-  lease_number, external_doc_id, lease_pdf,
+  lease_number, external_doc_id, lease_pdf_s3,
   tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount,
   status, created_by, updated_by,
@@ -18,7 +18,7 @@ RETURNING *;
 -- name: RenewLease :one
 INSERT INTO leases (
   lease_number, external_doc_id, tenant_id, landlord_id, apartment_id,
-  lease_start_date, lease_end_date, rent_amount, status, lease_pdf,
+  lease_start_date, lease_end_date, rent_amount, status, lease_pdf_s3,
   created_by, updated_by, previous_lease_id, tenant_signing_url
 )
 VALUES (
@@ -52,7 +52,7 @@ RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_i
 -- name: ListLeases :many
 SELECT id, lease_number,
     external_doc_id,
-    lease_pdf,
+    lease_pdf_s3,
     tenant_id,
     landlord_id,
     apartment_id,
@@ -68,7 +68,7 @@ FROM leases ORDER BY created_at DESC;
 -- name: GetLeaseByID :one
 SELECT lease_number,
     external_doc_id,
-    lease_pdf,
+    lease_pdf_s3,
     tenant_id,
     landlord_id,
     apartment_id,
@@ -96,7 +96,7 @@ SET
 WHERE id = $7
 RETURNING lease_number,
     external_doc_id,
-    lease_pdf,
+    lease_pdf_s3,
     tenant_id,
     landlord_id,
     apartment_id,
@@ -109,11 +109,11 @@ RETURNING lease_number,
     previous_lease_id;
 
 
--- name: StoreGeneratedLeasePDF :exec
+-- name: StoreGeneratedLeasePDFURL :exec
 UPDATE leases
-SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
+SET lease_pdf_s3 = $1, external_doc_id = $2, updated_at = now()
 WHERE id = $3
-RETURNING lease_pdf;
+RETURNING lease_pdf_s3;
 
 
 -- name: MarkLeaseAsSignedBothParties :exec
@@ -122,7 +122,7 @@ SET status = 'active', updated_at = now()
 WHERE id = $1
 RETURNING lease_number,
     external_doc_id,
-    lease_pdf,
+    lease_pdf_s3,
     tenant_id,
     landlord_id,
     apartment_id,
@@ -137,7 +137,7 @@ RETURNING lease_number,
 -- name: UpdateLeasePDF :exec
 UPDATE leases
 SET 
-    lease_pdf = $2, 
+    lease_pdf_s3 = $2, 
     updated_by = $3,
     updated_at = NOW()
 WHERE id = $1;

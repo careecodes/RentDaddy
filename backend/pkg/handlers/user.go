@@ -158,7 +158,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 			ID:              row.ID,
 			LeaseNumber:     row.LeaseNumber,
 			ExternalDocID:   row.ExternalDocID,
-			LeasePdf:        row.LeasePdf,
+			LeasePdfS3:      row.LeasePdfS3,
 			TenantID:        row.TenantID,
 			LandlordID:      row.LandlordID,
 			ApartmentID:     row.ApartmentID,

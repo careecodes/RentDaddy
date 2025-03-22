@@ -379,7 +379,7 @@ type Apartment struct {
 	Size         int16            `json:"size"`
 	ManagementID int64            `json:"management_id"`
 	Availability bool             `json:"availability"`
-	LeaseID      pgtype.Int8      `json:"lease_id"`
+	LeaseID      int64            `json:"lease_id"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
@@ -406,7 +406,7 @@ type Lease struct {
 	ID               int64            `json:"id"`
 	LeaseNumber      int64            `json:"lease_number"`
 	ExternalDocID    string           `json:"external_doc_id"`
-	LeasePdf         []byte           `json:"lease_pdf"`
+	LeasePdfS3       pgtype.Text      `json:"lease_pdf_s3"`
 	TenantID         int64            `json:"tenant_id"`
 	LandlordID       int64            `json:"landlord_id"`
 	ApartmentID      int64            `json:"apartment_id"`

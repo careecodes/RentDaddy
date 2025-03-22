@@ -126,7 +126,7 @@ type CreateLeaseResponse struct {
 	LeaseID         int64  `json:"lease_id"`
 	ExternalDocID   string `json:"external_doc_id,omitempty"`
 	Status          string `json:"lease_status"`
-	LeasePDF        string `json:"lease_pdf,omitempty"`
+	LeasePDFS3      string `json:"lease_pdf_s3,omitempty"`
 	LeaseSigningURL string `json:"lease_signing_url"`
 }
 
@@ -272,7 +272,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 		LeaseEndDate:    pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:      pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:          db.LeaseStatus(req.Status),
-		LeasePdf:        pdfData,
+		LeasePdfS3:      pgtype.Text{String: string(pdfData), Valid: true},
 		CreatedBy:       req.CreatedBy,
 		UpdatedBy:       req.UpdatedBy,
 		PreviousLeaseID: pgtype.Int8{Int64: derefOrZero(req.PreviousLeaseID), Valid: req.PreviousLeaseID != nil},
@@ -918,7 +918,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		LeaseEndDate:   pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:         db.LeaseStatus("pending_tenant_approval"),
-		LeasePdf:       pdfData,
+		LeasePdfS3:     pgtype.Text{String: string(pdfData), Valid: true},
 		CreatedBy:      landlordID, // Use landlord ID from database
 		UpdatedBy:      landlordID,
 		TenantSigningUrl: pgtype.Text{
@@ -937,7 +937,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		LeaseEndDate:     leaseParams.LeaseEndDate,
 		RentAmount:       leaseParams.RentAmount,
 		Status:           leaseParams.Status,
-		LeasePdf:         leaseParams.LeasePdf,
+		LeasePdfS3:       leaseParams.LeasePdfS3,
 		CreatedBy:        leaseParams.CreatedBy,
 		UpdatedBy:        leaseParams.UpdatedBy,
 		TenantSigningUrl: leaseParams.TenantSigningUrl,

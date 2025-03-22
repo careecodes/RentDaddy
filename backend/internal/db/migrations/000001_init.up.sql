@@ -127,7 +127,7 @@ CREATE TABLE IF NOT EXISTS "leases"
     "id"               BIGSERIAL PRIMARY KEY,
     "lease_number"     BIGINT  NOT NULL,
     "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
-    "lease_pdf"        BYTEA         NOT NULL,
+    "lease_pdf_s3" TEXT,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
     "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
     "apartment_id"     BIGINT         NOT NULL ,

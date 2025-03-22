@@ -31,7 +31,7 @@ type CreateApartmentParams struct {
 	Size         int16          `json:"size"`
 	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams) (Apartment, error) {
@@ -88,7 +88,7 @@ type GetApartmentRow struct {
 	Size         int16          `json:"size"`
 	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) GetApartment(ctx context.Context, id int64) (GetApartmentRow, error) {
@@ -192,7 +192,7 @@ type ListApartmentsRow struct {
 	Size         int16          `json:"size"`
 	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) ListApartments(ctx context.Context) ([]ListApartmentsRow, error) {
@@ -248,7 +248,7 @@ type ListApartmentsWithoutLeaseRow struct {
 	Size         int16          `json:"size"`
 	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
+	LeaseID      int64          `json:"lease_id"`
 }
 
 func (q *Queries) ListApartmentsWithoutLease(ctx context.Context, arg ListApartmentsWithoutLeaseParams) ([]ListApartmentsWithoutLeaseRow, error) {
