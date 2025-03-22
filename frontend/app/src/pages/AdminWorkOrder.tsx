@@ -526,6 +526,13 @@ const AdminWorkOrder = () => {
         }
     };
 
+    const handleRowClick = (record: WorkOrderData | ComplaintsData, type: "workOrder" | "complaint") => {
+        setSelectedItem(record);
+        setItemType(type);
+        setCurrentStatus(record.status);
+        setIsModalVisible(true);
+    }
+
     const getUnitNumber = (item: WorkOrderData | ComplaintsData): string => {
         // I HAVE NO CLUE WHAT THE NAMING CONVENTION IS NOW SO ADDING THIS SINCE I'VE SEEN BOTH
         // FOR WORK ORDER AND COMPLAINTS
@@ -600,7 +607,7 @@ const AdminWorkOrder = () => {
             <div>
                 <strong>Status:</strong>
                 <Select
-                    defaultValue={selectedItem.status}
+                    defaultValue={currentStatus}
                     style={{ width: 200, marginLeft: 10 }}
                     onChange={handleStatusChange}
                 >
@@ -645,11 +652,7 @@ const AdminWorkOrder = () => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                     onRow={(record: WorkOrderData) => ({
-                        onClick: () => {
-                            setSelectedItem(record);
-                            setItemType("workOrder");
-                            setIsModalVisible(true);
-                        },
+                        onClick: () => handleRowClick(record, "workOrder"),
                         style: {
                             cursor: 'pointer',
                         },
@@ -671,11 +674,7 @@ const AdminWorkOrder = () => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
                     onRow={(record: ComplaintsData) => ({
-                        onClick: () => {
-                            setSelectedItem(record);
-                            setItemType("complaint");
-                            setIsModalVisible(true);
-                        },
+                        onClick: () => handleRowClick(record, "complaint"),
                         style: {
                             cursor: 'pointer',
                         },
