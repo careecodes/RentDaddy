@@ -14,19 +14,17 @@ done
 echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 
-
 # Start cron in background
 crond
 
-if [ "$DEBUG_MODE" = "true" ]; then
-  echo "Debug mode enabled. Starting Delve debugger..."
-  dlv --listen=:2345 --headless=true --api-version=2 --accept-multiclient exec /tmp/server
-else
-  # Run Air with config file
-  echo "Starting Air..."
+# Make sure the pre-built binary has proper permissions
+chmod +x /app/tmp/server
+
+# Choose whether to use Air for development or direct execution
+if [ "${USE_AIR:-false}" = "true" ]; then
+  echo "Starting Air with pre-built binary..."
   exec air -c /app/.air.toml
-  # Starting backend server
-  echo "Starting the backend server..."
-  chmod -R 777 /tmp/server
-  exec /tmp/server
+else
+  echo "Starting the server directly..."
+  exec /app/tmp/server
 fi

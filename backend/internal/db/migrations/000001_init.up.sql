@@ -228,30 +228,24 @@ INSERT INTO users (
   (18, 'user_evelyn1', 'Evelyn', 'Adams', 'evelyn.adams@example.com', '+15551234018', 601, 'tenant', 'active', NOW(), NOW());
 
 
--- Insert statements for available apartments 
 INSERT INTO apartments (
  id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
 ) OVERRIDING SYSTEM VALUE VALUES
-(10, 101, 1500.00, 650, 100, true, NULL, NOW(), NOW()),
-(11, 102, 1750.00, 750, 100, true, NULL, NOW(), NOW()),
-(12, 201, 2200.00, 950, 100, true, NULL, NOW(), NOW()),
-(13, 202, 2300.00, 1000, 100, true, NULL, NOW(), NOW()),
-(14, 301, 2800.00, 1200, 100, true, NULL, NOW(), NOW()),
-(15, 302, 2950.00, 1250, 100, true, NULL, NOW(), NOW());
-
--- Insert statements for unavailable apartments 
-INSERT INTO apartments (
-  id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
-) OVERRIDING SYSTEM VALUE VALUES
-  (1, 101, 2000.00, 850, 100, false, 1, NOW(), NOW()),  -- John Doe
-  (2, 205, 1800.00, 800, 100, false, 2, NOW(), NOW()),  -- Danny Thompson
-  (3, 212, 2223.00, 900, 100, false, 3, NOW(), NOW()),  -- James Smith
-  (4, 333, 1950.00, 825, 100, false, 4, NOW(), NOW()),  -- JJ SchraderBachar
-  (5, 179, 2150.00, 875, 100, false, 5, NOW(), NOW()),  -- Hector Wilson
-  (6, 218, 2060.00, 850, 100, false, 6, NOW(), NOW()),  -- Grace Hall
-  (7, 222, 2200.00, 925, 100, false, 7, NOW(), NOW()),  -- Unfrank Thomas
-  (8, 305, 2000.00, 850, 100, false, 8, NOW(), NOW()),  -- Yoon Soon
-  (9, 199, 1450.00, 750, 100, false, 9, NOW(), NOW());  -- Henry Clark
+  (1, 101, 2000.00, 850, 100, false, 1, NOW(), NOW()),  
+  (2, 205, 1800.00, 800, 100, false, 2, NOW(), NOW()),  
+  (3, 212, 2223.00, 900, 100, false, 3, NOW(), NOW()),  
+  (4, 333, 1950.00, 825, 100, false, 4, NOW(), NOW()),  
+  (5, 179, 2150.00, 875, 100, false, 5, NOW(), NOW()),  
+  (6, 218, 2060.00, 850, 100, false, 6, NOW(), NOW()),  
+  (7, 222, 2200.00, 925, 100, false, 7, NOW(), NOW()),  
+  (8, 305, 2000.00, 850, 100, false, 8, NOW(), NOW()),  
+  (9, 199, 1450.00, 750, 100, false, 9, NOW(), NOW()), 
+  (10, 101, 1500.00, 650, 100, true, NULL, NOW(), NOW()),
+  (11, 102, 1750.00, 750, 100, true, NULL, NOW(), NOW()),
+  (12, 201, 2200.00, 950, 100, true, NULL, NOW(), NOW()),
+  (13, 202, 2300.00, 1000, 100, true, NULL, NOW(), NOW()),
+  (14, 301, 2800.00, 1200, 100, true, NULL, NOW(), NOW()),
+  (15, 302, 2950.00, 1250, 100, true, NULL, NOW(), NOW());
 
 
 -- Insert statements for unavailable apartments 

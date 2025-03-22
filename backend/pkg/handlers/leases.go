@@ -4,19 +4,19 @@ import (
 	"bytes"
 	"encoding/json"
 	"errors"
-	"errors"
+	"path/filepath"
+
 	"fmt"
-	"io"
+
 	"io"
 	"log"
 	"math/big"
 	"net/http"
 	"os"
-	"path/filepath"
-	"path/filepath"
+
 	"strconv"
 	"strings"
-	"strings"
+
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -24,11 +24,9 @@ import (
 	"github.com/jung-kurt/gofpdf"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/mux"
+	"github.com/careecodes/RentDaddy/internal/smtp"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/gorilla/mux"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers/documenso"
 )
@@ -46,12 +44,6 @@ Lease Termination Summary:
 Lease Renewal Summary:
 
 */
-
-// HARDCODED LANDLORD INFO FOR TESTING - need to do this with Clerk
-var landlordID = int64(100)
-var landlordName = "First Landlord"
-var landlordEmail = "wrldconnect1@gmail.com"
-
 
 // HARDCODED LANDLORD INFO FOR TESTING - need to do this with Clerk
 var landlordID = int64(100)
@@ -76,12 +68,37 @@ func derefOrZero(ptr *int64) int64 {
 	return 0
 }
 
-// Helper for Create Lease Request Struct
-func derefOrZero(ptr *int64) int64 {
-	if ptr != nil {
-		return *ptr
+func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
+
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	leaseID, err := strconv.Atoi(leaseIDStr)
+	if err != nil {
+		http.Error(w, "Invalid lease ID", http.StatusBadRequest)
+		return
 	}
-	return 0
+
+	terminatedLease, err := h.queries.TerminateLease(r.Context(), db.TerminateLeaseParams{
+		UpdatedBy: landlordID,
+		ID:        int64(leaseID),
+	})
+	if err != nil {
+		log.Printf("[LEASE_TERMINATE] Failed to terminate lease %d: %v", leaseID, err)
+		http.Error(w, "Could not terminate lease", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, landlordID)
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
+		"message":    "Lease terminated successfully",
+		"terminated": true,
+		"lease_id":   terminatedLease.ID,
+		"status":     terminatedLease.Status,
+	}); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+	}
 }
 
 // NewLeaseHandler initializes a LeaseHandler
@@ -108,7 +125,6 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 type CreateLeaseResponse struct {
 	LeaseID         int64  `json:"lease_id"`
 	ExternalDocID   string `json:"external_doc_id,omitempty"`
-	Status          string `json:"lease_status"`
 	Status          string `json:"lease_status"`
 	LeasePDF        string `json:"lease_pdf,omitempty"`
 	LeaseSigningURL string `json:"lease_signing_url"`
@@ -140,18 +156,14 @@ type LeaseUpsertRequest struct {
 	PropertyAddress string  `json:"property_address"`
 }
 
-func (h *LeaseHandler) ExpireLeases(w http.ResponseWriter, r *http.Request) {
-	err := h.queries.ExpireLeasesEndingToday(r.Context())
-	if err != nil {
-		http.Error(w, "Failed to expire leases", http.StatusInternalServerError)
-		return
-	}
-	if _, err := w.Write([]byte("Expired leases successfully")); err != nil {
-		log.Printf("Error writing response: %v", err)
-	}
-}
-
 func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request, req LeaseUpsertRequest) {
+	// Set landlord ID if not provided
+	if req.LandlordID == 0 {
+		req.LandlordID = landlordID // Use the global landlord ID
+	}
+	req.UpdatedBy = landlordID
+	req.CreatedBy = landlordID
+
 	log.Println("[LEASE_UPSERT] Starting lease upsert handler")
 
 	log.Println("[LEASE_UPSERT] Generating lease PDF")
@@ -235,6 +247,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 
 	// Step 4: Create lease record in database
 	log.Println("[LEASE_UPSERT] Inserting lease into database")
+
 	leaseParams := db.RenewLeaseParams{
 		LeaseNumber:     req.LeaseNumber,
 		ExternalDocID:   docID,
@@ -250,7 +263,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 		UpdatedBy:       req.UpdatedBy,
 		PreviousLeaseID: pgtype.Int8{Int64: derefOrZero(req.PreviousLeaseID), Valid: req.PreviousLeaseID != nil},
 	}
-
+	log.Printf(" [LEASE_UPSERT] Status: %v ", leaseParams.Status)
 	row, err := h.queries.RenewLease(r.Context(), leaseParams)
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Database insert error: %v", err)
@@ -279,7 +292,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 }
 
 func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
-	leases, err := h.queries.ListLeases(r.Context()) // Fetch leases from DB
+	leases, err := h.queries.ListLeases(r.Context())
 	if err != nil {
 		log.Printf("Error retrieving leases: %v", err)
 		http.Error(w, "Failed to fetch leases", http.StatusInternalServerError)
@@ -300,7 +313,16 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Warning: Could not fetch apartment name for ID %d", lease.ApartmentID)
 		}
 
-		// Change the response keys to camelCase to avoid snake_case issues on the frontend
+		// Convert to db.Lease to use our helper method
+		dbLease := db.Lease{
+			ID:             lease.ID,
+			Status:         lease.Status,
+			LeaseStartDate: lease.LeaseStartDate,
+			LeaseEndDate:   lease.LeaseEndDate,
+		}
+		status := h.GetLeaseStatus(dbLease)
+
+		// Add data to response array
 		leaseResponses = append(leaseResponses, map[string]interface{}{
 			"id":             lease.ID,
 			"tenantName":     tenant.FirstName + " " + tenant.LastName,
@@ -308,7 +330,7 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 			"leaseStartDate": lease.LeaseStartDate.Time.Format("2006-01-02"),
 			"leaseEndDate":   lease.LeaseEndDate.Time.Format("2006-01-02"),
 			"rentAmount":     lease.RentAmount.Int.String(),
-			"status":         lease.Status,
+			"status":         status,
 		})
 	}
 
@@ -318,6 +340,116 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding lease responses: %v", err)
 		return
 	}
+}
+
+// You can update calculateLeaseStatus to accept both types,
+// but for simplicity, we've embedded the logic directly in GetLeases
+
+// For other places where you need to calculate the status for a db.Lease:
+func calculateLeaseStatus(lease db.Lease) string {
+	// Special statuses that override date-based calculation
+	if string(lease.Status) == "terminated" ||
+		string(lease.Status) == "draft" ||
+		string(lease.Status) == "pending_tenant_approval" ||
+		string(lease.Status) == "pending_landlord_approval" {
+		return string(lease.Status)
+	}
+
+	// Calculate date-based statuses
+	today := time.Now()
+	leaseEnd := lease.LeaseEndDate.Time
+
+	if leaseEnd.Before(today) {
+		return "expired"
+	}
+
+	// Check if lease expires within 60 days
+	daysUntilExpiration := leaseEnd.Sub(today).Hours() / 24
+	if daysUntilExpiration <= 60 {
+		return "expires_soon"
+	}
+
+	return "active"
+}
+
+// GetLeaseStatus is a helper method that returns the current status of a lease
+// This centralizes lease status calculation logic and can be used anywhere a status check is needed
+func (h *LeaseHandler) GetLeaseStatus(lease db.Lease) string {
+	// Special statuses that override date-based calculation
+	if string(lease.Status) == "terminated" ||
+		string(lease.Status) == "draft" ||
+		string(lease.Status) == "pending_tenant_approval" ||
+		string(lease.Status) == "pending_landlord_approval" {
+		return string(lease.Status)
+	}
+
+	// Calculate date-based statuses
+	today := time.Now()
+	leaseEnd := lease.LeaseEndDate.Time
+
+	if leaseEnd.Before(today) {
+		return "expired"
+	}
+
+	// Check if lease expires within 60 days
+	daysUntilExpiration := leaseEnd.Sub(today).Hours() / 24
+	if daysUntilExpiration <= 60 {
+		return "expires_soon"
+	}
+
+	return "active"
+}
+
+// UpdateAllLeaseStatuses handles updating expired lease statuses only
+// This endpoint is designed to be called by a cron job
+func (h *LeaseHandler) UpdateAllLeaseStatuses(w http.ResponseWriter, r *http.Request) {
+	log.Println("[LEASE_STATUS_UPDATE] Starting daily lease status update")
+
+	// Only expire leases that have ended today
+	count, err := h.queries.ExpireLeasesEndingToday(r.Context())
+	if err != nil {
+		log.Printf("[LEASE_STATUS_UPDATE] Failed to expire leases: %v", err)
+		http.Error(w, "Failed to expire leases", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("[LEASE_STATUS_UPDATE] Successfully expired %d leases", count)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"message":       "Successfully updated expired leases",
+		"expired_count": count,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[LEASE_STATUS_UPDATE] Error encoding response: %v", err)
+	}
+}
+
+// This can be part of the mignight cron job instead of its own function
+func calculateLeaseStatusFromRow(lease db.ListLeasesRow) string {
+	// Special statuses that override date-based calculation
+	if string(lease.Status) == "terminated" ||
+		string(lease.Status) == "draft" ||
+		string(lease.Status) == "pending_tenant_approval" ||
+		string(lease.Status) == "pending_landlord_approval" {
+		return string(lease.Status)
+	}
+
+	// Calculate date-based statuses
+	today := time.Now()
+	leaseEnd := lease.LeaseEndDate.Time
+
+	if leaseEnd.Before(today) {
+		return "expired"
+	}
+
+	// Check if lease expires within 60 days
+	daysUntilExpiration := leaseEnd.Sub(today).Hours() / 24
+	if daysUntilExpiration <= 60 {
+		return "expires_soon"
+	}
+
+	return "active"
 }
 
 func (h *LeaseHandler) GetTenantsWithoutLease(w http.ResponseWriter, r *http.Request) {
@@ -490,25 +622,25 @@ func (h *LeaseHandler) GenerateComprehensiveLeaseAgreement(title, landlordName, 
 
 	// Title
 	pdf.SetFont("Arial", "B", 16)
-	pdf.Cell(0, 10, title)
+	pdf.Cell(10, 10, title)
 	pdf.Ln(15)
 
 	// Agreement date
 	pdf.SetFont("Arial", "", 12)
-	pdf.Cell(0, 10, fmt.Sprintf("This Lease Agreement is entered into on %s", time.Now().Format("January 2, 2006")))
+	pdf.Cell(20, 10, fmt.Sprintf("This Lease Agreement is entered into on %s", time.Now().Format("January 2, 2006")))
 	pdf.Ln(10)
 
 	// Landlord section
 	pdf.SetFont("Arial", "B", 12)
-	pdf.Cell(40, 10, "Landlord:")
+	pdf.Cell(40, 10, "LANDLORD: ")
 	pdf.Ln(10)
 	pdf.SetFont("Arial", "", 12)
-	pdf.Cell(0, 10, landlordName)
+	pdf.Cell(80, 10, landlordName)
 	pdf.Ln(15)
 
 	// Tenant section
 	pdf.SetFont("Arial", "B", 12)
-	pdf.Cell(40, 10, "Tenant:")
+	pdf.Cell(40, 10, "TENANT")
 	pdf.Ln(10)
 	pdf.SetFont("Arial", "", 12)
 	pdf.Cell(0, 10, tenantName)
@@ -563,13 +695,10 @@ func (h *LeaseHandler) GenerateComprehensiveLeaseAgreement(title, landlordName, 
 	pdf.Cell(80, 10, "Landlord Signature:")
 	pdf.Cell(80, 10, "Tenant Signature:")
 	pdf.Ln(20)
-
-	pdf.Line(20, pdf.GetY(), 80, pdf.GetY())
-	pdf.Line(100, pdf.GetY(), 155, pdf.GetY())
 	pdf.Ln(5)
 
-	pdf.Cell(80, 10, "Date: _________________")
-	pdf.Cell(80, 10, "Date: _________________")
+	pdf.Cell(80, 10, "Date:")
+	pdf.Cell(80, 10, "Date:")
 
 	var buf bytes.Buffer
 	if err := pdf.Output(&buf); err != nil {
@@ -577,9 +706,10 @@ func (h *LeaseHandler) GenerateComprehensiveLeaseAgreement(title, landlordName, 
 	}
 	return buf.Bytes(), nil
 }
-
-// setLeaseSignatureFields adds signature fields to the document
 func (h *LeaseHandler) setLeaseSignatureFields(docID string) error {
+	// Add a delay to ensure document is fully processed
+	time.Sleep(5 * time.Second)
+
 	// Get the document to find recipients
 	url := fmt.Sprintf("%s/documents/%s", h.documenso_client.BaseURL, docID)
 	req, err := http.NewRequest("GET", url, nil)
@@ -612,9 +742,7 @@ func (h *LeaseHandler) setLeaseSignatureFields(docID string) error {
 	var tenantID, landlordID int
 	for _, recipient := range docResponse.Recipients {
 		log.Printf("Checking recipient: %s (%s)", recipient.Name, recipient.Email)
-		if strings.Contains(strings.ToLower(recipient.Email), "rentdaddy") ||
-			strings.Contains(strings.ToLower(recipient.Email), "landlord") ||
-			strings.Contains(strings.ToLower(recipient.Email), "admin") {
+		if strings.Contains(strings.ToLower(recipient.Email), "wrldconnect1@gmail.com") {
 			landlordID = recipient.ID
 			log.Printf("Identified landlord recipient ID: %d", landlordID)
 		} else {
@@ -623,76 +751,57 @@ func (h *LeaseHandler) setLeaseSignatureFields(docID string) error {
 		}
 	}
 
-	if tenantID == 0 && landlordID == 0 {
-		return fmt.Errorf("could not identify landlord or tenant recipients")
-	}
-
-	// Add landlord signature (left side)
-	if landlordID > 0 {
-		if err := addSignatureField(h.documenso_client, docID, landlordID, 50, 220, 60, 30); err != nil {
-			log.Printf("Warning: Failed to add landlord signature: %v", err)
+	// Use modified parameters for signature fields
+	// For tenant (right side of document)
+	if tenantID > 0 {
+		// More conservative parameters - smaller field in a likely safe area
+		if err := h.documenso_client.AddSignatureField(docID, tenantID, 48, 82, 30, 5); err != nil {
+			log.Printf("Warning: Failed to add tenant signature: %v", err)
 		}
 	}
 
-	// Add tenant signature (right side)
-	if tenantID > 0 {
-		if err := addSignatureField(h.documenso_client, docID, tenantID, 127, 220, 60, 30); err != nil {
-			log.Printf("Warning: Failed to add tenant signature: %v", err)
+	// For landlord (left side of document)
+	if landlordID > 0 {
+		// More conservative parameters - smaller field in a likely safe area
+		if err := h.documenso_client.AddSignatureField(docID, landlordID, 8, 82, 30, 5); err != nil {
+			log.Printf("Warning: Failed to add landlord signature: %v", err)
 		}
 	}
 
 	return nil
 }
 
-// Helper function to add a signature field
-func addSignatureField(client *documenso.DocumensoClient, docID string, recipientID int, x, y, width, height float64) error {
-	// Create payload for signature field
-	payload := map[string]interface{}{
-		"recipientId": recipientID,
-		"type":        "SIGNATURE", // Use SIGNATURE type, not TEXT
-		"pageNumber":  1,
-		"pageX":       x,
-		"pageY":       y,
-		"pageWidth":   width,
-		"pageHeight":  height,
-		"fieldMeta": map[string]interface{}{
-			"type":     "signature",
-			"required": true,
-		},
+// Updated SavePDFToDisk function to create a full lease PDF
+func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
+	// Sanitize tenant name for filename
+	sanitizedTenantName := strings.ReplaceAll(tenantName, " ", "_")
+	sanitizedTenantName = strings.ReplaceAll(sanitizedTenantName, "/", "_")
+
+	// Generate unique filename
+	timestamp := time.Now().Format("20060102-150405")
+	filename := fmt.Sprintf("lease_%s_%s.pdf", timestamp, sanitizedTenantName)
+	envDir := os.Getenv("TEMP_DIR")
+
+	// Get environment variable if set
+	if envDir == "" {
+		envDir = "/app/temp"
 	}
 
-	// Send the request
-	requestJSON, err := json.Marshal(payload)
+	// Create /app/temp directory to save pdfs
+
+	if err := os.MkdirAll(envDir, 0755); err != nil {
+		log.Printf("Could not create directory %s: %v", envDir, err)
+	}
+
+	filepath := filepath.Join(envDir, filename)
+	err := os.WriteFile(filepath, pdfData, 0666)
 	if err != nil {
-		return fmt.Errorf("failed to marshal payload: %v", err)
+		log.Printf("Could not save PDF to %s: %v", filepath, err)
 	}
 
-	apiURL := fmt.Sprintf("%s/documents/%s/fields", client.BaseURL, docID)
-	log.Printf("Creating signature field at %s", apiURL)
+	log.Printf("✅ PDF successfully saved to: %s", filepath)
+	return nil // Success
 
-	req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
-	if err != nil {
-		return fmt.Errorf("failed to create request: %v", err)
-	}
-	req.Header.Set("Authorization", "Bearer "+client.ApiKey)
-	req.Header.Set("Content-Type", "application/json")
-
-	resp, err := client.Client.Do(req)
-	if err != nil {
-		return fmt.Errorf("API request failed: %v", err)
-	}
-	defer resp.Body.Close()
-
-	// Log full response for debugging
-	respBody, _ := io.ReadAll(resp.Body)
-	log.Printf("Signature field creation response: %s", string(respBody))
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("failed to create signature field: status %d, response: %s", resp.StatusCode, string(respBody))
-	}
-
-	log.Printf("Successfully created signature field for recipient %d", recipientID)
-	return nil
 }
 
 // Update the handleDocumensoUploadAndSetup function to call setLeaseSignatureFields
@@ -729,6 +838,8 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 			log.Printf("Error saving PDF to disk: %v", err)
 		}
 	}()
+	// Add a delay to allow Documenso to fully process the document
+	time.Sleep(2 * time.Second)
 
 	// Add only signature fields (not text fields)
 	log.Println("Setting up signature fields...")
@@ -746,12 +857,12 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Invalid renewal request", http.StatusBadRequest)
 		return
 	}
-	log.Printf("[LEASE_RENEW] Renewing lease for tenant %d using previous lease ID %v", req.TenantID, req.PreviousLeaseID)
-	if req.PreviousLeaseID == nil {
-		http.Error(w, "Missing previous_lease_id for renewal", http.StatusBadRequest)
-		http.Error(w, "Invalid renewal request", http.StatusBadRequest)
-		return
+
+	// Set landlord ID if not provided
+	if req.LandlordID == 0 {
+		req.LandlordID = landlordID // Use the global landlord ID
 	}
+
 	log.Printf("[LEASE_RENEW] Renewing lease for tenant %d using previous lease ID %v", req.TenantID, req.PreviousLeaseID)
 	if req.PreviousLeaseID == nil {
 		http.Error(w, "Missing previous_lease_id for renewal", http.StatusBadRequest)
@@ -759,8 +870,14 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	req.LeaseNumber += 1 // Or increment based on lookup if needed
+
+	req.ReplaceExisting = false
+	req.CreatedBy = req.LandlordID
+	req.UpdatedBy = req.LandlordID
+	req.Status = "pending_tenant_approval"
 	h.handleLeaseUpsert(w, r, req)
 }
+
 func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
 
@@ -864,20 +981,10 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	if err != nil {
 		log.Printf("Error renewing lease in database: %v", err)
 		http.Error(w, "Failed to renew lease in database", http.StatusInternalServerError)
-		log.Printf("Error renewing lease in database: %v", err)
-		http.Error(w, "Failed to renew lease in database", http.StatusInternalServerError)
+
 		return
 	}
 
-	// 10. Return success response with lease details
-	resp := map[string]interface{}{
-		"lease_id":        leaseID,
-		"external_doc_id": docID,
-		"lease_sign_url":  h.documenso_client.GetSigningURL(docID),
-		"tenant_name":     req.TenantName,
-		"tenant_email":    req.TenantEmail,
-		"status":          "pending_tenant_approval",
-		"message":         "Lease agreement created successfully and sent for signing",
 	// 10. Return success response with lease details
 	resp := map[string]interface{}{
 		"lease_id":        leaseID,
@@ -890,12 +997,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		log.Printf("Error encoding response: %v", err)
-		return
-	}
+
 	w.WriteHeader(http.StatusCreated)
 	if err := json.NewEncoder(w).Encode(resp); err != nil {
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
@@ -903,8 +1005,6 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		return
 	}
 }
-
-func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 
 func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	var payload struct {
@@ -924,8 +1024,6 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	// Log the webhook event
-	log.Printf("Received Documenso webhook: %s for document %s from %s (%s)",
-		payload.EventType, payload.DocumentID, payload.Signer.Name, payload.Signer.Email)
 	log.Printf("Received Documenso webhook: %s for document %s from %s (%s)",
 		payload.EventType, payload.DocumentID, payload.Signer.Name, payload.Signer.Email)
 
@@ -955,20 +1053,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 				CreatedBy:      lease.CreatedBy,
 				UpdatedBy:      lease.UpdatedBy,
 			}
-			targetLease = &db.Lease{
-				ID:             lease.ID,
-				ExternalDocID:  lease.ExternalDocID,
-				TenantID:       lease.TenantID,
-				LandlordID:     lease.LandlordID,
-				ApartmentID:    lease.ApartmentID,
-				LeaseStartDate: lease.LeaseStartDate,
-				LeaseEndDate:   lease.LeaseEndDate,
-				RentAmount:     lease.RentAmount,
-				Status:         lease.Status,
-				LeasePdf:       lease.LeasePdf,
-				CreatedBy:      lease.CreatedBy,
-				UpdatedBy:      lease.UpdatedBy,
-			}
+
 			break
 		}
 	}
@@ -985,10 +1070,6 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		// Document has been opened by a recipient
 		log.Printf("Document %s opened by %s", payload.DocumentID, payload.Signer.Email)
 
-	case "document.opened":
-		// Document has been opened by a recipient
-		log.Printf("Document %s opened by %s", payload.DocumentID, payload.Signer.Email)
-
 	case "document.signed":
 		// Document has been signed by someone
 		isLandlord := strings.Contains(strings.ToLower(payload.Signer.Email), "rentdaddy") ||
@@ -999,24 +1080,28 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			log.Printf("Lease %d signed by landlord %s", targetLease.ID, payload.Signer.Name)
 		} else {
 			// If it's the tenant signing, mark the lease as signed
-			err := h.queries.MarkLeaseAsSignedBothParties(r.Context(), targetLease.ID)
-		isLandlord := strings.Contains(strings.ToLower(payload.Signer.Email), "rentdaddy") ||
-			strings.Contains(strings.ToLower(payload.Signer.Email), "admin@")
-
-		if isLandlord {
-			// Landlord has signed
-			log.Printf("Lease %d signed by landlord %s", targetLease.ID, payload.Signer.Name)
-		} else {
-			// If it's the tenant signing, mark the lease as signed
-			err := h.queries.MarkLeaseAsSignedBothParties(r.Context(), targetLease.ID)
-			if err != nil {
+			if err := h.queries.MarkLeaseAsSignedBothParties(r.Context(), targetLease.ID); err != nil {
 				log.Printf("Error marking lease %d as signed: %v", targetLease.ID, err)
 				http.Error(w, "Failed to update lease status", http.StatusInternalServerError)
 				return
 			}
-			log.Printf("Lease %d marked as signed by tenant %s", targetLease.ID, payload.Signer.Name)
-		}
+			isLandlord := strings.Contains(strings.ToLower(payload.Signer.Email), "rentdaddy") ||
+				strings.Contains(strings.ToLower(payload.Signer.Email), "admin@")
 
+			if isLandlord {
+				// Landlord has signed
+				log.Printf("Lease %d signed by landlord %s", targetLease.ID, payload.Signer.Name)
+			} else {
+				// If it's the tenant signing, mark the lease as signed
+				err := h.queries.MarkLeaseAsSignedBothParties(r.Context(), targetLease.ID)
+				if err != nil {
+					log.Printf("Error marking lease %d as signed: %v", targetLease.ID, err)
+					http.Error(w, "Failed to update lease status", http.StatusInternalServerError)
+					return
+				}
+				log.Printf("Lease %d marked as signed by tenant %s", targetLease.ID, payload.Signer.Name)
+			}
+		}
 	case "document.completed":
 		// All required signatures have been collected
 		// Update lease status to active
@@ -1024,13 +1109,11 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			ID:             targetLease.ID,
 			TenantID:       targetLease.TenantID,
 			Status:         db.LeaseStatus("active"),
-			Status:         db.LeaseStatus("active"),
 			LeaseStartDate: targetLease.LeaseStartDate,
 			LeaseEndDate:   targetLease.LeaseEndDate,
 			RentAmount:     targetLease.RentAmount,
 			UpdatedBy:      targetLease.LandlordID, // Using landlord ID for the update
 		}
-
 		err := h.queries.UpdateLease(r.Context(), params)
 		if err != nil {
 			log.Printf("Error updating lease %d status to active: %v", targetLease.ID, err)
@@ -1063,79 +1146,106 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	fmt.Fprintln(w, "Webhook processed successfully")
 }
 
-// Updated SavePDFToDisk function to create a full lease PDF
-func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
-	// Sanitize tenant name for filename
-	sanitizedTenantName := strings.ReplaceAll(tenantName, " ", "_")
-	sanitizedTenantName = strings.ReplaceAll(sanitizedTenantName, "/", "_")
+// NotifyExpiringLeases sends notifications about leases that are expiring soon
+// without changing their statuses in the database
+func (h *LeaseHandler) NotifyExpiringLeases(w http.ResponseWriter, r *http.Request) {
+	log.Println("[LEASE_NOTIFY] Checking for leases expiring soon")
 
-	// Generate unique filename
-	timestamp := time.Now().Format("20060102-150405")
-	filename := fmt.Sprintf("lease_%s_%s.pdf", timestamp, sanitizedTenantName)
-	envDir := os.Getenv("TEMP_DIR")
-
-	// Get environment variable if set
-	if envDir == "" {
-		envDir = "/app/temp"
-	}
-
-	// Create /app/temp directory to save pdfs
-
-	if err := os.MkdirAll(envDir, 0755); err != nil {
-		log.Printf("Could not create directory %s: %v", envDir, err)
-	}
-
-	filepath := filepath.Join(envDir, filename)
-	err := os.WriteFile(filepath, pdfData, 0666)
+	// Get all leases instead of just active ones
+	// This avoids the parameter issue and gives you a collection to iterate over
+	leases, err := h.queries.ListLeases(r.Context())
 	if err != nil {
-		log.Printf("Could not save PDF to %s: %v", filepath, err)
-	}
-
-	log.Printf("✅ PDF successfully saved to: %s", filepath)
-	return nil // Success
-
-}
-
-func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
-	vars := mux.Vars(r)
-	leaseIDStr := vars["leaseID"]
-	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid lease ID", http.StatusBadRequest)
+		log.Printf("[LEASE_NOTIFY] Failed to retrieve leases: %v", err)
+		http.Error(w, "Failed to retrieve leases", http.StatusInternalServerError)
 		return
 	}
 
-	// Optional: extract admin ID from context or request (hardcoded for now)
-	adminID := int64(100) // replace with real user from auth/session
+	// Current date
+	today := time.Now()
+	expiringLeases := []map[string]interface{}{}
 
-	terminatedLease, err := h.queries.TerminateLease(r.Context(), db.TerminateLeaseParams{
-		UpdatedBy: landlordID,
-		ID:        leaseID,
-	})
-	if err != nil {
-		log.Printf("[LEASE_TERMINATE] Failed to terminate lease %d: %v", leaseID, err)
-		http.Error(w, "Could not terminate lease", http.StatusInternalServerError)
-		return
+	// Check each lease for expiration within 60 days
+	for _, lease := range leases {
+		// Only process active leases
+		if string(lease.Status) != "active" {
+			continue
+		}
+
+		daysUntilExpiration := lease.LeaseEndDate.Time.Sub(today).Hours() / 24
+
+		// If lease expires within 60 days but is still active
+		if daysUntilExpiration <= 60 && daysUntilExpiration > 0 {
+			// Get tenant name
+			tenant, err := h.queries.GetUserByID(r.Context(), lease.TenantID)
+			if err != nil {
+				log.Printf("[LEASE_NOTIFY] Warning: Could not fetch tenant name for ID %d: %v", lease.TenantID, err)
+				continue
+			}
+
+			// Get apartment details
+			apartment, err := h.queries.GetApartment(r.Context(), lease.ApartmentID)
+			if err != nil {
+				log.Printf("[LEASE_NOTIFY] Warning: Could not fetch apartment for ID %d: %v", lease.ApartmentID, err)
+				continue
+			}
+
+			// Format lease info for notification
+			expiringLeases = append(expiringLeases, map[string]interface{}{
+				"lease_id":        lease.ID,
+				"tenant_name":     tenant.FirstName + " " + tenant.LastName,
+				"tenant_email":    tenant.Email,
+				"apartment":       apartment.UnitNumber,
+				"days_remaining":  int(daysUntilExpiration),
+				"expiration_date": lease.LeaseEndDate.Time.Format("2006-01-02"),
+			})
+		}
 	}
 
-	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, adminID)
+	// Send notification emails if leases are expiring soon
+	if len(expiringLeases) > 0 {
+		// Send email to administrator
+		err = sendExpiringLeasesNotification(expiringLeases)
+		if err != nil {
+			log.Printf("[LEASE_NOTIFY] Failed to send notification email: %v", err)
+		}
+	}
+
+	// Return response with count of expiring leases
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":    "Lease terminated successfully",
-		"terminated": true,
-		"lease_id":   terminatedLease.ID,
-		"status":     terminatedLease.Status,
+		"expiring_leases_count": len(expiringLeases),
+		"expiring_leases":       expiringLeases,
+		"message":               "Expiring lease notification check completed",
 	}); err != nil {
-	w.WriteHeader(http.StatusOK)
-	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"message":    "Lease terminated successfully",
-		"terminated": true,
-		"lease_id":   terminatedLease.ID,
-		"status":     terminatedLease.Status,
-	}); err != nil {
-		log.Printf("Error encoding response: %v", err)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		log.Printf("[LEASE_NOTIFY] Error encoding response: %v", err)
 	}
+}
+
+// Helper function to send email notifications about expiring leases
+func sendExpiringLeasesNotification(expiringLeases []map[string]interface{}) error {
+	// Get admin email from environment or use default
+	adminEmail := os.Getenv("ADMIN_EMAIL")
+	if adminEmail == "" {
+		adminEmail = landlordEmail // Fallback to global landlord email
+	}
+
+	// Build email subject and body
+	subject := fmt.Sprintf("ALERT: %d Leases Expiring Soon", len(expiringLeases))
+
+	var body strings.Builder
+	body.WriteString("The following leases are expiring soon and may need attention:\n\n")
+
+	for _, lease := range expiringLeases {
+		body.WriteString(fmt.Sprintf("- Lease ID: %v\n", lease["lease_id"]))
+		body.WriteString(fmt.Sprintf("  Tenant: %v\n", lease["tenant_name"]))
+		body.WriteString(fmt.Sprintf("  Apartment: %v\n", lease["apartment"]))
+		body.WriteString(fmt.Sprintf("  Expiration Date: %v\n", lease["expiration_date"]))
+		body.WriteString(fmt.Sprintf("  Days Remaining: %v\n\n", lease["days_remaining"]))
+	}
+
+	body.WriteString("\nPlease log in to the management system to initiate lease renewals for these tenants.\n")
+
+	// Send the email
+	return smtp.SendEmail(adminEmail, subject, body.String())
 }

@@ -11,13 +11,13 @@ import (
 	"time"
 )
 
-type documensoSendResponse struct {
-	DocumentID int `json:"documentId"`
-	Recipients []struct {
-		Email      string `json:"email"`
-		SigningURL string `json:"signingUrl"`
-	} `json:"recipients"`
-}
+// type documensoSendResponse struct {
+// 	DocumentID int `json:"documentId"`
+// 	Recipients []struct {
+// 		Email      string `json:"email"`
+// 		SigningURL string `json:"signingUrl"`
+// 	} `json:"recipients"`
+// }
 
 // DocumensoClientInterface defines interactions with the Documenso API
 type DocumensoClientInterface interface {
@@ -341,38 +341,58 @@ func (c *DocumensoClient) SetField(documentID, field, value string) error {
 	return nil
 }
 
-// VerifyDocumentExists checks if a document ID is valid in Documenso
+// VerifyDocumentExists checks if a document ID is valid in Documenso with retries
 func (c *DocumensoClient) VerifyDocumentExists(documentID string) (bool, error) {
-	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
-	c.debugLog("Verifying document existence: %s", url)
+	maxRetries := 3
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
+		c.debugLog("Verifying document existence (attempt %d/%d): %s", attempt+1, maxRetries, url)
 
-	req, err := http.NewRequest("GET", url, nil)
-	if err != nil {
-		return false, fmt.Errorf("failed to create request: %w", err)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return false, fmt.Errorf("failed to create request: %w", err)
+		}
+
+		req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+		resp, err := c.Client.Do(req)
+		if err != nil {
+			c.debugLog("API request failed: %v. Retrying...", err)
+			time.Sleep(time.Duration(attempt+1) * time.Second)
+			continue
+		}
+		defer resp.Body.Close()
+
+		c.debugLog("Document verification status: %d", resp.StatusCode)
+
+		if resp.StatusCode == http.StatusOK {
+			c.debugLog("Document %s exists in Documenso", documentID)
+			return true, nil
+		} else if resp.StatusCode == http.StatusNotFound {
+			// Wait and retry if document not found (might be still processing)
+			if attempt < maxRetries-1 {
+				c.debugLog("Document %s not found yet, retrying after delay...", documentID)
+				time.Sleep(time.Duration(attempt+1) * time.Second)
+				continue
+			}
+			c.debugLog("Document %s NOT found in Documenso after retries", documentID)
+			return false, nil
+		}
+
+		body, _ := io.ReadAll(resp.Body)
+		c.debugLog("Unexpected response: %s", string(body))
+
+		// For other errors, wait and retry
+		if attempt < maxRetries-1 {
+			time.Sleep(time.Duration(attempt+1) * time.Second)
+			continue
+		}
+
+		return false, fmt.Errorf("API returned unexpected status: %d, response: %s",
+			resp.StatusCode, string(body))
 	}
 
-	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
-
-	resp, err := c.Client.Do(req)
-	if err != nil {
-		return false, fmt.Errorf("API request failed: %w", err)
-	}
-	defer resp.Body.Close()
-
-	c.debugLog("Document verification status: %d", resp.StatusCode)
-
-	if resp.StatusCode == http.StatusOK {
-		c.debugLog("Document %s exists in Documenso", documentID)
-		return true, nil
-	} else if resp.StatusCode == http.StatusNotFound {
-		c.debugLog("Document %s does NOT exist in Documenso", documentID)
-		return false, nil
-	}
-
-	body, _ := io.ReadAll(resp.Body)
-	c.debugLog("Unexpected response: %s", string(body))
-	return false, fmt.Errorf("API returned unexpected status: %d, response: %s",
-		resp.StatusCode, string(body))
+	return false, fmt.Errorf("document verification failed after %d attempts", maxRetries)
 }
 
 // DeleteDocument deletes a document from Documenso by ID
@@ -478,6 +498,71 @@ func (c *DocumensoClient) GetSigningURL(documentID string) string {
 
 }
 
+// AddSignatureField adds a signature field to a document for a specific recipient with retries
+func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y, width, height float64) error {
+	maxRetries := 3
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Create payload matching Documenso's API spec
+		payload := map[string]interface{}{
+			"recipientId": recipientID,
+			"type":        "SIGNATURE",
+			"pageNumber":  1, // First page
+			"pageX":       x,
+			"pageY":       y,
+			"pageWidth":   width,
+			"pageHeight":  height,
+		}
+
+		// Send the request
+		requestJSON, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal payload: %v", err)
+		}
+
+		apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, docID)
+		log.Printf("Creating signature field (attempt %d/%d) at %s",
+			attempt+1, maxRetries, apiURL)
+
+		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
+		if err != nil {
+			return fmt.Errorf("failed to create request: %v", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err := c.Client.Do(req)
+		if err != nil {
+			log.Printf("API request failed: %v. Retrying in %d seconds...",
+				err, attempt+1)
+			time.Sleep(time.Duration(attempt+1) * time.Second)
+			continue
+		}
+		defer resp.Body.Close()
+
+		// Log full response for debugging
+		respBody, _ := io.ReadAll(resp.Body)
+		log.Printf("Signature field creation response: %s", string(respBody))
+
+		if resp.StatusCode == http.StatusOK {
+			log.Printf("Successfully created signature field for recipient %d", recipientID)
+			return nil
+		}
+
+		// If not successful, retry after delay
+		if attempt < maxRetries-1 {
+			log.Printf("Failed to create signature field (status %d). Retrying in %d seconds...",
+				resp.StatusCode, attempt+1)
+			time.Sleep(time.Duration(attempt+1) * time.Second)
+			continue
+		}
+
+		return fmt.Errorf("failed to create signature field after %d attempts: status %d, response: %s",
+			maxRetries, resp.StatusCode, string(respBody))
+	}
+
+	return fmt.Errorf("failed to create signature field after %d attempts", maxRetries)
+}
 func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
 	log.Printf("DOCUMENSO DEBUG: "+format, args...)
 }

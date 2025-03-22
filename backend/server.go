@@ -92,13 +92,18 @@ func main() {
 			r.Post("/invite", userHandler.InviteTenant)
 			r.Patch("/{clerk_id}/credentials", userHandler.UpdateTenantProfile)
 			r.Route("/leases", func(r chi.Router) {
+				r.Get("/", leaseHandler.GetLeases)
 				r.Post("/create", leaseHandler.CreateLease)
 				r.Post("/renew", leaseHandler.RenewLease)
 				r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
 				r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
 				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
-				r.Get("/get-leases", leaseHandler.GetLeases)
-				r.Get("/{leaseID}", leaseHandler.GetLeaseWithFields) // Fetch lease details and populate Documenso fields
+				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
+				r.Post("/expire", func(w http.ResponseWriter, r *http.Request) {
+					leaseHandler.UpdateAllLeaseStatuses(w, r)
+				})
+				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
+
 				//r.Get("/{leaseID}/pdf", leaseHandler.GetLeasePDF)    // Fetch lease PDF
 				//r.Post("/webhooks/documenso", )
 			})

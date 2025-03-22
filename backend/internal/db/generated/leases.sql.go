@@ -21,7 +21,7 @@ RETURNING id
 `
 
 type CreateLeaseParams struct {
-	LeaseNumber   int64          `json:"lease_number"`
+	LeaseNumber    int64          `json:"lease_number"`
 	ExternalDocID  string         `json:"external_doc_id"`
 	TenantID       int64          `json:"tenant_id"`
 	LandlordID     int64          `json:"landlord_id"`
@@ -29,7 +29,6 @@ type CreateLeaseParams struct {
 	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric `json:"rent_amount"`
-	Status         LeaseStatus    `json:"status"`
 	Status         LeaseStatus    `json:"status"`
 	LeasePdf       []byte         `json:"lease_pdf"`
 	CreatedBy      int64          `json:"created_by"`
@@ -47,7 +46,6 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64
 		arg.LeaseEndDate,
 		arg.RentAmount,
 		arg.Status,
-		arg.Status,
 		arg.LeasePdf,
 		arg.CreatedBy,
 		arg.UpdatedBy,
@@ -57,16 +55,18 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (int64
 	return id, err
 }
 
-const expireLeasesEndingToday = `-- name: ExpireLeasesEndingToday :exec
+const expireLeasesEndingToday = `-- name: ExpireLeasesEndingToday :one
 UPDATE leases
-SET status = 'expired', updated_by = 0
-WHERE status = 'active'
-  AND lease_end_date = CURRENT_DATE
+SET status = 'expired', updated_at = NOW()
+WHERE status = 'active' AND lease_end_date <= CURRENT_DATE
+RETURNING (SELECT COUNT(*) FROM leases WHERE status = 'expired' AND updated_at > NOW() - INTERVAL '1 minute')
 `
 
-func (q *Queries) ExpireLeasesEndingToday(ctx context.Context) error {
-	_, err := q.db.Exec(ctx, expireLeasesEndingToday)
-	return err
+func (q *Queries) ExpireLeasesEndingToday(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, expireLeasesEndingToday)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
 }
 
 const getConflictingActiveLease = `-- name: GetConflictingActiveLease :one
@@ -165,7 +165,7 @@ WHERE id = $1
 `
 
 type GetLeaseByIDRow struct {
-	LeaseNumber    int64          `json:"lease_number"`
+	LeaseNumber     int64          `json:"lease_number"`
 	ExternalDocID   string         `json:"external_doc_id"`
 	LeasePdf        []byte         `json:"lease_pdf"`
 	TenantID        int64          `json:"tenant_id"`
@@ -187,7 +187,6 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 		&i.LeaseNumber,
 		&i.ExternalDocID,
 		&i.LeasePdf,
-		&i.LeasePdf,
 		&i.TenantID,
 		&i.LandlordID,
 		&i.ApartmentID,
@@ -198,9 +197,35 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 		&i.CreatedBy,
 		&i.UpdatedBy,
 		&i.PreviousLeaseID,
+	)
+	return i, err
+}
+
+const listActiveLeases = `-- name: ListActiveLeases :one
+SELECT id, lease_number, external_doc_id, lease_pdf, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at, previous_lease_id FROM leases
+WHERE status = 'active'
+LIMIT 1
+`
+
+func (q *Queries) ListActiveLeases(ctx context.Context) (Lease, error) {
+	row := q.db.QueryRow(ctx, listActiveLeases)
+	var i Lease
+	err := row.Scan(
+		&i.ID,
+		&i.LeaseNumber,
+		&i.ExternalDocID,
+		&i.LeasePdf,
+		&i.TenantID,
+		&i.LandlordID,
+		&i.ApartmentID,
+		&i.LeaseStartDate,
+		&i.LeaseEndDate,
+		&i.RentAmount,
 		&i.Status,
 		&i.CreatedBy,
 		&i.UpdatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
 		&i.PreviousLeaseID,
 	)
 	return i, err
@@ -225,7 +250,7 @@ FROM leases ORDER BY created_at DESC
 
 type ListLeasesRow struct {
 	ID              int64          `json:"id"`
-	LeaseNumber    int64          `json:"lease_number"`
+	LeaseNumber     int64          `json:"lease_number"`
 	ExternalDocID   string         `json:"external_doc_id"`
 	LeasePdf        []byte         `json:"lease_pdf"`
 	TenantID        int64          `json:"tenant_id"`
@@ -247,9 +272,7 @@ func (q *Queries) ListLeases(ctx context.Context) ([]ListLeasesRow, error) {
 	}
 	defer rows.Close()
 	var items []ListLeasesRow
-	var items []ListLeasesRow
 	for rows.Next() {
-		var i ListLeasesRow
 		var i ListLeasesRow
 		if err := rows.Scan(
 			&i.ID,
@@ -263,10 +286,8 @@ func (q *Queries) ListLeases(ctx context.Context) ([]ListLeasesRow, error) {
 			&i.LeaseEndDate,
 			&i.RentAmount,
 			&i.Status,
-			&i.Status,
 			&i.CreatedBy,
 			&i.UpdatedBy,
-			&i.PreviousLeaseID,
 			&i.PreviousLeaseID,
 		); err != nil {
 			return nil, err
@@ -280,9 +301,7 @@ func (q *Queries) ListLeases(ctx context.Context) ([]ListLeasesRow, error) {
 }
 
 const markLeaseAsSignedBothParties = `-- name: MarkLeaseAsSignedBothParties :exec
-const markLeaseAsSignedBothParties = `-- name: MarkLeaseAsSignedBothParties :exec
 UPDATE leases
-SET status = 'active', updated_at = now()
 SET status = 'active', updated_at = now()
 WHERE id = $1
 RETURNING lease_number,
@@ -302,8 +321,6 @@ RETURNING lease_number,
 
 func (q *Queries) MarkLeaseAsSignedBothParties(ctx context.Context, id int64) error {
 	_, err := q.db.Exec(ctx, markLeaseAsSignedBothParties, id)
-func (q *Queries) MarkLeaseAsSignedBothParties(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, markLeaseAsSignedBothParties, id)
 	return err
 }
 
@@ -317,7 +334,7 @@ RETURNING id, lease_number
 `
 
 type RenewLeaseParams struct {
-	LeaseNumber    int64          `json:"lease_number"`
+	LeaseNumber     int64          `json:"lease_number"`
 	ExternalDocID   string         `json:"external_doc_id"`
 	TenantID        int64          `json:"tenant_id"`
 	LandlordID      int64          `json:"landlord_id"`
@@ -333,7 +350,7 @@ type RenewLeaseParams struct {
 }
 
 type RenewLeaseRow struct {
-	ID           int64 `json:"id"`
+	ID          int64 `json:"id"`
 	LeaseNumber int64 `json:"lease_number"`
 }
 
@@ -361,7 +378,6 @@ func (q *Queries) RenewLease(ctx context.Context, arg RenewLeaseParams) (RenewLe
 const storeGeneratedLeasePDF = `-- name: StoreGeneratedLeasePDF :exec
 UPDATE leases
 SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
-SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
 WHERE id = $3
 RETURNING lease_pdf
 `
@@ -378,10 +394,9 @@ func (q *Queries) StoreGeneratedLeasePDF(ctx context.Context, arg StoreGenerated
 }
 
 const terminateLease = `-- name: TerminateLease :one
-const terminateLease = `-- name: TerminateLease :one
 UPDATE leases
 SET 
-    status = 'terminated', 
+    
     status = 'terminated', 
     updated_by = $1, 
     updated_at = now()
@@ -398,7 +413,7 @@ type TerminateLeaseParams struct {
 
 type TerminateLeaseRow struct {
 	ID              int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
+	LeaseNumber     int64            `json:"lease_number"`
 	ExternalDocID   string           `json:"external_doc_id"`
 	TenantID        int64            `json:"tenant_id"`
 	LandlordID      int64            `json:"landlord_id"`
@@ -463,7 +478,6 @@ RETURNING lease_number,
 type UpdateLeaseParams struct {
 	TenantID       int64          `json:"tenant_id"`
 	Status         LeaseStatus    `json:"status"`
-	Status         LeaseStatus    `json:"status"`
 	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
 	RentAmount     pgtype.Numeric `json:"rent_amount"`
@@ -475,33 +489,12 @@ func (q *Queries) UpdateLease(ctx context.Context, arg UpdateLeaseParams) error 
 	_, err := q.db.Exec(ctx, updateLease,
 		arg.TenantID,
 		arg.Status,
-		arg.Status,
 		arg.LeaseStartDate,
 		arg.LeaseEndDate,
 		arg.RentAmount,
 		arg.UpdatedBy,
 		arg.ID,
 	)
-	return err
-}
-
-const updateLeasePDF = `-- name: UpdateLeasePDF :exec
-UPDATE leases
-SET 
-    lease_pdf = $2, 
-    updated_by = $3,
-    updated_at = NOW()
-WHERE id = $1
-`
-
-type UpdateLeasePDFParams struct {
-	ID        int64  `json:"id"`
-	LeasePdf  []byte `json:"lease_pdf"`
-	UpdatedBy int64  `json:"updated_by"`
-}
-
-func (q *Queries) UpdateLeasePDF(ctx context.Context, arg UpdateLeasePDFParams) error {
-	_, err := q.db.Exec(ctx, updateLeasePDF, arg.ID, arg.LeasePdf, arg.UpdatedBy)
 	return err
 }
 

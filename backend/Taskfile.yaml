@@ -88,3 +88,32 @@ tasks:
     desc: "Run lease expiration job manually in backend container"
     cmds:
       - docker exec rentdaddy-backend /app/bin/expire-leases
+  cron:test-expired-leases:
+    desc: "Seed db with leases to expire"
+    cmds:
+      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
+
+  cron:test-status-update:
+    desc: "Test the lease status update endpoint"
+    cmds:
+      - bash ./scripts/lease-status-test.sh
+
+  cron:simulate-midnight:
+    desc: "Simulate the midnight cron job"
+    cmds:
+      - bash ./scripts/simulate-cron.sh
+
+  cron:run-all-tests:
+    desc: "Run all lease cron job tests in sequence"
+    cmds:
+      - task: cron:test-expired-leases
+      - echo "Waiting 2 seconds for database to process changes..."
+      - sleep 2
+      - task: cron:simulate-midnight
+      - echo "Waiting 2 seconds for API to process changes..."
+      - sleep 2
+      - task: cron:test-status-update
+  cron:test-notify:
+    desc: "Test the lease expiration notification system"
+    cmds:
+      - bash ./scripts/test-lease-notify.sh

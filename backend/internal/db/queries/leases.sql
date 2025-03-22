@@ -21,11 +21,11 @@ WHERE tenant_id = $1
   AND status = $3
 LIMIT 1;
 
--- name: TerminateLease :one
+
 -- name: TerminateLease :one
 UPDATE leases
 SET 
-    status = 'terminated', 
+    
     status = 'terminated', 
     updated_by = $1, 
     updated_at = now()
@@ -97,15 +97,12 @@ RETURNING lease_number,
 -- name: StoreGeneratedLeasePDF :exec
 UPDATE leases
 SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
-SET lease_pdf = $1, external_doc_id = $2, updated_at = now()
 WHERE id = $3
 RETURNING lease_pdf;
 
 
 -- name: MarkLeaseAsSignedBothParties :exec
--- name: MarkLeaseAsSignedBothParties :exec
 UPDATE leases
-SET status = 'active', updated_at = now()
 SET status = 'active', updated_at = now()
 WHERE id = $1
 RETURNING lease_number,
@@ -130,8 +127,6 @@ SET
     updated_at = NOW()
 WHERE id = $1;
 
-
-
 -- name: GetConflictingActiveLease :one
 SELECT * FROM leases
 WHERE tenant_id = $1
@@ -139,8 +134,16 @@ WHERE tenant_id = $1
   AND lease_start_date <= $3
   AND lease_end_date >= $2
 LIMIT 1;
--- name: ExpireLeasesEndingToday :exec
+
+-- name: ExpireLeasesEndingToday :one
 UPDATE leases
-SET status = 'expired', updated_by = 0
+SET status = 'expired', updated_at = NOW()
+WHERE status = 'active' AND lease_end_date <= CURRENT_DATE
+RETURNING (SELECT COUNT(*) FROM leases WHERE status = 'expired' AND updated_at > NOW() - INTERVAL '1 minute');
+
+
+
+-- name: ListActiveLeases :one
+SELECT * FROM leases
 WHERE status = 'active'
-  AND lease_end_date = CURRENT_DATE;
+LIMIT 1;

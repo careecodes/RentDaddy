@@ -158,13 +158,6 @@ const (
 	LeaseStatusExpired                 LeaseStatus = "expired"
 	LeaseStatusTerminated              LeaseStatus = "terminated"
 	LeaseStatusRenewed                 LeaseStatus = "renewed"
-	LeaseStatusDraft                   LeaseStatus = "draft"
-	LeaseStatusPendingTenantApproval   LeaseStatus = "pending_tenant_approval"
-	LeaseStatusPendingLandlordApproval LeaseStatus = "pending_landlord_approval"
-	LeaseStatusActive                  LeaseStatus = "active"
-	LeaseStatusExpired                 LeaseStatus = "expired"
-	LeaseStatusTerminated              LeaseStatus = "terminated"
-	LeaseStatusRenewed                 LeaseStatus = "renewed"
 )
 
 func (e *LeaseStatus) Scan(src interface{}) error {
@@ -387,7 +380,6 @@ type Apartment struct {
 	ManagementID int64            `json:"management_id"`
 	Availability bool             `json:"availability"`
 	LeaseID      pgtype.Int8      `json:"lease_id"`
-	LeaseID      pgtype.Int8      `json:"lease_id"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
@@ -412,7 +404,7 @@ type Complaint struct {
 
 type Lease struct {
 	ID              int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
+	LeaseNumber     int64            `json:"lease_number"`
 	ExternalDocID   string           `json:"external_doc_id"`
 	LeasePdf        []byte           `json:"lease_pdf"`
 	TenantID        int64            `json:"tenant_id"`

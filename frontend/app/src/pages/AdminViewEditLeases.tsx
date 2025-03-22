@@ -11,8 +11,21 @@ import { LeaseData } from "../types/types.ts";
 import { LeaseSendModalComponent } from "../components/LeaseSendModalComponent.tsx";
 import { LeaseAddModalComponent } from "../components/LeaseAddModalComponent.tsx"
 import { LeaseRenewModalComponent } from "../components/LeaseRenewModalComponent.tsx"
-import { message } from "antd";
+import { DownOutlined, SearchOutlined } from "@ant-design/icons";
+import { Dropdown, Input, message } from "antd"; // Import Input from antd
+import type { ColumnType } from "antd/es/table";
+
 const API_URL = `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`.replace(/\/$/, "");
+
+// Default status filters in case dynamic generation fails
+const DEFAULT_STATUS_FILTERS = [
+    { text: "Active", value: "active" },
+    { text: "Expires Soon", value: "expires_soon" },
+    { text: "Expired", value: "expired" },
+    { text: "Draft", value: "draft" },
+    { text: "Terminated", value: "terminated" },
+    { text: "Pending Approval", value: "pending_approval" }
+];
 
 export default function AdminViewEditLeases() {
     const [leases, setLeases] = useState<LeaseData[]>([]);
@@ -23,6 +36,8 @@ export default function AdminViewEditLeases() {
     const [isAddLeaseModalOpen, setIsAddLeaseModalOpen] = useState(false);
     const [isRenewModalOpen, setIsRenewModalOpen] = useState(false);
     const [selectedRenewLease, setSelectedRenewLease] = useState<LeaseData | null>(null);
+    // Add state for status filters
+    const [statusFilters, setStatusFilters] = useState<{ text: string; value: string }[]>(DEFAULT_STATUS_FILTERS);
 
     // 1. POPULATE TABLE
     // Fetch lease data from backend
@@ -30,8 +45,40 @@ export default function AdminViewEditLeases() {
         const fetchLeases = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`${API_URL}/admin/tenants/leases/get-leases`);
-                setLeases(response.data);
+
+                // Fetch lease data
+                const leaseResponse = await axios.get(`${API_URL}/admin/tenants/leases/`);
+
+                // Generate status filters dynamically from the lease data
+                if (leaseResponse.data && Array.isArray(leaseResponse.data)) {
+                    try {
+                        // Extract unique status values from the lease data
+                        const uniqueStatuses = [...new Set(leaseResponse.data.map(lease => lease.status))];
+
+                        // Format the status values for display
+                        const formattedFilters = uniqueStatuses
+                            .filter(status => status) // Filter out any null/undefined values
+                            .map(status => {
+                                // Parse the status string
+                                const text = String(status)
+                                    .split('_')
+                                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                    .join(' ');
+
+                                return { text, value: status };
+                            });
+
+                        // Sort filters alphabetically for better UX
+                        formattedFilters.sort((a, b) => a.text.localeCompare(b.text));
+
+                        setStatusFilters(formattedFilters);
+                    } catch (error) {
+                        console.error("Error generating status filters:", error);
+                        // Default filters will be used from initial state
+                    }
+                }
+
+                setLeases(leaseResponse.data);
                 setLoading(false);
             } catch (err) {
                 console.error("Error fetching leases:", err);
@@ -43,8 +90,52 @@ export default function AdminViewEditLeases() {
         fetchLeases();
     }, []);
 
-    // TODO: THIS SHOULD DEPEND ON DB INSTEAD OF BEING CALCULATED ON THE FRONTEND TO AVOID DISCREPANCIES
-    // Dynamically compute status based on end date
+    const getColumnSearchProps = (dataIndex: keyof LeaseData, title: string): ColumnType<LeaseData> => {
+        return {
+            filterDropdown: (filterDropdownProps) => {
+                return (
+                    <div style={{ padding: 8 }}>
+                        <Input
+                            placeholder={"Search " + title}
+                            value={filterDropdownProps.selectedKeys[0]}
+                            onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                            style={{ width: 188, marginBottom: 8, display: 'block' }}
+                        />
+                        <ButtonComponent
+                            type="primary"
+                            title="Search"
+                            icon={<SearchOutlined />}
+                            size="small"
+                            onClick={() => filterDropdownProps.confirm()}
+                        />
+                        <ButtonComponent
+                            type="default"
+                            title="Reset"
+                            size="small"
+                            onClick={() => {
+                                filterDropdownProps.clearFilters && filterDropdownProps.clearFilters();
+                                filterDropdownProps.confirm();
+                            }}
+                        />
+                    </div>
+                );
+            },
+            filterIcon: function (filtered) {
+                return <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />;
+            },
+            onFilter: function (value, record) {
+                // Safely handle null/undefined values
+                const recordValue = record[dataIndex];
+                if (recordValue == null) {
+                    return false;
+                }
+                return recordValue.toString().toLowerCase().includes(value.toString().toLowerCase());
+            },
+        };
+    };
+
+    // Status is calculated on the backend, but we maintain this function for backward compatibility
+    // In the future, we should remove this and rely solely on the backend status
     const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
         const today = dayjs();
         const leaseEnd = dayjs(record.leaseEndDate);
@@ -59,16 +150,16 @@ export default function AdminViewEditLeases() {
     };
 
     // Prepare lease data before rendering
-    const filteredData: LeaseData[] = leases.map((lease) => ({
+    const filteredData: LeaseData[] = Array.isArray(leases) ? leases.map((lease) => ({
         ...lease,
         key: lease.id, // Ensure each row has a unique key
-        tenantName: lease.tenantName,
-        apartment: lease.apartment,
+        tenantName: lease.tenantName || '',
+        apartment: lease.apartment || '',
         leaseStartDate: dayjs(lease.leaseStartDate).format("YYYY-MM-DD"),
         leaseEndDate: dayjs(lease.leaseEndDate).format("YYYY-MM-DD"),
         rentAmount: lease.rentAmount ? lease.rentAmount / 100 : 0,
         status: getLeaseStatus(lease),
-    }));
+    })) : [];
 
     const showModal = (lease: LeaseData) => {
         setSelectedLease({
@@ -91,7 +182,7 @@ export default function AdminViewEditLeases() {
         const fetchLeases = async () => {
             try {
                 setLoading(true);
-                const response = await axios.get(`${API_URL}/admin/tenants/leases/get-leases`);
+                const response = await axios.get(`${API_URL}/admin/tenants/leases/`);
                 setLeases(response.data);
                 setLoading(false);
             } catch (err) {
@@ -108,6 +199,7 @@ export default function AdminViewEditLeases() {
         setSelectedRenewLease(lease);
         setIsRenewModalOpen(true);
     };
+
     const handleTerminate = async (leaseId: number) => {
         try {
             const payload = {
@@ -123,7 +215,7 @@ export default function AdminViewEditLeases() {
 
             message.success("Lease successfully terminated");
 
-            const response = await axios.get(`${API_URL}/admin/tenants/leases/get-leases`);
+            const response = await axios.get(`${API_URL}/admin/tenants/leases/`);
             setLeases(response.data);
         } catch (err) {
             console.error("Error terminating lease:", err);
@@ -139,29 +231,34 @@ export default function AdminViewEditLeases() {
             dataIndex: "tenantName",
             key: "tenantName",
             sorter: (a, b) => a.tenantName.localeCompare(b.tenantName),
+            ...getColumnSearchProps("tenantName", "Tenant Name"),
         },
         {
             title: "Apartment",
             dataIndex: "apartment",
             key: "apartment",
+            ...getColumnSearchProps("apartment", "Apartment"),
         },
         {
             title: "Lease Start",
             dataIndex: "leaseStartDate",
             key: "leaseStartDate",
             sorter: (a, b) => dayjs(a.leaseStartDate).unix() - dayjs(b.leaseStartDate).unix(),
+            ...getColumnSearchProps("leaseStartDate", "Lease Start"),
         },
         {
             title: "Lease End",
             dataIndex: "leaseEndDate",
             key: "leaseEndDate",
             sorter: (a, b) => dayjs(a.leaseEndDate).unix() - dayjs(b.leaseEndDate).unix(),
+            ...getColumnSearchProps("leaseEndDate", "Lease End"),
         },
         {
             title: "Rent Amount ($)",
             dataIndex: "rentAmount",
             key: "rentAmount",
             sorter: (a, b) => a.rentAmount - b.rentAmount,
+            ...getColumnSearchProps("rentAmount", "Tenant Name"),
         },
         {
             title: "Status",
@@ -170,6 +267,8 @@ export default function AdminViewEditLeases() {
             render: (status) => (
                 <AlertComponent title={status} type={status === "active" ? "success" : "warning"} />
             ),
+            filters: statusFilters,
+            onFilter: (value, record) => record.status === value,
         },
         {
             title: "Actions",
@@ -183,14 +282,14 @@ export default function AdminViewEditLeases() {
                             onClick={() => showModal(record)}
                         />
                     )}
-                    {record.status === "expired" && (
+                    {(record.status === "expired" || record.status === "expires_soon") && (
                         <ButtonComponent
                             type="default"
                             title="Renew Lease"
                             onClick={() => handleRenew(record)}
                         />
                     )}
-                    {(record.status === "active" || record.status === "pending_tenant_approval") && (
+                    {(record.status === "active" || record.status === "pending_tenant_approval" || record.status === "expires_soon") && (
                         <ButtonComponent
                             type="danger"
                             title="Terminate Lease"
@@ -215,17 +314,21 @@ export default function AdminViewEditLeases() {
                 />
             </div>
 
-            {loading ? (
-                <Spin size="large" />
-            ) : error ? (
-                <p className="text-danger">{error}</p>
-            ) : (
-                <TableComponent<LeaseData> columns={leaseColumns} dataSource={filteredData} />
-            )}
-
-            {/* Existing Modal */}
-            <LeaseSendModalComponent visible={isModalOpen} onClose={handleCancel} selectedLease={selectedLease} />
-
+            {
+                loading ? (
+                    <Spin size="large" />
+                ) : error ? (
+                    <p className="text-danger">{error}</p>
+                ) : (
+                    <TableComponent<LeaseData>
+                        columns={leaseColumns}
+                        dataSource={filteredData}
+                        onChange={(pagination, filters, sorter, extra) => {
+                            // This properly forwards the event to the underlying Table component
+                            console.log('Table changed:', { pagination, filters, sorter, extra });
+                        }}
+                    />
+                )}
             {/* New Add Lease Modal */}
             <LeaseAddModalComponent
                 visible={isAddLeaseModalOpen}

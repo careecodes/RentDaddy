@@ -1,79 +1,67 @@
 FROM golang:1.23-alpine as builder
 
-# Define a build-time argument for debug mode 
-ENV DEBUG_MODE=${DEBUG_MODE}
+WORKDIR /build
 
-# Copy application files
-COPY . .
+# Copy only files needed for dependencies first to leverage Docker cache
 COPY go.mod go.sum ./
 RUN go mod download
-RUN go install github.com/go-delve/delve/cmd/dlv@latest
 
-# Check if server.go exists and print directory contents
-RUN ls -la
-RUN if [ -f server.go ]; then echo "server.go exists"; else echo "server.go does not exist!"; fi
+# Copy the rest of the application code
+COPY . .
 
-
-
-# Conditionally build the Go binary with or without debugging symbols
-RUN if [ "$DEBUG_MODE" = "true" ]; then \
-    # Install Delve debugger for debugging
-    echo "Building with debugging enabled..."; \
-    go build -gcflags "all=-N -l" -o /tmp/server . || (echo "BUILD FAILED!" && exit 1); \
-    else \
-    echo "Building in production mode..." || (echo "BUILD FAILED!" && exit 1); \
-    go build -o /tmp/server .; \
-    fi
+# Build the application
+RUN go build -o /tmp/server .
 
 FROM golang:1.23-alpine
 
 # Set working directory
 WORKDIR /app
-COPY --from=builder /tmp/server /tmp/server
-# Copy application files from builder stage to container
-COPY . .
 
-# Copy Delve from builder stage to final image
+# Install necessary tools using a single RUN command to reduce layers
+RUN apk update && apk add --no-cache \
+    curl \
+    git \
+    postgresql-client \
+    && rm -rf /var/cache/apk/*
 
-COPY --from=builder /go/bin/dlv /usr/local/bin/dlv
-
-# Ensure Delve is executable
-RUN chmod +x /usr/local/bin/dlv
-
-# Install necessary tools using apk (for Alpine)
-RUN apk update && apk add --no-cache curl git postgresql-client
-
-# Install Task CLI manually
-RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task
-RUN chmod +x /usr/local/bin/task
-RUN task --version
+# Install Task CLI
+RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task \
+    && chmod +x /usr/local/bin/task
 
 # Install golang-migrate
-RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz && \
-    tar -xvf migrate.tar.gz && \
-    mv migrate /usr/local/bin/migrate && \
-    chmod +x /usr/local/bin/migrate && \
-    migrate --version || echo "Migrate installation failed"
+RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz \
+    && tar -xvf migrate.tar.gz \
+    && mv migrate /usr/local/bin/migrate \
+    && chmod +x /usr/local/bin/migrate \
+    && rm migrate.tar.gz
 
-# Install Air inside the backend container
-RUN go install github.com/air-verse/air@latest && \
-    mv /go/bin/air /usr/local/bin/air
+# Install Air for development mode (optional)
+RUN go install github.com/air-verse/air@latest \
+    && mv /go/bin/air /usr/local/bin/air
+
+# Copy compiled binary from builder stage
+COPY --from=builder /tmp/server /app/tmp/server
+
+# Copy application source files (needed for development)
+COPY . .
+
+# Create necessary directories
+RUN mkdir -p /app/tmp /app/temp
+
+# Set up cron job
+COPY ./cmd/cron/leases-cron /etc/cron.d/leases-cron
+RUN chmod 0644 /etc/cron.d/leases-cron \
+    && crontab /etc/cron.d/leases-cron
+
+# Copy Air configuration
+COPY .air.toml /app/.air.toml
 
 # Copy entrypoint.sh and set correct permissions
-RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh
 
-EXPOSE 8080 2345
+EXPOSE 8080
 
-# Build lease cron binary
-RUN go build -o /app/bin/expire-leases ./cmd/cron/expire_leases.go
+# Environment variable to control whether to use Air (default: false)
+ENV USE_AIR=false
 
-# Copy crontab
-COPY ./backend/cron/leases-cron /etc/cron.d/leases-cron
-RUN chmod 0644 /etc/cron.d/leases-cron
-
-# Apply cron job
-RUN crontab /etc/cron.d/leases-cron
-
-# Run entrypoint
-RUN ls -la
-ENTRYPOINT [ "/app/entrypoint.sh" ]
+ENTRYPOINT ["/app/entrypoint.sh"]

@@ -168,7 +168,6 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		WorkeOrders: workOrders,
 		Complaints:  complaints,
 		Leases:      fullLeases,
-		Leases:      fullLeases,
 	}
 
 	adminOverviewData, err := json.Marshal(adminOverview)
