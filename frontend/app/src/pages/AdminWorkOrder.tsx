@@ -344,44 +344,10 @@ const complaintsDataRaw: ComplaintsData[] = [
 
 const complaintsColumns: ColumnsType<ComplaintsData> = [
     {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in_progress" },
-            { text: "Resolved", value: "resolved" },
-            { text: "Closed", value: "closed" },
-        ],
-        onFilter: (value, record) => record.status === (value as ComplaintsData["status"]),
-        render: (status) => {
-            let color = "";
-            let text = "";
-
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in_progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "resolved":
-                    color = "green";
-                    text = "Resolved";
-                    break;
-                case "closed":
-                    color = "gray";
-                    text = "Closed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-            return <Tag color={color}>{text}</Tag>;
-        },
-        className: "text-center",
+        title: "Complaint #",
+        dataIndex: "complaintNumber",
+        key: "complaintNumber",
+        ...getComplaintColumnSearchProps("complaintNumber", "Complaint #"),
     },
     {
         title: "Category",
@@ -452,27 +418,49 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         className: "text-center",
     },
     {
-        title: "Unit No.",
-        dataIndex: "unitNumber",
-        key: "unitNumber",
-        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
-        ...getColumnSearchProps("unitNumber", "Unit No."),
-        className: "text-secondary text-left",
-    },
-    {
-        title: "Complaint",
+        title: "Title",
         dataIndex: "title",
         key: "title",
-        sorter: (a, b) => a.title.localeCompare(b.title),
-        ...getColumnSearchProps("title", "Complaint"),
-        render: (title) => shortenInput(title, 25),
+        ...getComplaintColumnSearchProps("title", "Title"),
+        render: (title: string) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
-        ...getColumnSearchProps("description", "Description"),
-        render: (description) => shortenInput(description),
+        ...getComplaintColumnSearchProps("description", "Description"),
+        render: (description: string) => shortenInput(description),
+    },
+    {
+        title: "Unit",
+        dataIndex: "unitNumber",
+        key: "unitNumber",
+        ...getComplaintColumnSearchProps("unitNumber", "Unit"),
+    },
+    {
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        ...getComplaintColumnSearchProps("status", "Status"),
+        render: (status: string) => {
+            let color = "default";
+            switch (status) {
+                case "pending":
+                    color = "red";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    break;
+                case "resolved":
+                    color = "green";
+                    break;
+                case "closed":
+                    color = "gray";
+                    break;
+            }
+            return <Tag color={color}>{status.replace("_", " ").toUpperCase()}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Created",
