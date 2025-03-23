@@ -74,7 +74,7 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 		}
 	}
 
-	log.Printf("Work orders seeded successfully: %d work orders created", 10)
+	log.Println("[SEEDER] work orders seeded successfully")
 
 	return nil
 }
@@ -96,7 +96,7 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 		}
 	}
 
-	log.Printf("Complaints seeded successfully: %d complaints created", 10)
+	log.Println("[SEEDER] complaints seeded successfully")
 	return nil
 }
 
@@ -112,7 +112,7 @@ func createParkingPermits(queries *db.Queries, user db.User, createCount int, ct
 		}
 	}
 
-	log.Printf("Parking permits seeded successfully: %d parking permits created", 10)
+	log.Println("[SEEDER] parking permits seeded successfully")
 	return nil
 }
 
@@ -148,7 +148,7 @@ func createApartments(queries *db.Queries, userID int64, ctx context.Context) er
 		}
 	}
 
-	log.Printf("Apartments seeded successfully: %d apartments created", 4*54)
+	log.Printf("[SEEDER] apartments seeded successfully: %d apartments created", 4*54)
 	return nil
 }
 

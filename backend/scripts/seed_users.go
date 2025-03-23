@@ -3,13 +3,13 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"github.com/careecodes/RentDaddy/internal/utils"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"os"
 	"time"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/jackc/pgx/v5"
-
 	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/clerk/clerk-sdk-go/v2/user"
 	"github.com/go-faker/faker/v4"
@@ -49,40 +49,51 @@ func main() {
 	unitNumber := 101
 
 	// check if users already seeded
-	temp, err := pgx.Connect(ctx, os.Getenv("PG_URL"))
+	pool, err := pgxpool.New(ctx, os.Getenv("PG_URL"))
 	if err != nil {
 		log.Printf("[SEED_USERS] Error initializing pg: %v", err)
 		return
 	}
-	row := temp.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE role = $1", db.RoleTenant)
+	defer pool.Close()
+	queries := db.New(pool)
+
+	row := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE role = $1", db.RoleTenant)
 	var count int
 	if err := row.Scan(&count); err != nil {
 		log.Printf("[SEED_USERS] Error counting users: %v", err)
 		return
 	}
-	if count > 0 {
+	if count > 10 {
 		log.Printf("[SEED_USERS] Users already seeded: %d", count)
+	} else {
+		log.Printf("[SEED_USERS] Starting %d users", userCount)
+
+		if err := createAdmin(ctx); err != nil {
+			log.Printf("[SEED_USERS] Error seeding admin: %v", err)
+			return
+
+		}
+
+		for i := 0; i < userCount; i++ {
+			if err := createTenant(ctx); err != nil {
+				log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
+			}
+			unitNumber = unitNumber + 1
+
+			if userCount+1 > rateLimitThreshold {
+				time.Sleep(2 * time.Second)
+			}
+		}
+
+		log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
+	}
+	log.Println("[SEED] Calling db seeder")
+	err = utils.SeedDB(queries, pool)
+	if err != nil {
+		log.Printf("[SEED] Error seeding db: %v", err)
 		return
 	}
-
-	log.Printf("[SEED_USERS] Starting %d users", userCount)
-
-	if err := createAdmin(ctx); err != nil {
-		log.Printf("[SEED_USERS] Error seeding admin: %v", err)
-		return
-
-	}
-
-	for i := 0; i < userCount; i++ {
-		if err := createTenant(ctx); err != nil {
-			log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
-		}
-		unitNumber = unitNumber + 1
-
-		if userCount+1 > rateLimitThreshold {
-			time.Sleep(2 * time.Second)
-		}
-	}
+	log.Println("[SEED_USERS] Finished seeding db")
 }
 
 func createAdmin(ctx context.Context) error {

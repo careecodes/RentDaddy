@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"github.com/careecodes/RentDaddy/internal/utils"
 	"log"
 	"net/http"
 	"os"
@@ -54,12 +53,6 @@ func main() {
 
 	// Initialize Clerk with your secret key
 	clerk.SetKey(clerkSecretKey)
-
-	// Seed the database with initial data
-	err = utils.SeedDB(queries, pool)
-	if err != nil {
-		log.Printf("[DB] Failed seeding database: %v", err)
-	}
 
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
