@@ -1096,26 +1096,26 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	log.Printf("[WEBHOOK] Received webhook with secret: %s", receivedSignature)
 
 	// // Only verify signature if we have a secret configured
-	// if webhookSecret != "" && receivedSignature != "" {
-	// 	// Compute the expected signature (HMAC SHA-256)
-	// 	mac := hmac.New(sha256.New, []byte(webhookSecret))
-	// 	mac.Write(body)
-	// 	computedSignature := hex.EncodeToString(mac.Sum(nil))
+	if webhookSecret != "" && receivedSignature != "" {
+		// // Compute the expected signature (HMAC SHA-256)
+		// mac := hmac.New(sha256.New, []byte(webhookSecret))
+		// mac.Write(body)
+		// computedSignature := hex.EncodeToString(mac.Sum(nil))
 
-	// 	// Compare with the provided signature
-	// 	if computedSignature != receivedSignature {
-	// 		log.Printf("[WEBHOOK] Invalid signature. Computed: %s, Received: %s", computedSignature, receivedSignature)
-	// 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
-	// 		return
-	// 	}
-	// 	log.Printf("[WEBHOOK] Signature validation successful")
-	// }
+		// Compare with the provided signature
+		if webhookSecret != receivedSignature {
+			log.Printf("[WEBHOOK] Invalid signature. Server: %s, Received: %s", webhookSecret, receivedSignature)
+			http.Error(w, "Invalid signature", http.StatusUnauthorized)
+			return
+		}
+		log.Printf("[WEBHOOK] Signature validation successful")
+	}
 
 	type DocumensoEvent struct {
-		Event string `json:"event"`
-		Data  struct {
-			DocumentID string `json:"id"`
-		} `json:"data"`
+		Event   string `json:"event"`
+		Payload struct {
+			DocumentID int `json:"id"`
+		} `json:"payload"`
 	}
 
 	var event DocumensoEvent
@@ -1124,33 +1124,32 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		http.Error(w, "Invalid payload", http.StatusBadRequest)
 		return
 	}
-
-	if event.Event == "document.signed.completed" {
-		log.Printf("[WEBHOOK] Document %s signed, marking lease as active", event.Data.DocumentID)
+	log.Printf("[WEBHOOK] Event received from webhook %s", event.Event)
+	if event.Event == "DOCUMENT_SIGNED" {
+		log.Printf("[WEBHOOK] Document %v signed, marking lease as active", event.Payload.DocumentID)
 
 		// Get lease by external_doc_id
-		lease, err := h.queries.GetLeaseByExternalDocID(r.Context(), event.Data.DocumentID)
+		lease, err := h.queries.GetLeaseByExternalDocID(r.Context(), strconv.Itoa(event.Payload.DocumentID))
 		if err != nil {
-			log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", event.Data.DocumentID, err)
+			log.Printf("[WEBHOOK] No lease found for doc ID %v: %v", event.Payload.DocumentID, err)
 			http.Error(w, "Lease not found", http.StatusNotFound)
 			return
 		}
 
-		// Only update if current status is pending
-		if lease.Status != db.LeaseStatus("active") {
-			_, err := h.queries.UpdateLeaseStatus(r.Context(), db.UpdateLeaseStatusParams{
-				ID:        lease.ID,
-				Status:    db.LeaseStatus("active"),
-				UpdatedBy: landlordID,
-			})
-			if err != nil {
-				log.Printf("[WEBHOOK] Failed to update lease %d to active: %v", lease.ID, err)
-				http.Error(w, "Failed to update lease", http.StatusInternalServerError)
-				return
-			}
+		_, err = h.queries.UpdateLeaseStatus(r.Context(), db.UpdateLeaseStatusParams{
+			ID:        lease.ID,
+			Status:    db.LeaseStatus("active"),
+			UpdatedBy: landlordID,
+		})
 
-			log.Printf("[WEBHOOK] Lease %d marked as active", lease.ID)
+		if err != nil {
+			log.Printf("[WEBHOOK] Failed to update lease %d to active: %v", lease.ID, err)
+			http.Error(w, "Failed to update lease", http.StatusInternalServerError)
+			return
 		}
+
+		log.Printf("[WEBHOOK] Lease %d marked as active", lease.ID)
+
 	}
 
 }

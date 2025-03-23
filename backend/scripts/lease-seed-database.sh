@@ -33,13 +33,13 @@ echo "Using date range: $TODAY to $ONE_YEAR"
 # Define user data
 LANDLORD_NAME="First Landlord"
 LANDLORD_EMAIL="wrldconnect1@gmail.com"
-TENANT_FIRST_NAMES="James Diego Hector Charlie JJ"
-TENANT_LAST_NAMES="Smith Lewis Wilson Davis SchraderBachar"
-TENANT_CLERK_IDS="user_james1 user_diego1 user_hector1 user_charlie1 user_jj1"
+TENANT_FIRST_NAMES="Seed Soso Yolo Toon Bean"
+TENANT_LAST_NAMES="Ogg Lewis Wilson Soon SchraderBachar"
+TENANT_CLERK_IDS="user_seed user_soso user_yolo user_toon user_bean"
 TENANT_PHONES="+15551234001 +15551234002 +15551234003 +15551234004 +15551234005"
 
 # Define apartment data
-APARTMENT_UNIT_NUMBERS="101 205 212 333 179"
+APARTMENT_UNIT_NUMBERS="102 206 213 334 180"
 APARTMENT_PRICES="2000.00 1800.00 2223.00 1950.00 2150.00"
 APARTMENT_SIZES="850 800 900 825 875"
 
