@@ -503,7 +503,7 @@ const AdminWorkOrder = () => {
                         return {
                             ...item,
                             status: currentStatus,
-                            updatedAt: new Date()
+                            updatedAt: new Date(),
                         } as WorkOrderData;
                     }
                     return item;
@@ -607,7 +607,7 @@ const AdminWorkOrder = () => {
             <div>
                 <strong>Status:</strong>
                 <Select
-                    defaultValue={currentStatus}
+                    value={currentStatus}
                     style={{ width: 200, marginLeft: 10 }}
                     onChange={handleStatusChange}
                 >
