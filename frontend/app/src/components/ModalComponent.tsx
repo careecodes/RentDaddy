@@ -1,14 +1,15 @@
 // Comment to git add .
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
+import { useMutation } from "@tanstack/react-query";
+import { useAuth } from "@clerk/react-router";
 
 type InviteTenant = {
     email: string;
-    unitNumber: number;
-    management_id: string;
+    unitNumber: number; //TODO: this is no longer needed
 };
 
 interface Lease {
@@ -38,12 +39,68 @@ interface ModalComponentProps {
     onCancel?: () => void;
 }
 
+interface InviteStatusNotification {
+    show: boolean;
+    message: string;
+    type: "success" | "error";
+}
+
 // In code we are sending management_id
 
 const ModalComponent = (props: ModalComponentProps) => {
+    const { getToken } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
-
     const isModalOpen = props.isModalOpen !== undefined ? props.isModalOpen : internalModalOpen;
+    const [tenantInviteForm] = Form.useForm<InviteTenant>();
+
+    const [inviteStatus, setInviteStatus] = useState<InviteStatusNotification>({
+        show: false,
+        message: "",
+        type: "success",
+    });
+
+    async function handleInviteTenant() {
+        const authToken = await getToken();
+        if (!authToken) {
+            throw new Error("Error tenant email empty");
+        }
+
+        if (!tenantInviteForm.getFieldValue("email") || !tenantInviteForm.getFieldValue("unitNumber")) {
+            throw new Error("Tenant ivnite schema invalid");
+        }
+
+        const resp = await fetch("http://localhost:8080/admin/tenants/invite", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authToken}`,
+            },
+            body: JSON.stringify(tenantInviteForm.getFieldsValue()),
+        });
+        if (!resp.ok) {
+            throw new Error("Error request failed");
+        }
+        return;
+    }
+
+    const { mutate: inviteTenant, isPending } = useMutation({
+        mutationFn: handleInviteTenant,
+        onSuccess: () => {
+            setInviteStatus({
+                show: true,
+                message: "Successfully invited tenant",
+                type: "success",
+            });
+            tenantInviteForm.resetFields();
+        },
+        onError: () => {
+            setInviteStatus({
+                show: true,
+                message: "Oops try again another time",
+                type: "error",
+            });
+        },
+    });
 
     if (props.userRole === "") {
         props.userRole = "admin";
@@ -73,7 +130,16 @@ const ModalComponent = (props: ModalComponentProps) => {
         "View Tenant Complaints": "View Tenant Complaints",
         "View Tenant Work Orders": "View Tenant Work Orders",
         "Send Tenant Lease": "Send Tenant Lease",
+        "Edit Apartment Building": "Edit Apartment Building",
     };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setInviteStatus((prev) => ({ ...prev, show: false }));
+        }, 5000);
+
+        return () => clearTimeout(timer);
+    }, [inviteStatus.show]);
 
     const getAdminSmartLocker = () => {
         return (
@@ -273,8 +339,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -338,41 +404,43 @@ const ModalComponent = (props: ModalComponentProps) => {
                         className="p-3 flex-wrap-row"
                         title={<h3>{titles[props.type]}</h3>}
                         open={isModalOpen}
-                        onOk={props.handleOkay}
+                        onOk={tenantInviteForm.submit}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        okButtonProps={{ disabled: isPending ? true : false }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
-                        <Form>
-                            <Form.Item name="tenant-email">
+                        <Form
+                            form={tenantInviteForm}
+                            onFinish={() => {
+                                inviteTenant();
+                            }}
+                            initialValues={{ email: "", unitNumber: 0 }}>
+                            <Form.Item name="email">
                                 <Input
                                     placeholder="Tenant Email"
+                                    value={tenantInviteForm.getFieldValue("email")}
                                     onChange={(e) => {
-                                        const updatedValue = e.target.value;
-
-                                        props.setInviteTenantObjProps!((prev) => ({
-                                            ...prev,
-                                            email: updatedValue,
-                                        }));
+                                        tenantInviteForm.setFieldValue("email", e.target.value);
                                     }}
                                 />
                             </Form.Item>
-                            <Form.Item name="unit-number">
+                            <Form.Item name="unitNumber">
                                 <Input
                                     placeholder="Unit Number"
                                     type="number"
+                                    value={tenantInviteForm.getFieldValue("unitNumber")}
                                     onChange={(e) => {
-                                        const updatedValue = Number(e.target.value);
-
-                                        props.setInviteTenantObjProps!((prev) => ({
-                                            ...prev,
-                                            unitNumber: updatedValue,
-                                        }));
+                                        tenantInviteForm.setFieldValue("unitNumber", e.target.valueAsNumber);
                                     }}
                                 />
                             </Form.Item>
                             <Divider />
+                            {inviteStatus.show ? (
+                                <p className={`${inviteStatus.type === "success" ? "text-success" : "text-danger"}`}>{inviteStatus.message}</p>
+                            ) : (
+                                <p style={{ minHeight: "10px" }}></p>
+                            )}
                         </Form>
                     </Modal>
                 </>
@@ -527,7 +595,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                         onCancel={handleCancel}
                         // leases={leaseTemplates || []} // Add null check
                         okButtonProps={{ disabled: !props.leases?.length }}
-                    // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
                     >
                         <Form>
                             {/* Pick a Lease */}

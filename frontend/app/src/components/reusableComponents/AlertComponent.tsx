@@ -1,7 +1,12 @@
-import React from "react";
 import { Alert } from "antd";
 
-const AlertComponent = (props: any) => {
+interface AlertProps {
+    title: string;
+    description: string;
+    type: "success" | "info" | "warning" | "error";
+}
+
+const AlertComponent = (props: AlertProps) => {
     return (
         <>
             <Alert
