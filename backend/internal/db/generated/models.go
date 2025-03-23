@@ -373,12 +373,12 @@ func (ns NullWorkCategory) Value() (driver.Value, error) {
 type Apartment struct {
 	ID int64 `json:"id"`
 	// describes as <building><floor><door> -> 2145
-	UnitNumber   int16            `json:"unit_number"`
+	UnitNumber   pgtype.Int2      `json:"unit_number"`
 	Price        pgtype.Numeric   `json:"price"`
-	Size         int16            `json:"size"`
-	ManagementID int64            `json:"management_id"`
+	Size         pgtype.Int2      `json:"size"`
+	ManagementID pgtype.Int8      `json:"management_id"`
 	Availability bool             `json:"availability"`
-	LeaseID      int64            `json:"lease_id"`
+	LeaseID      pgtype.Int8      `json:"lease_id"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }

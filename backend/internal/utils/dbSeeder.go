@@ -79,6 +79,7 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 }
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
+
 	for i := 0; i < 10; i++ {
 		complaintNum := user.ID + int64(rand.Intn(1000))
 		_, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
@@ -130,11 +131,10 @@ func createApartments(queries *db.Queries, userID int64, ctx context.Context) er
 		}
 
 		_, err = queries.CreateApartment(ctx, db.CreateApartmentParams{
-			UnitNumber:   int16(i),
-			Price:        convertToPgTypeNumeric(sqft[0] * 2),
-			Size:         int16(sqft[0]),
-			ManagementID: userID,
-			LeaseID:      0,
+			UnitNumber:   pgtype.Int2{Int16: int16(i + 1), Valid: true},
+			Price:        convertToPgTypeNumeric(2 * sqft[0]),
+			Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
+			ManagementID: pgtype.Int8{Int64: userID, Valid: true},
 		})
 		if err != nil {
 			return errors.New(fmt.Sprintf("[SEEDER] error creating apartment: %d %v", userID, err.Error()))
