@@ -191,3 +191,15 @@ UPDATE leases
 SET tenant_signing_url = $2,
     updated_at = now()
 WHERE id = $1;
+
+-- name: UpdateSignedLeasePdfS3URL :exec
+UPDATE leases
+SET lease_pdf_s3 = $2,
+    updated_at = now()
+WHERE id = $1;
+
+
+-- name: GetSignedLeasePdfS3URL :one
+SELECT lease_pdf_s3
+FROM leases
+WHERE id = $1;

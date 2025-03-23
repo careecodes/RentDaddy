@@ -104,6 +104,7 @@ func main() {
 					r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
 					r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
 					r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
+					r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
 
 					r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 				})

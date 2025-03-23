@@ -5,13 +5,18 @@
 
 echo "🚀 Starting database seeder script..."
 
-# API URL (localhost since we're inside the container)
-API_URL="http://localhost:8080"
+# Get configuration from environment variables or use defaults
+API_HOST="${DOMAIN_URL:-http://localhost}"
+API_PORT="${PORT:-8080}"
+API_URL="${API_HOST}:${API_PORT}"
 
-# PostgreSQL connection details for inside the container
-PG_HOST="postgres"
-PG_USER="appuser"
-PG_DB="appdb"
+# PostgreSQL connection details from environment variables
+PG_HOST="${POSTGRES_HOST:-postgres}"
+PG_USER="${POSTGRES_USER:-appuser}"
+PG_DB="${POSTGRES_DB:-appdb}"
+
+echo "Using database connection: $PG_HOST / $PG_USER / $PG_DB"
+echo "Using API URL: $API_URL"
 
 # Number of records to create
 NUM_RECORDS=5
@@ -31,15 +36,15 @@ ONE_YEAR="${NEXT_YEAR}-${MONTH}-${DAY}"
 echo "Using date range: $TODAY to $ONE_YEAR"
 
 # Define user data
-LANDLORD_NAME="First Landlord"
-LANDLORD_EMAIL="wrldconnect1@gmail.com"
-TENANT_FIRST_NAMES="Seed Soso Yolo Toon Bean"
+ADMIN_NAME=$ADMIN_FIRST_NAME + " " + $ADMIN_LAST_NAME
+ADMIN_EMAIL="wrldconnect1@gmail.com"
+TENANT_FIRST_NAMES="Dude We Are Done ForReal"
 TENANT_LAST_NAMES="Ogg Lewis Wilson Soon SchraderBachar"
-TENANT_CLERK_IDS="user_seed user_soso user_yolo user_toon user_bean"
+TENANT_CLERK_IDS="user_dude user_we user_are user_done user_forreal"
 TENANT_PHONES="+15551234001 +15551234002 +15551234003 +15551234004 +15551234005"
 
 # Define apartment data
-APARTMENT_UNIT_NUMBERS="102 206 213 334 180"
+APARTMENT_UNIT_NUMBERS="103 207 214 335 181"
 APARTMENT_PRICES="2000.00 1800.00 2223.00 1950.00 2150.00"
 APARTMENT_SIZES="850 800 900 825 875"
 
@@ -56,6 +61,7 @@ extract_id() {
 # Arrays to store IDs (using temporary files for BusyBox compatibility)
 TENANT_IDS_FILE=$(mktemp)
 APARTMENT_IDS_FILE=$(mktemp)
+LEASE_IDS_FILE=$(mktemp)
 
 # Step 1: Create admin user with ID 100 (using OVERRIDING SYSTEM VALUE)
 echo "Step 1: Creating admin user with ID 100..."
@@ -73,7 +79,7 @@ if [ "$USER_EXISTS" -eq "0" ]; then
   -- Create the admin user with ID 100
   INSERT INTO users (id, clerk_id, first_name, last_name, email, phone, role, status) 
   OVERRIDING SYSTEM VALUE
-  VALUES (100, 'admin_user_100', '$LANDLORD_NAME', 'Admin', '$LANDLORD_EMAIL', '+15551234000', 'admin', 'active');
+  VALUES (100, 'admin_user_100', '$ADMIN_NAME', 'Admin', '$ADMIN_EMAIL', '+15551234000', 'admin', 'active');
   "
   echo "Created admin user with ID: 100"
 else
@@ -187,6 +193,7 @@ for i in $(seq 1 $NUM_RECORDS); do
   if [ ! -z "$LEASE_ID" ]; then
     echo "  ✅ Created lease ID: $LEASE_ID"
     echo "  📄 Documenso document ID: $DOCUMENT_ID"
+    echo "$LEASE_ID" >> $LEASE_IDS_FILE
   else
     echo "  ❌ Failed to create lease. Response: $LEASE_RESPONSE"
   fi
@@ -195,8 +202,59 @@ for i in $(seq 1 $NUM_RECORDS); do
   sleep 2
 done
 
-# Clean up temporary files
-rm -f $TENANT_IDS_FILE $APARTMENT_IDS_FILE
+# Step 5: Test fetching Documenso URLs for all created leases
+echo "Step 5: Testing DocumensoGetDocumentURL endpoint..."
+for i in $(seq 1 $NUM_RECORDS); do
+  LEASE_ID_RAW=$(sed -n "${i}p" $LEASE_IDS_FILE 2>/dev/null)
+  LEASE_ID=$(extract_id "$LEASE_ID_RAW")
+  
+  if [ ! -z "$LEASE_ID" ]; then
+    echo "Testing Documenso URL retrieval for lease #$i (ID: $LEASE_ID)"
+    
+    DOC_URL_RESPONSE=$(curl -s -X GET \
+      $API_URL/admin/tenants/leases/$LEASE_ID/documenso-url)
+    
+    if echo "$DOC_URL_RESPONSE" | grep -q '"download_url":'; then
+      echo "  ✅ Successfully retrieved Documenso URL"
+      echo "  Response: $DOC_URL_RESPONSE"
+    else
+      echo "  ❌ Failed to retrieve Documenso URL. Response: $DOC_URL_RESPONSE"
+    fi
+    
+    echo "----------------------------------------"
+  fi
+  sleep 1
+done
 
-echo "✅ Database seeding completed!"
+# Wait for user confirmation before testing URL retrieval
+echo "Press Enter when you want to test URL retrieval for all created leases..."
+read -p ">" CONFIRM_TEST
+
+# Step 6: Test fetching URLs for all created leases
+echo "Step 6: Testing URL retrieval endpoints..."
+for i in $(seq 1 $NUM_RECORDS); do
+  LEASE_ID_RAW=$(sed -n "${i}p" $LEASE_IDS_FILE 2>/dev/null)
+  LEASE_ID=$(extract_id "$LEASE_ID_RAW")
+  
+  if [ ! -z "$LEASE_ID" ]; then
+    echo "Testing URL retrieval for lease #$i (ID: $LEASE_ID)"
+    
+    URL_RESPONSE=$(curl -s -X GET \
+      $API_URL/admin/tenants/leases/$LEASE_ID/url)
+    
+    if echo "$URL_RESPONSE" | grep -q '"lease_pdf_s3":'; then
+      echo "  ✅ Successfully retrieved S3 URL"
+      echo "  Response: $URL_RESPONSE"
+    else
+      echo "  ❌ Failed to retrieve URL. Response: $URL_RESPONSE"
+    fi
+    
+    echo "----------------------------------------"
+  fi
+  sleep 1
+done
+# Clean up temporary files
+rm -f $TENANT_IDS_FILE $APARTMENT_IDS_FILE $LEASE_IDS_FILE
+
+echo "✅ Database seeding and testing completed!"
 echo "You can now test your Documenso webhook integration."

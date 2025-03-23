@@ -4,7 +4,7 @@
 root = "."
 
 # Command to run the server
-cmd = "go build -o ./tmp/server server.go && ./tmp/server"
+cmd = "./tmp/server"
 
 # Watching for file changes
 [watcher]

@@ -486,51 +486,6 @@ type LeaseWithSignersRequest struct {
 	DocumentTitle string `json:"document_title,omitempty"`
 }
 
-func (h LeaseHandler) GetLeaseWithFields(w http.ResponseWriter, r *http.Request) {
-	leaseIDStr := chi.URLParam(r, "leaseID")
-	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
-	if err != nil {
-		http.Error(w, "Invalid lease ID", http.StatusBadRequest)
-		return
-	}
-
-	// Retrieve lease details from DB
-	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
-	if err != nil {
-		http.Error(w, "Lease not found", http.StatusNotFound)
-		return
-	}
-
-	// Get preloaded lease template document ID from Documenso
-	documentID := lease.ExternalDocID
-	if documentID == "" {
-		http.Error(w, "Lease document not linked to Documenso", http.StatusNotFound)
-		return
-	}
-
-	// Define form values
-	formValues := map[string]string{
-		"tenant_name":      "John Doe",
-		"property_address": "123 Main St",
-		"lease_start_date": lease.LeaseStartDate.Time.Format("2006-01-02"),
-		"lease_end_date":   lease.LeaseEndDate.Time.Format("2006-01-02"),
-		"rent_amount":      lease.RentAmount.Int.String(),
-	}
-
-	// Iterate over form values and update fields in Documenso
-	for field, value := range formValues {
-		err := h.documenso_client.SetField(documentID, field, value)
-		if err != nil {
-			http.Error(w, fmt.Sprintf("Failed to update field %s: %v", field, err), http.StatusInternalServerError)
-			return
-		}
-	}
-
-	// Return confirmation response
-	w.WriteHeader(http.StatusOK)
-	fmt.Fprintln(w, "Lease fields updated successfully in Documenso")
-}
-
 func (h *LeaseHandler) ValidateLeaseRequest(r *http.Request, landlordID int64) (*LeaseValidationResult, error) {
 	var req LeaseWithSignersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
@@ -1073,13 +1028,115 @@ func sendExpiringLeasesNotification(expiringLeases []map[string]interface{}) err
 	return smtp.SendEmail(adminEmail, subject, body.String())
 }
 
+// DocumensoGetDocumentURL retrieves the document signing URL from Documenso
+func (h *LeaseHandler) DocumensoGetDocumentURL(w http.ResponseWriter, r *http.Request) {
+	// Get lease ID from URL parameter
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	if leaseIDStr == "" {
+		http.Error(w, "Missing lease ID in URL", http.StatusBadRequest)
+		return
+	}
+
+	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid lease ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Get lease details from database
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+	if err != nil {
+		log.Printf("[DOCUMENSO_URL] Error fetching lease %d: %v", leaseID, err)
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if lease has a Documenso document ID
+	if lease.ExternalDocID == "" {
+		http.Error(w, "Lease has no associated Documenso document", http.StatusNotFound)
+		return
+	}
+
+	// Get the document download URL from Documenso
+	downloadURL, err := h.documenso_client.GetDocumentDownloadURL(lease.ExternalDocID)
+	if err != nil {
+		log.Printf("[DOCUMENSO_URL] Failed to get document URL: %v", err)
+		http.Error(w, "Failed to retrieve document URL: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	// Return the URL to the client
+	response := map[string]interface{}{
+		"lease_id":        leaseID,
+		"external_doc_id": lease.ExternalDocID,
+		"download_url":    downloadURL,
+		"status":          lease.Status,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[DOCUMENSO_URL] Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// PdfS3GetDocumentURL retrieves the stored S3 URL for a lease PDF
+func (h *LeaseHandler) PdfS3GetDocumentURL(w http.ResponseWriter, r *http.Request) {
+	// Get lease ID from URL parameter
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	if leaseIDStr == "" {
+		http.Error(w, "Missing lease ID in URL", http.StatusBadRequest)
+		return
+	}
+
+	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid lease ID format", http.StatusBadRequest)
+		return
+	}
+
+	// Get lease details from database
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+	if err != nil {
+		log.Printf("[PDF_S3_URL] Error fetching lease %d: %v", leaseID, err)
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
+	}
+
+	// Check if lease has an S3 URL
+	if !lease.LeasePdfS3.Valid || lease.LeasePdfS3.String == "" {
+		http.Error(w, "Lease has no associated PDF URL", http.StatusNotFound)
+		return
+	}
+
+	// Return the S3 URL to the client
+	response := map[string]interface{}{
+		"lease_id":     leaseID,
+		"lease_pdf_s3": lease.LeasePdfS3.String,
+		"status":       lease.Status,
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[PDF_S3_URL] Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
 func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the webhook secret from environment variable
 	webhookSecret := os.Getenv("DOCUMENSO_WEBHOOK_SECRET")
 	if webhookSecret == "" {
 		log.Printf("[WEBHOOK] Warning: DOCUMENSO_WEBHOOK_SECRET not set")
 	}
-
+	// Documenso event encapsulates webhook request elements
+	type DocumensoEvent struct {
+		Event   string `json:"event"`
+		Payload struct {
+			DocumentID int `json:"id"`
+		} `json:"payload"`
+	}
 	// Read the signature from the header
 	receivedSignature := r.Header.Get("X-Documenso-Secret")
 
@@ -1111,13 +1168,6 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		log.Printf("[WEBHOOK] Signature validation successful")
 	}
 
-	type DocumensoEvent struct {
-		Event   string `json:"event"`
-		Payload struct {
-			DocumentID int `json:"id"`
-		} `json:"payload"`
-	}
-
 	var event DocumensoEvent
 	if err := json.Unmarshal(body, &event); err != nil {
 		log.Printf("[WEBHOOK] Failed to decode event payload: %v", err)
@@ -1128,19 +1178,23 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	if event.Event == "DOCUMENT_SIGNED" {
 		log.Printf("[WEBHOOK] Document %v signed, marking lease as active", event.Payload.DocumentID)
 
+		docID := strconv.Itoa(event.Payload.DocumentID)
 		// Get lease by external_doc_id
-		lease, err := h.queries.GetLeaseByExternalDocID(r.Context(), strconv.Itoa(event.Payload.DocumentID))
+		lease, err := h.queries.GetLeaseByExternalDocID(r.Context(), docID)
 		if err != nil {
 			log.Printf("[WEBHOOK] No lease found for doc ID %v: %v", event.Payload.DocumentID, err)
 			http.Error(w, "Lease not found", http.StatusNotFound)
 			return
 		}
 
+		// Update lease status and upload signed doc to s3 bucket
 		_, err = h.queries.UpdateLeaseStatus(r.Context(), db.UpdateLeaseStatusParams{
 			ID:        lease.ID,
 			Status:    db.LeaseStatus("active"),
 			UpdatedBy: landlordID,
 		})
+
+		// Upload to s3 bucket
 
 		if err != nil {
 			log.Printf("[WEBHOOK] Failed to update lease %d to active: %v", lease.ID, err)
@@ -1151,7 +1205,37 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		log.Printf("[WEBHOOK] Lease %d marked as active", lease.ID)
 
 	}
+	if event.Event == "DOCUMENT_COMPLETED" {
+		log.Printf("[WEBHOOK] Document %v signed, marking lease as active", event.Payload.DocumentID)
 
+		docID := strconv.Itoa(event.Payload.DocumentID)
+		// Get lease by external_doc_id
+		lease, err := h.queries.GetLeaseByExternalDocID(r.Context(), docID)
+		if err != nil {
+			log.Printf("[WEBHOOK] No lease found for doc ID %v: %v", event.Payload.DocumentID, err)
+			http.Error(w, "Lease not found", http.StatusNotFound)
+			return
+		}
+
+		// Get the download URL for the signed document
+		downloadURL, err := h.documenso_client.GetDocumentDownloadURL(docID)
+		if err != nil {
+			log.Printf("[WEBHOOK] Failed to get signed document URL: %v", err)
+			// Continue with lease status update even if getting URL fails
+		} else {
+			// Update the lease record with the signed document URL
+			err = h.queries.UpdateSignedLeasePdfS3URL(r.Context(), db.UpdateSignedLeasePdfS3URLParams{
+				ID:         lease.ID,
+				LeasePdfS3: pgtype.Text{String: downloadURL, Valid: true},
+			})
+			if err != nil {
+				log.Printf("[WEBHOOK] Failed to update signed document URL: %v", err)
+			} else {
+				log.Printf("[WEBHOOK] Updated lease %d with signed document URL: %s", lease.ID, downloadURL)
+			}
+		}
+
+	}
 }
 
 // SendLease updates a lease from draft to pending_tenant_approval state
@@ -1272,8 +1356,75 @@ func (h *LeaseHandler) GetTenantSigningURL(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"email":       tenantEmail,
 		"signing_url": signingURL,
-	})
+	}); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
+}
+
+func (h *LeaseHandler) GetSignedLeaseURL(w http.ResponseWriter, r *http.Request) {
+	leaseIDStr := chi.URLParam(r, "leaseID")
+	if leaseIDStr == "" {
+		http.Error(w, "Missing leaseID", http.StatusBadRequest)
+		return
+	}
+
+	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid leaseID", http.StatusBadRequest)
+		return
+	}
+
+	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+	if err != nil {
+		http.Error(w, "Lease not found", http.StatusNotFound)
+		return
+	}
+
+	var pdfURL string
+	status := string(lease.Status)
+	isSignedStatus := status == "active" || status == "expired" || status == "terminated"
+
+	// If the lease has a PDF URL stored, use it
+	if lease.LeasePdfS3.Valid && lease.LeasePdfS3.String != "" {
+		pdfURL = lease.LeasePdfS3.String
+		log.Printf("[LEASE_URL] Using stored PDF URL for lease %d with status %s", leaseID, status)
+	} else if lease.ExternalDocID != "" && isSignedStatus {
+		// Only try to get the signed version if the lease status indicates it's been signed
+		downloadURL, err := h.documenso_client.GetDocumentDownloadURL(lease.ExternalDocID)
+		if err == nil {
+			pdfURL = downloadURL
+			log.Printf("[LEASE_URL] Retrieved signed document URL from Documenso for lease %d", leaseID)
+
+			// Update the database with this URL for future use
+			err = h.queries.UpdateSignedLeasePdfS3URL(r.Context(), db.UpdateSignedLeasePdfS3URLParams{
+				ID:         leaseID,
+				LeasePdfS3: pgtype.Text{String: downloadURL, Valid: true},
+			})
+			if err != nil {
+				log.Printf("[LEASE_URL] Failed to update document URL: %v", err)
+			}
+		} else {
+			log.Printf("[LEASE_URL] Failed to get download URL from Documenso: %v", err)
+		}
+	}
+
+	if pdfURL == "" {
+		http.Error(w, "No PDF URL available for this lease", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"lease_pdf_s3": pdfURL,
+		"lease_status": status,
+	}); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
 }

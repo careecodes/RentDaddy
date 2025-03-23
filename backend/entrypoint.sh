@@ -20,10 +20,16 @@ crond
 # Make sure the pre-built binary has proper permissions
 chmod +x /app/tmp/server
 
+# Create vendor directory if it doesn't exist
+if [ ! -d "vendor" ]; then
+  echo "Creating vendor directory to avoid dependency downloads..."
+  go mod vendor
+fi
 
 # Choose whether to use Air for development or direct execution
 if [ "${USE_AIR:-true}" = "true" ]; then
   echo "Starting Air with pre-built binary..."
+  export GOFLAGS="-mod=vendor"
   exec air -c /app/.air.toml
 else
   echo "Starting the server directly..."

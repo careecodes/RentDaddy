@@ -12,12 +12,6 @@ RUN apk update && apk add --no-cache \
     npm \
     && rm -rf /var/cache/apk/*
 
-# Install ngrok
-RUN curl -Lo ngrok.tgz https://bin.equinox.io/c/bNyj1mQVY4c/ngrok-v3-stable-linux-amd64.tgz \
-    && tar -xzf ngrok.tgz -C /usr/local/bin/ \
-    && rm ngrok.tgz \
-    && chmod +x /usr/local/bin/ngrok
-
 # Install Task CLI
 RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task \
     && chmod +x /usr/local/bin/task
@@ -28,6 +22,9 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
     && mv migrate /usr/local/bin/migrate \
     && chmod +x /usr/local/bin/migrate \
     && rm migrate.tar.gz
+
+# Vendor dependencies to avoid downloading on rebuild
+RUN go mod tidy && go mod vendor
 
 # Install Air for development mode
 RUN go install github.com/air-verse/air@latest \

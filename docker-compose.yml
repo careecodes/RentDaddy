@@ -33,6 +33,7 @@ services:
       - /app/temp
       - ./backend/tmp:/app/tmp
       - ./backend/temp:/app/temp
+      - go-mod-cache:/go/pkg/mod
     env_file: .env
     networks:
         - app-network
@@ -53,6 +54,7 @@ services:
       - app-network
     env_file:
       - .env  # Load .env file
+
 networks:
   app-network:
     driver: bridge
@@ -61,3 +63,4 @@ networks:
 
 volumes:
   postgres_data:
+  go-mod-cache:

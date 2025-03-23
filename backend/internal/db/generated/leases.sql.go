@@ -279,6 +279,19 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 	return i, err
 }
 
+const getSignedLeasePdfS3URL = `-- name: GetSignedLeasePdfS3URL :one
+SELECT lease_pdf_s3
+FROM leases
+WHERE id = $1
+`
+
+func (q *Queries) GetSignedLeasePdfS3URL(ctx context.Context, id int64) (pgtype.Text, error) {
+	row := q.db.QueryRow(ctx, getSignedLeasePdfS3URL, id)
+	var lease_pdf_s3 pgtype.Text
+	err := row.Scan(&lease_pdf_s3)
+	return lease_pdf_s3, err
+}
+
 const listActiveLeases = `-- name: ListActiveLeases :one
 SELECT id, lease_number, external_doc_id, lease_pdf_s3, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at, previous_lease_id, tenant_signing_url FROM leases
 WHERE status = 'active'
@@ -656,6 +669,23 @@ func (q *Queries) UpdateLeaseStatus(ctx context.Context, arg UpdateLeaseStatusPa
 		&i.PreviousLeaseID,
 	)
 	return i, err
+}
+
+const updateSignedLeasePdfS3URL = `-- name: UpdateSignedLeasePdfS3URL :exec
+UPDATE leases
+SET lease_pdf_s3 = $2,
+    updated_at = now()
+WHERE id = $1
+`
+
+type UpdateSignedLeasePdfS3URLParams struct {
+	ID         int64       `json:"id"`
+	LeasePdfS3 pgtype.Text `json:"lease_pdf_s3"`
+}
+
+func (q *Queries) UpdateSignedLeasePdfS3URL(ctx context.Context, arg UpdateSignedLeasePdfS3URLParams) error {
+	_, err := q.db.Exec(ctx, updateSignedLeasePdfS3URL, arg.ID, arg.LeasePdfS3)
+	return err
 }
 
 const updateTenantSigningURL = `-- name: UpdateTenantSigningURL :exec
