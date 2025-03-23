@@ -15,19 +15,9 @@ import (
 	svix "github.com/svix/svix-webhooks/go"
 )
 
-type Apartment struct {
-	UnitNumber int `json:"unit_number"`
-	Price      int `json:"price"`
-	SizeSqFt   int `json:"sqft"`
-	// Admin(clerk_id) inviting tenant
-	ManagementId string `json:"management_id"`
-	LeaseId      int    `json:"lease_id"`
-}
-
 type ClerkUserPublicMetaData struct {
-	DbId      int32     `json:"db_id"`
-	Role      db.Role   `json:"role"`
-	Apartment Apartment `json:"apartment"`
+	DbId int32   `json:"db_id"`
+	Role db.Role `json:"role"`
 }
 
 type EmailVerification struct {
@@ -162,21 +152,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		return
 	}
 
-	// Transaction
-	tx, err := pool.Begin(r.Context())
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed instablishing a database connection: %v", err)
-		http.Error(w, "Error connecting to database", http.StatusInternalServerError)
-		return
-	}
-	defer func() {
-		if err != nil {
-			tx.Rollback(r.Context())
-		}
-	}()
-
-	qtx := queries.WithTx(tx)
-
 	//NOTE:
 	// For our first seeded admin
 	// so we can User there database ID for
@@ -186,26 +161,18 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		userRole = db.RoleAdmin
 	}
 
-	userRes, err := qtx.CreateUser(r.Context(), db.CreateUserParams{
+	userRes, err := queries.CreateUser(r.Context(), db.CreateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
-		// Phone numbers are paid tier
-		// Create a phone number generator
-		Phone:    pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
-		Role:     userRole,
-		ImageUrl: pgtype.Text{String: userData.ProfileImage, Valid: true},
+		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
+		Role:      userRole,
+		ImageUrl:  pgtype.Text{String: userData.ProfileImage, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
 		http.Error(w, "Error inserting user", http.StatusInternalServerError)
-		return
-	}
-	err = tx.Commit(r.Context())
-	if err != nil {
-		log.Printf("[CLERK_WEBHOOK] Failed committing transaction: %v", err)
-		http.Error(w, "Error committing transaction", http.StatusInternalServerError)
 		return
 	}
 
@@ -213,13 +180,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	metadata := &ClerkUserPublicMetaData{
 		DbId: int32(userRes.ID),
 		Role: userRes.Role,
-		Apartment: Apartment{
-			UnitNumber:   userMetadata.Apartment.UnitNumber,
-			Price:        userMetadata.Apartment.Price,
-			SizeSqFt:     userMetadata.Apartment.SizeSqFt,
-			ManagementId: userMetadata.Apartment.ManagementId,
-			LeaseId:      userMetadata.Apartment.LeaseId,
-		},
 	}
 
 	// Convert metadata to raw json
