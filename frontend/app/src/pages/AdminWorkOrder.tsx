@@ -13,6 +13,7 @@ import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 
+
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
         <div style={{ padding: 8 }}>
@@ -52,6 +53,7 @@ const getComplaintColumnSearchProps = (dataIndex: keyof ComplaintsData, title: s
         return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
     },
 });
+
 
 const shortenInput = (input: string, maxLength: number = 30) => {
     if (input.length > maxLength) {
@@ -633,8 +635,9 @@ const AdminWorkOrder = () => {
 
     return (
         <div className="container">
-            <h1 className="mb-4">Work-Orders & Complaints</h1>
-
+            {/* PageTitleComponent header */}
+            <PageTitleComponent title="Work Order & Complaints" />
+        
             {/* Alerts headers */}
             <div className="w-100 justify-content-between mb-4 left-text text-start">
                 {alertDescription ? <AlertComponent description={alertDescription} /> : null}

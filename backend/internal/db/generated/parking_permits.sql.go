@@ -15,12 +15,14 @@ const createParkingPermit = `-- name: CreateParkingPermit :one
 INSERT INTO parking_permits (
     permit_number,
     created_by,
-    expires_at
+    expires_at,
+    updated_at
 )
 VALUES (
     $1,
     $2,
-    $3
+    $3,
+    now()
 )
 RETURNING id, permit_number, created_by, updated_at, expires_at
 `
@@ -68,23 +70,17 @@ func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int6
 }
 
 const getParkingPermit = `-- name: GetParkingPermit :one
-SELECT permit_number, created_by, updated_at, expires_at
+SELECT id, permit_number, created_by, updated_at, expires_at
 FROM parking_permits
-WHERE permit_number = $1
+WHERE id = $1
 LIMIT 1
 `
 
-type GetParkingPermitRow struct {
-	PermitNumber int64            `json:"permit_number"`
-	CreatedBy    int64            `json:"created_by"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
-	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
-}
-
-func (q *Queries) GetParkingPermit(ctx context.Context, permitNumber int64) (GetParkingPermitRow, error) {
-	row := q.db.QueryRow(ctx, getParkingPermit, permitNumber)
-	var i GetParkingPermitRow
+func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (ParkingPermit, error) {
+	row := q.db.QueryRow(ctx, getParkingPermit, id)
+	var i ParkingPermit
 	err := row.Scan(
+		&i.ID,
 		&i.PermitNumber,
 		&i.CreatedBy,
 		&i.UpdatedAt,
@@ -93,20 +89,46 @@ func (q *Queries) GetParkingPermit(ctx context.Context, permitNumber int64) (Get
 	return i, err
 }
 
-const getParkingPermits = `-- name: GetParkingPermits :many
+const getTenantParkingPermits = `-- name: GetTenantParkingPermits :many
+SELECT id, permit_number, created_by, updated_at, expires_at
+FROM parking_permits
+WHERE created_by = $1
+`
+
+func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) ([]ParkingPermit, error) {
+	rows, err := q.db.Query(ctx, getTenantParkingPermits, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ParkingPermit
+	for rows.Next() {
+		var i ParkingPermit
+		if err := rows.Scan(
+			&i.ID,
+			&i.PermitNumber,
+			&i.CreatedBy,
+			&i.UpdatedAt,
+			&i.ExpiresAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listParkingPermits = `-- name: ListParkingPermits :many
 SELECT id, permit_number, created_by, updated_at, expires_at
 FROM parking_permits
 ORDER BY created_by DESC
-LIMIT $1 OFFSET $2
 `
 
-type GetParkingPermitsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) GetParkingPermits(ctx context.Context, arg GetParkingPermitsParams) ([]ParkingPermit, error) {
-	rows, err := q.db.Query(ctx, getParkingPermits, arg.Limit, arg.Offset)
+func (q *Queries) ListParkingPermits(ctx context.Context) ([]ParkingPermit, error) {
+	rows, err := q.db.Query(ctx, listParkingPermits)
 	if err != nil {
 		return nil, err
 	}
