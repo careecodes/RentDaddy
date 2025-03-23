@@ -30,7 +30,7 @@ interface ModalComponentProps {
     handleOkay: () => void;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
-    apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
+    apartmentBuildingSetEditBuildingState?: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
     setInviteTenantObjProps?: React.Dispatch<React.SetStateAction<InviteTenant>>;
     leases?: Lease[];
@@ -273,8 +273,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -340,8 +340,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -527,7 +527,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                         onCancel={handleCancel}
                         // leases={leaseTemplates || []} // Add null check
                         okButtonProps={{ disabled: !props.leases?.length }}
-                    // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
                     >
                         <Form>
                             {/* Pick a Lease */}

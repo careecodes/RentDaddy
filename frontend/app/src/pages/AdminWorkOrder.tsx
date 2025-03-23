@@ -12,7 +12,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
-
+import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
@@ -25,12 +25,15 @@ const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: st
             />
         </div>
     ),
-    filterIcon: (filtered) => (
-        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
-    ),
+    filterIcon: (filtered) => <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />,
     onFilter: (value, record) => {
         const val = record[dataIndex];
-        return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
+        return (
+            val
+                ?.toString()
+                .toLowerCase()
+                .includes((value as string).toLowerCase()) ?? false
+        );
     },
 });
 
@@ -45,15 +48,17 @@ const getComplaintColumnSearchProps = (dataIndex: keyof ComplaintsData, title: s
             />
         </div>
     ),
-    filterIcon: (filtered) => (
-        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
-    ),
+    filterIcon: (filtered) => <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />,
     onFilter: (value, record) => {
         const val = record[dataIndex];
-        return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
+        return (
+            val
+                ?.toString()
+                .toLowerCase()
+                .includes((value as string).toLowerCase()) ?? false
+        );
     },
 });
-
 
 const shortenInput = (input: string, maxLength: number = 30) => {
     if (input.length > maxLength) {
@@ -500,7 +505,7 @@ const AdminWorkOrder = () => {
     const handleConfirm = () => {
         if (selectedItem && currentStatus) {
             if (itemType === "workOrder") {
-                const updatedWorkOrders = workOrderData.map(item => {
+                const updatedWorkOrders = workOrderData.map((item) => {
                     if (item.key === selectedItem.key) {
                         return {
                             ...item,
@@ -512,7 +517,7 @@ const AdminWorkOrder = () => {
                 });
                 setWorkOrderData(updatedWorkOrders);
             } else {
-                const updatedComplaints = complaintsData.map(item => {
+                const updatedComplaints = complaintsData.map((item) => {
                     if (item.key === selectedItem.key) {
                         return {
                             ...item,
@@ -533,7 +538,7 @@ const AdminWorkOrder = () => {
         setItemType(type);
         setCurrentStatus(record.status);
         setIsModalVisible(true);
-    }
+    };
 
     const getUnitNumber = (item: WorkOrderData | ComplaintsData): string => {
         // I HAVE NO CLUE WHAT THE NAMING CONVENTION IS NOW SO ADDING THIS SINCE I'VE SEEN BOTH
@@ -559,7 +564,9 @@ const AdminWorkOrder = () => {
     complaintsDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) { return priorityDiff; }
+        if (priorityDiff !== 0) {
+            return priorityDiff;
+        }
 
         if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
             return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
@@ -589,9 +596,9 @@ const AdminWorkOrder = () => {
     if (overdueServiceCount > 0) {
         alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
     } else if (recentlyCreatedServiceCount > 0) {
-        alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`)
+        alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`);
     } else if (recentlyCompletedServiceCount > 0) {
-        alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`)
+        alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`);
     }
     const alertDescription: string = alerts.join(" ") ?? "";
 
@@ -611,8 +618,7 @@ const AdminWorkOrder = () => {
                 <Select
                     value={currentStatus}
                     style={{ width: 200, marginLeft: 10 }}
-                    onChange={handleStatusChange}
-                >
+                    onChange={handleStatusChange}>
                     {itemType === "workOrder" ? (
                         <>
                             <Select.Option value="open">Open</Select.Option>
@@ -637,11 +643,9 @@ const AdminWorkOrder = () => {
         <div className="container">
             {/* PageTitleComponent header */}
             <PageTitleComponent title="Work Order & Complaints" />
-        
+
             {/* Alerts headers */}
-            <div className="w-100 justify-content-between mb-4 left-text text-start">
-                {alertDescription ? <AlertComponent description={alertDescription} /> : null}
-            </div>
+            <div className="w-100 justify-content-between mb-4 left-text text-start">{alertDescription ? <AlertComponent description={alertDescription} /> : null}</div>
 
             {/* Work Order Table */}
             <div className="mb-5">
@@ -657,9 +661,9 @@ const AdminWorkOrder = () => {
                     onRow={(record: WorkOrderData) => ({
                         onClick: () => handleRowClick(record, "workOrder"),
                         style: {
-                            cursor: 'pointer',
+                            cursor: "pointer",
                         },
-                        className: 'hoverable-row'
+                        className: "hoverable-row",
                     })}
                 />
             </div>
@@ -679,9 +683,9 @@ const AdminWorkOrder = () => {
                     onRow={(record: ComplaintsData) => ({
                         onClick: () => handleRowClick(record, "complaint"),
                         style: {
-                            cursor: 'pointer',
+                            cursor: "pointer",
                         },
-                        className: 'hoverable-row'
+                        className: "hoverable-row",
                     })}
                 />
             </div>
@@ -696,7 +700,7 @@ const AdminWorkOrder = () => {
                     modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
                     isModalOpen={isModalVisible}
                     onCancel={() => setIsModalVisible(false)}
-                    apartmentBuildingSetEditBuildingState={() => { }}
+                    apartmentBuildingSetEditBuildingState={() => {}}
                 />
             )}
         </div>
