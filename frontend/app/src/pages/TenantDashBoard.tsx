@@ -26,7 +26,8 @@ export const TenantDashBoard = () => {
             // Simulate a delay to mimic network request and give dummy data
             await new Promise(resolve => setTimeout(resolve, 500));
             const leaseData = {
-                userId: userId,
+                // userId: userId,
+                userId: "notme",
                 lease_status: "pending_approval",
             };
             // const response = await fetch(`/api/leases?tenantId=${userId}`);
