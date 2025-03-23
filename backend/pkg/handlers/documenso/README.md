@@ -31,6 +31,7 @@ It covers:
 mkdir documenso-selfhosted && cd documenso-selfhosted
 cp /path/to/your/docker-compose.yml ./docker-compose.yml
 ```
+Please follow this guide for generating your cert.p12: https://docs.documenso.com/developers/local-development/signing-certificate
 
 Also copy your `cert.p12` signing file into this directory.
 

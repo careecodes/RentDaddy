@@ -1,5 +1,4 @@
-// Comment to git add .
-// TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
+
 import { useState } from "react";
 import { Button, Divider, Form, Input, Modal } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
@@ -329,8 +328,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>

@@ -3,14 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ApartmentHandler struct {
@@ -159,7 +160,7 @@ func (h ApartmentHandler) UpdateApartmentHandler(w http.ResponseWriter, r *http.
 		Price:        updateRequestParams.Price,
 		ManagementID: updateRequestParams.ManagementID,
 		Availability: updateRequestParams.Availability,
-		LeaseID:      updateRequestParams.LeaseID,
+		LeaseID:      pgtype.Int8{Int64: updateRequestParams.LeaseID, Valid: true},
 	}
 
 	err = h.queries.UpdateApartment(r.Context(), updateParams)

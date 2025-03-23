@@ -1,19 +1,25 @@
 import { useState, useEffect } from "react";
 import "../styles/styles.scss";
-import { Space, Spin } from "antd";
+import { Space, Spin, Alert } from "antd";
 import type { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
-import axios from "axios";
 import TableComponent from "../components/reusableComponents/TableComponent.tsx";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { LeaseData } from "../types/types.ts";
 import { LeaseModalComponent } from "../components/LeaseModalComponent";
-import { DownOutlined, SearchOutlined } from "@ant-design/icons";
-import { Dropdown, Input, message } from "antd"; // Import Input from antd
+import { SearchOutlined } from "@ant-design/icons";
+import { Input, message } from "antd";
 import type { ColumnType } from "antd/es/table";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
 
-const API_URL = `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`.replace(/\/$/, "");
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+
+// Log the API_URL to ensure it's correctly formed
+console.log("API URL:", API_URL);
 
 // Default status filters in case dynamic generation fails
 const DEFAULT_STATUS_FILTERS = [
@@ -22,69 +28,133 @@ const DEFAULT_STATUS_FILTERS = [
     { text: "Expired", value: "expired" },
     { text: "Draft", value: "draft" },
     { text: "Terminated", value: "terminated" },
-    { text: "Pending Approval", value: "pending_approval" }
+    { text: "Pending Approval", value: "pending_tenant_approval" }
 ];
 
 export default function AdminViewEditLeases() {
+    const { getToken, isLoaded: authLoaded, isSignedIn } = useAuth();
+    const [authError, setAuthError] = useState<string | null>(null);
+
     const [modalConfig, setModalConfig] = useState({
         visible: false,
         mode: "add" as "add" | "send" | "renew",
         selectedLease: null as LeaseData | null
     });
-    const [loading, setLoading] = useState<boolean>(true);
-    const [leases, setLeases] = useState<LeaseData[]>([]);
-    const [error, setError] = useState<string | null>(null);
     const [statusFilters, setStatusFilters] = useState<{ text: string; value: string }[]>(DEFAULT_STATUS_FILTERS);
 
-    // 1. POPULATE TABLE
-    // Fetch lease data from backend
-    const fetchLeases = async () => {
-        try {
-            setLoading(true);
+    // Initialize the query client
+    const queryClient = useQueryClient();
 
-            // Fetch lease data
-            const leaseResponse = await axios.get(`${API_URL}/admin/tenants/leases/`);
-
-            // Generate status filters dynamically from the lease data
-            if (leaseResponse.data && Array.isArray(leaseResponse.data)) {
-                try {
-                    // Extract unique status values from the lease data
-                    const uniqueStatuses = [...new Set(leaseResponse.data.map(lease => lease.status))];
-
-                    // Format the status values for display
-                    const formattedFilters = uniqueStatuses
-                        .filter(status => status) // Filter out any null/undefined values
-                        .map(status => {
-                            // Parse the status string
-                            const text = String(status)
-                                .split('_')
-                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-                                .join(' ');
-
-                            return { text, value: status };
-                        });
-
-                    // Sort filters alphabetically for better UX
-                    formattedFilters.sort((a, b) => a.text.localeCompare(b.text));
-
-                    setStatusFilters(formattedFilters);
-                } catch (error) {
-                    console.error("Error generating status filters:", error);
-                    // Default filters will be used from initial state
+    // Verify authentication when component loads
+    useEffect(() => {
+        const verifyAuth = async () => {
+            try {
+                if (isSignedIn) {
+                    const token = await getToken();
+                    if (!token) {
+                        setAuthError("Authentication token not available. Please sign in again.");
+                    } else {
+                        // Clear any previous error if we have a valid token
+                        setAuthError(null);
+                    }
                 }
+            } catch (error) {
+                console.error("Authentication error:", error);
+                setAuthError("Failed to authenticate. Please try signing in again.");
             }
+        };
 
-            setLeases(leaseResponse.data);
-            setLoading(false);
-        } catch (err) {
-            console.error("Error fetching leases:", err);
-            setError("Failed to fetch leases. Please try again.");
-            setLoading(false);
+        if (authLoaded) {
+            verifyAuth();
+        }
+    }, [authLoaded, isSignedIn, getToken]);
+
+    // Function to extract and format status filters
+    const extractStatusFilters = (data: any[]) => {
+        if (data && Array.isArray(data)) {
+            try {
+                // Extract unique status values from the lease data
+                const uniqueStatuses = [...new Set(data.map(lease => lease.status))];
+
+                // Format the status values for display
+                const formattedFilters = uniqueStatuses
+                    .filter(status => status) // Filter out any null/undefined values
+                    .map(status => {
+                        // Parse the status string
+                        const text = String(status)
+                            .split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+
+                        return { text, value: status };
+                    });
+
+                // Sort filters alphabetically for better UX
+                formattedFilters.sort((a, b) => a.text.localeCompare(b.text));
+
+                setStatusFilters(formattedFilters);
+            } catch (error) {
+                console.error("Error generating status filters:", error);
+                // Default filters will be used from initial state
+            }
         }
     };
+
+    // Populate table with Tanstack Query
+    const {
+        data: leases = [],
+        isLoading,
+        isError,
+        error,
+        refetch
+    } = useQuery<LeaseData[]>({
+        queryKey: ['tenants', 'leases'],
+        queryFn: async () => {
+            if (!API_URL) {
+                throw new Error('API URL is not configured');
+            }
+
+            // Get the authentication token
+            const token = await getToken();
+            if (!token) {
+                throw new Error('Authentication token is required');
+            }
+
+            console.log(`Fetching leases from: ${API_URL}/admin/tenants/leases/`);
+            console.log('Using auth token:', token ? 'Token available' : 'No token');
+
+            const response = await fetch(`${API_URL}/admin/tenants/leases/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication failed. Please sign in again.');
+                }
+                throw new Error(`Failed to fetch leases: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            extractStatusFilters(data);
+            return data || [];
+        },
+        // Only run query if authentication is loaded and user is signed in
+        enabled: authLoaded && isSignedIn && !authError,
+        // Only retry once to avoid flooding logs with errors
+        retry: 1,
+        // Set stale time to reduce unnecessary refetches
+        staleTime: 5 * 60 * 1000, // 5 minutes
+    });
+
+    // Retry fetching leases if auth is fixed
     useEffect(() => {
-        fetchLeases();
-    }, []);
+        if (authLoaded && isSignedIn && !authError) {
+            refetch();
+        }
+    }, [authLoaded, isSignedIn, authError, refetch]);
 
     const getColumnSearchProps = (dataIndex: keyof LeaseData, title: string): ColumnType<LeaseData> => {
         return {
@@ -131,7 +201,6 @@ export default function AdminViewEditLeases() {
     };
 
     // Status is calculated on the backend, but we maintain this function for backward compatibility
-    // In the future, we should remove this and rely solely on the backend status
     const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
         // If the status is already set to terminated, respect that
         if (record.status === "active") {
@@ -142,12 +211,8 @@ export default function AdminViewEditLeases() {
         return record.status;
     };
 
-
-
     // Prepare lease data before rendering
     const filteredData: LeaseData[] = Array.isArray(leases) ? leases.map((lease) => {
-        console.log(`Processing lease ${lease.id} with status: ${lease.status}`);
-
         return {
             ...lease,
             key: lease.id,
@@ -165,7 +230,7 @@ export default function AdminViewEditLeases() {
     }) : [];
 
     const showSendModal = (lease: LeaseData) => {
-        console.log("Opening send modal", lease); // <-- Add this
+        console.log("Opening send modal", lease);
         setModalConfig({
             visible: true,
             mode: "send",
@@ -177,26 +242,13 @@ export default function AdminViewEditLeases() {
         });
     };
 
-
     const handleModalClose = () => {
         setModalConfig(prev => ({ ...prev, visible: false }));
 
-        // Refresh leases list
-        const fetchLeases = async () => {
-            try {
-                setLoading(true);
-                const response = await axios.get(`${API_URL}/admin/tenants/leases/`);
-                setLeases(response.data);
-                setLoading(false);
-            } catch (err) {
-                console.error("Error fetching leases:", err);
-                setError("Failed to fetch leases. Please try again.");
-                setLoading(false);
-            }
-        };
-
-        fetchLeases();
+        // Invalidate the query to trigger a refetch
+        queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
     };
+
     const handleAddLease = () => {
         setModalConfig({
             visible: true,
@@ -204,7 +256,6 @@ export default function AdminViewEditLeases() {
             selectedLease: null
         });
     };
-
 
     const handleRenew = (lease: LeaseData) => {
         console.log("Renewing lease:", lease);
@@ -225,35 +276,43 @@ export default function AdminViewEditLeases() {
             }
         });
     };
+
     const handleTerminate = async (leaseId: number) => {
         try {
+            const token = await getToken();
+            if (!token) {
+                throw new Error('Authentication token is required');
+            }
+
             const payload = {
                 id: leaseId,
-                updated_by: 100,
+                updated_by: 100, // You might want to use the actual user ID here
             };
 
-            await axios.post(`${API_URL}/admin/tenants/leases/terminate/${leaseId}`, payload, {
+            const response = await fetch(`${API_URL}/admin/tenants/leases/terminate/${leaseId}`, {
+                method: 'POST',
                 headers: {
                     "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
                 },
+                body: JSON.stringify(payload)
             });
+
+            if (!response.ok) {
+                throw new Error('Failed to terminate lease');
+            }
 
             message.success("Lease successfully terminated");
 
-            // Update UI immediately
-            setLeases(prevLeases =>
-                prevLeases.map(lease =>
-                    lease.id === leaseId
-                        ? { ...lease, status: "terminated" }
-                        : lease
-                )
-            );
+            // Invalidate the query to trigger a refetch
+            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
 
         } catch (err) {
             console.error("Error terminating lease:", err);
             message.error("Failed to terminate lease");
         }
     };
+
     // Define lease table columns
     const leaseColumns: ColumnsType<LeaseData> = [
         {
@@ -288,7 +347,7 @@ export default function AdminViewEditLeases() {
             dataIndex: "rentAmount",
             key: "rentAmount",
             sorter: (a, b) => a.rentAmount - b.rentAmount,
-            ...getColumnSearchProps("rentAmount", "Tenant Name"),
+            ...getColumnSearchProps("rentAmount", "Rent Amount"),
         },
         {
             title: "Status",
@@ -331,6 +390,44 @@ export default function AdminViewEditLeases() {
         },
     ];
 
+    // Render authentication errors if needed
+    if (!authLoaded) {
+        return (
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+                <Spin size="large" tip="Loading authentication..." />
+            </div>
+        );
+    }
+
+    if (!isSignedIn) {
+        return (
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+                <Alert
+                    message="Authentication Required"
+                    description="You need to sign in to view this page."
+                    type="error"
+                    showIcon
+                />
+            </div>
+        );
+    }
+
+    if (authError) {
+        return (
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+                <Alert
+                    message="Authentication Error"
+                    description={authError}
+                    type="error"
+                    showIcon
+                />
+            </div>
+        );
+    }
+
     // Render loading, error, or table
     return (
         <div className="container overflow-hidden">
@@ -345,10 +442,15 @@ export default function AdminViewEditLeases() {
             </div>
 
             {
-                loading ? (
+                isLoading ? (
                     <Spin size="large" />
-                ) : error ? (
-                    <p className="text-danger">{error}</p>
+                ) : isError ? (
+                    <Alert
+                        message="Error Loading Leases"
+                        description={(error as Error)?.message || "Failed to fetch leases"}
+                        type="error"
+                        showIcon
+                    />
                 ) : (
                     <TableComponent<LeaseData>
                         columns={leaseColumns}
@@ -366,7 +468,6 @@ export default function AdminViewEditLeases() {
                 selectedLease={modalConfig.selectedLease}
                 API_URL={API_URL}
             />
-
         </div>
     );
 }

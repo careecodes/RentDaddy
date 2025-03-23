@@ -212,7 +212,7 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 			Size:         2323,
 			ManagementID: int64(managementMetadata.DbId),
 			Availability: false,
-			LeaseID:      2321,
+			LeaseID:      pgtype.Int8{Int64: 0, Valid: true},
 		})
 		if err != nil {
 			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)

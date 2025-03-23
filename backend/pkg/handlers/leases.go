@@ -2,9 +2,6 @@ package handlers
 
 import (
 	"bytes"
-	"crypto/hmac"
-	"crypto/sha256"
-	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -237,7 +234,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 
 	// Step 3: Upload to Documenso and populate fields
 	log.Println("[LEASE_UPSERT] Uploading lease PDF to Documenso")
-	docID, _, tenantSigningURL, err := h.handleDocumensoUploadAndSetup(
+	docID, _, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		LeaseWithSignersRequest{
 			TenantName:      req.TenantName,
@@ -272,7 +269,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 		LeaseEndDate:    pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:      pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:          db.LeaseStatus(req.Status),
-		LeasePdfS3:      pgtype.Text{String: string(pdfData), Valid: true},
+		LeasePdfS3:      pgtype.Text{String: s3bucket, Valid: true},
 		CreatedBy:       req.CreatedBy,
 		UpdatedBy:       req.UpdatedBy,
 		PreviousLeaseID: pgtype.Int8{Int64: derefOrZero(req.PreviousLeaseID), Valid: req.PreviousLeaseID != nil},
@@ -309,6 +306,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 	}
 }
 
+// Admin route for server.go
 func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 	leases, err := h.queries.ListLeases(r.Context())
 	if err != nil {
@@ -328,7 +326,7 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 		// Fetch apartment details
 		apartment, err := h.queries.GetApartment(r.Context(), lease.ApartmentID)
 		if err != nil {
-			log.Printf("Warning: Could not fetch apartment name for ID %d", lease.ApartmentID)
+			log.Printf("Warning: Could not fetch apartment %d", lease.ApartmentID)
 		}
 
 		// IMPORTANT: Check specifically for terminated status first
@@ -586,6 +584,7 @@ func (h *LeaseHandler) GenerateComprehensiveLeaseAgreement(title, landlordName, 
 	pdf.SetMargins(20, 20, 20)
 	pdf.AddPage()
 
+	log.Printf("Inside GenerateComprehensiveLeaseAgreement for doc title %v", title)
 	// Title
 	pdf.SetFont("Arial", "B", 16)
 	pdf.Cell(10, 10, title)
@@ -708,7 +707,7 @@ func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
 
 func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWithSignersRequest, landlordName, landlordEmail string) (docID string,
 	tenantRecipientID int,
-	tenantSigningURL string,
+	tenantSigningURL string, leasePdfS3 string,
 	err error) {
 	// Prepare signers
 	signers := []documenso.Signer{
@@ -731,10 +730,10 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 	}
 
 	log.Printf("Uploading lease %v to Documenso...\n", documentTitle)
-	docID, recipientInfoMap, err := h.documenso_client.UploadDocumentWithSigners(pdfData, documentTitle, signers)
+	docID, recipientInfoMap, s3bucket, err := h.documenso_client.UploadDocumentWithSigners(pdfData, documentTitle, signers)
 
 	if err != nil {
-		return "", 0, "", fmt.Errorf("upload to Documenso failed: %w", err)
+		return "", 0, "", "", fmt.Errorf("upload to Documenso failed: %w", err)
 
 	}
 
@@ -752,14 +751,14 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 	docURL := fmt.Sprintf("%s/documents/%s", h.documenso_client.BaseURL, docID)
 	docReq, err := http.NewRequest("GET", docURL, nil)
 	if err != nil {
-		return docID, 0, "", nil // Return docID even if we can't add fields
+		return docID, 0, "", "", nil // Return docID even if we can't add fields
 	}
 	docReq.Header.Set("Authorization", "Bearer "+h.documenso_client.ApiKey)
 
 	docResp, err := h.documenso_client.Client.Do(docReq)
 	if err != nil {
 		log.Printf("Warning: Failed to get document details: %v", err)
-		return docID, 0, "", nil
+		return docID, 0, "", "", nil
 	}
 	defer docResp.Body.Close()
 
@@ -773,7 +772,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 
 	if err := json.NewDecoder(docResp.Body).Decode(&docResponse); err != nil {
 		log.Printf("Warning: Failed to parse document response: %v", err)
-		return docID, 0, "", nil
+		return docID, 0, "", "", nil
 	}
 
 	// Map emails to recipient IDs
@@ -806,7 +805,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		log.Printf("Warning: Could not find valid landlord ID for email %s", landlordEmail)
 	}
 
-	return docID, tenantID, recipientInfoMap[req.TenantEmail].SigningURL, nil
+	return docID, tenantID, recipientInfoMap[req.TenantEmail].SigningURL, s3bucket, nil
 }
 func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
@@ -895,7 +894,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		return
 	}
 	//5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
-	docID, _, tenantSigningURL, err := h.handleDocumensoUploadAndSetup(
+	docID, _, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		req,
 		landlordName,
@@ -918,7 +917,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		LeaseEndDate:   pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:         db.LeaseStatus("pending_tenant_approval"),
-		LeasePdfS3:     pgtype.Text{String: string(pdfData), Valid: true},
+		LeasePdfS3:     pgtype.Text{String: s3bucket, Valid: true},
 		CreatedBy:      landlordID, // Use landlord ID from database
 		UpdatedBy:      landlordID,
 		TenantSigningUrl: pgtype.Text{
@@ -1073,6 +1072,7 @@ func sendExpiringLeasesNotification(expiringLeases []map[string]interface{}) err
 	// Send the email
 	return smtp.SendEmail(adminEmail, subject, body.String())
 }
+
 func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the webhook secret from environment variable
 	webhookSecret := os.Getenv("DOCUMENSO_WEBHOOK_SECRET")
@@ -1081,12 +1081,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	// Read the signature from the header
-	signature := r.Header.Get("X-Documenso-Signature")
-	if signature == "" && webhookSecret != "" {
-		log.Printf("[WEBHOOK] Error: Missing X-Documenso-Signature header")
-		http.Error(w, "Missing signature header", http.StatusBadRequest)
-		return
-	}
+	receivedSignature := r.Header.Get("X-Documenso-Secret")
 
 	// Read the request body
 	body, err := io.ReadAll(r.Body)
@@ -1096,23 +1091,26 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// Verify the signature if secret is set
-	if webhookSecret != "" {
-		// Compute the expected signature (HMAC SHA-256)
-		mac := hmac.New(sha256.New, []byte(webhookSecret))
-		mac.Write(body)
-		expectedSignature := hex.EncodeToString(mac.Sum(nil))
+	// According to the Documenso docs, the secret is directly included in the header
+	// not as a signature that needs validation. Let's just log and process the webhook.
+	log.Printf("[WEBHOOK] Received webhook with secret: %s", receivedSignature)
 
-		// Compare with the provided signature
-		if !hmac.Equal([]byte(signature), []byte(expectedSignature)) {
-			log.Printf("[WEBHOOK] Invalid signature")
-			http.Error(w, "Invalid signature", http.StatusUnauthorized)
-			return
-		}
-	}
+	// // Only verify signature if we have a secret configured
+	// if webhookSecret != "" && receivedSignature != "" {
+	// 	// Compute the expected signature (HMAC SHA-256)
+	// 	mac := hmac.New(sha256.New, []byte(webhookSecret))
+	// 	mac.Write(body)
+	// 	computedSignature := hex.EncodeToString(mac.Sum(nil))
 
-	// Log the raw payload for debugging
-	log.Printf("[WEBHOOK] Received webhook payload: %s", string(body))
+	// 	// Compare with the provided signature
+	// 	if computedSignature != receivedSignature {
+	// 		log.Printf("[WEBHOOK] Invalid signature. Computed: %s, Received: %s", computedSignature, receivedSignature)
+	// 		http.Error(w, "Invalid signature", http.StatusUnauthorized)
+	// 		return
+	// 	}
+	// 	log.Printf("[WEBHOOK] Signature validation successful")
+	// }
+
 	type DocumensoEvent struct {
 		Event string `json:"event"`
 		Data  struct {

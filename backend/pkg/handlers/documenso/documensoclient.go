@@ -15,8 +15,12 @@ import (
 type DocumensoClientInterface interface {
 	UploadDocument(pdfData []byte, title string) (string, error)
 
-	UploadDocumentWithSigners(pdfData []byte, title string, signers []Signer) (string, error)
-	SetField(documentID, field, value string) error
+	UploadDocumentWithSigners(pdfData []byte, title string, signers []Signer) (string, map[string]RecipientInfo, string, error)
+
+	VerifyDocumentExists(documentID string) (bool, error)
+	GetTenantSigningURL(documentID string, tenantEmail string) (string, error)
+	DeleteDocument(documentID string) error
+	DownloadDocument(documentID string) ([]byte, error)
 }
 
 // DocumensoClient handles Documenso API interactions
@@ -56,16 +60,25 @@ type Signer struct {
 	Role  SignerRole `json:"role"`
 }
 
+// RecipientInfo stores information about a document recipient
+type RecipientInfo struct {
+	ID         int    `json:"id"`
+	Email      string `json:"email"`
+	Name       string `json:"name"`
+	SigningURL string `json:"signing_url"`
+}
+
 // UploadDocumentWithSigners uploads a document and assigns signers
 func (c *DocumensoClient) UploadDocumentWithSigners(
 	pdfData []byte,
 	title string,
 	signers []Signer,
-) (string, map[string]RecipientInfo, error) {
+) (string, map[string]RecipientInfo, string, error) {
 	// Step 1: Create document with recipients
 	createDocumentURL := fmt.Sprintf("%s/documents", c.BaseURL)
 	log.Println("Creating document with signers:", createDocumentURL)
-
+	//this should ideally be done after the documenso signing webhook not here
+	var s3bucket string
 	// Convert signers to API-recognized format
 	recipients := make([]map[string]interface{}, len(signers))
 	for i, signer := range signers {
@@ -84,27 +97,27 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 
 	requestBodyJSON, err := json.Marshal(requestBody)
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to marshal request body: %w", err)
+		return "", nil, "", fmt.Errorf("failed to marshal request body: %w", err)
 	}
 
 	log.Printf("📌 Request payload:\n%s", string(requestBodyJSON))
 
 	req, err := http.NewRequest("POST", createDocumentURL, bytes.NewBuffer(requestBodyJSON))
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create request: %w", err)
+		return "", nil, "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
 	req.Header.Set("Content-Type", "application/json")
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return "", nil, fmt.Errorf("API request failed: %w", err)
+		return "", nil, "", fmt.Errorf("API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", nil, fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(body))
+		return "", nil, "", fmt.Errorf("API returned status: %d, response: %s", resp.StatusCode, string(body))
 	}
 
 	var response struct {
@@ -120,21 +133,21 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 		} `json:"recipients"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&response); err != nil {
-		return "", nil, fmt.Errorf("failed to parse response: %w", err)
+		return "", nil, "", fmt.Errorf("failed to parse response: %w", err)
 	}
-
+	s3bucket = response.UploadURL
 	log.Printf("📌 Documenso Upload URL: %s", response.UploadURL)
 
 	// Step 2: Upload the PDF
 	uploadReq, err := http.NewRequest("PUT", response.UploadURL, bytes.NewReader(pdfData))
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create upload request: %w", err)
+		return "", nil, "", fmt.Errorf("failed to create upload request: %w", err)
 	}
 	uploadReq.Header.Set("Content-Type", "application/pdf")
 
 	uploadResp, err := http.DefaultClient.Do(uploadReq)
 	if err != nil {
-		return "", nil, fmt.Errorf("upload request failed: %w", err)
+		return "", nil, "", fmt.Errorf("upload request failed: %w", err)
 	}
 	defer uploadResp.Body.Close()
 
@@ -146,7 +159,7 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 	}
 
 	if uploadResp.StatusCode != http.StatusOK {
-		return "", nil, fmt.Errorf("upload failed with status: %d, response: %s", uploadResp.StatusCode, string(body))
+		return "", nil, "", fmt.Errorf("upload failed with status: %d, response: %s", uploadResp.StatusCode, string(body))
 	}
 
 	// Step 3: Send the document
@@ -155,14 +168,14 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 
 	sendReq, err := http.NewRequest("POST", sendURL, bytes.NewBufferString("{}"))
 	if err != nil {
-		return "", nil, fmt.Errorf("failed to create send request: %w", err)
+		return "", nil, "", fmt.Errorf("failed to create send request: %w", err)
 	}
 	sendReq.Header.Set("Authorization", "Bearer "+c.ApiKey)
 	sendReq.Header.Set("Content-Type", "application/json")
 
 	sendResp, err := c.Client.Do(sendReq)
 	if err != nil {
-		return "", nil, fmt.Errorf("send request failed: %w", err)
+		return "", nil, "", fmt.Errorf("send request failed: %w", err)
 	}
 	defer sendResp.Body.Close()
 
@@ -178,7 +191,7 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 
 	if err := json.NewDecoder(sendResp.Body).Decode(&sendResponse); err != nil {
 		body, _ := io.ReadAll(sendResp.Body)
-		return "", nil, fmt.Errorf("failed to decode send response: %s", string(body))
+		return "", nil, "", fmt.Errorf("failed to decode send response: %s", string(body))
 	}
 
 	// Create a map to track recipient IDs and their signing URLs
@@ -194,176 +207,7 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 	}
 
 	log.Printf("✅ Document %d successfully created and sent!", response.DocumentID)
-	return fmt.Sprintf("%d", response.DocumentID), recipientInfoMap, nil
-}
-
-// RecipientInfo stores information about a document recipient
-type RecipientInfo struct {
-	ID         int    `json:"id"`
-	Email      string `json:"email"`
-	Name       string `json:"name"`
-	SigningURL string `json:"signing_url"`
-}
-
-// SetField updates a form field in a document with retries
-func (c *DocumensoClient) SetField(docID string, field, value string) error {
-	maxRetries := 3
-
-	for attempt := 0; attempt < maxRetries; attempt++ {
-		// Step 1: Check if the document exists
-		exists, err := c.VerifyDocumentExists(docID)
-		if err != nil {
-			return fmt.Errorf("failed to verify document exists: %w", err)
-		}
-		if !exists {
-			return fmt.Errorf("document %s not found in Documenso", docID)
-		}
-
-		// Step 2: Get the document to find the first recipient
-		url := fmt.Sprintf("%s/documents/%s", c.BaseURL, docID)
-		req, err := http.NewRequest("GET", url, nil)
-		if err != nil {
-			return fmt.Errorf("failed to create document fetch request: %w", err)
-		}
-		req.Header.Set("Authorization", "Bearer "+c.ApiKey)
-
-		resp, err := c.Client.Do(req)
-		if err != nil {
-			return fmt.Errorf("API request to get document failed: %w", err)
-		}
-		defer resp.Body.Close()
-
-		if resp.StatusCode != http.StatusOK {
-			body, _ := io.ReadAll(resp.Body)
-			return fmt.Errorf("Get document API returned status: %d, response: %s", resp.StatusCode, string(body))
-		}
-
-		// Parse response to get recipients
-		var docResponse struct {
-			Recipients []struct {
-				Id          int    `json:"id"`
-				RecipientId int    `json:"recipientId"`
-				Email       string `json:"email"`
-			} `json:"recipients"`
-		}
-
-		if err := json.NewDecoder(resp.Body).Decode(&docResponse); err != nil {
-			return fmt.Errorf("failed to parse document response: %w", err)
-		}
-
-		if len(docResponse.Recipients) == 0 {
-			return fmt.Errorf("document has no recipients")
-		}
-
-		recipientID := docResponse.Recipients[0].Id
-		log.Printf("Using recipient ID: %d for field: %s", recipientID, field)
-
-		// Step 3: Define positioning for fields
-		// Default positioning
-		pageNumber := 1
-		pageX := 20.0
-		pageY := 50.0
-		pageWidth := 50.0
-		pageHeight := 20.0
-
-		// Adjust positioning based on field type
-		switch field {
-		case "agreement_date":
-			pageX = 20
-			pageY = 20
-		case "landlord_name":
-			pageX = 20
-			pageY = 40
-		case "tenant_name":
-			pageX = 20
-			pageY = 60
-		case "property_address":
-			pageX = 20
-			pageY = 80
-			pageWidth = 100
-		case "lease_start_date":
-			pageX = 20
-			pageY = 100
-		case "lease_end_date":
-			pageX = 100
-			pageY = 100
-		case "rent_amount":
-			pageX = 20
-			pageY = 120
-		case "security_deposit":
-			pageX = 20
-			pageY = 140
-		default:
-			pageX = 20
-			pageY = 160
-		}
-
-		// Step 4: Construct field payload according to the API documentation
-		payload := map[string]interface{}{
-			"recipientId": recipientID,
-			"type":        "TEXT",
-			"pageNumber":  pageNumber,
-			"pageX":       pageX,
-			"pageY":       pageY,
-			"pageWidth":   pageWidth,
-			"pageHeight":  pageHeight,
-			"fieldMeta": map[string]interface{}{
-				"type":     "text",
-				"label":    field,
-				"text":     value,
-				"fontSize": 10,
-				"required": false,
-				"readOnly": true,
-			},
-		}
-
-		// Step 5: Send request to create field
-		requestJSON, err := json.Marshal(payload)
-		if err != nil {
-			return fmt.Errorf("failed to marshal field payload: %w", err)
-		}
-
-		apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, docID)
-		c.debugLog("Sending field creation request to: %s", apiURL)
-
-		req, err = http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
-		if err != nil {
-			return fmt.Errorf("failed to create field request: %w", err)
-		}
-		req.Header.Set("Authorization", "Bearer "+c.ApiKey)
-		req.Header.Set("Content-Type", "application/json")
-
-		resp, err = c.Client.Do(req)
-		if err != nil {
-			if attempt < maxRetries-1 {
-				log.Printf("API request failed: %v. Retrying in %d seconds...", err, attempt+1)
-				time.Sleep(time.Duration(attempt+1) * time.Second)
-				continue
-			}
-			return fmt.Errorf("field API request failed after %d attempts: %w", maxRetries, err)
-		}
-		defer resp.Body.Close()
-
-		// Step 6: Handle response
-		respBody, _ := io.ReadAll(resp.Body)
-		c.debugLog("Field creation response: %s", string(respBody))
-
-		if resp.StatusCode != http.StatusOK {
-			if attempt < maxRetries-1 {
-				log.Printf("API returned status: %d, response: %s. Retrying in %d seconds...",
-					resp.StatusCode, string(respBody), attempt+1)
-				time.Sleep(time.Duration(attempt+1) * time.Second)
-				continue
-			}
-			return fmt.Errorf("API returned status: %d, response: %s after %d attempts",
-				resp.StatusCode, string(respBody), maxRetries)
-		}
-
-		c.debugLog("Successfully set field %s for document %s", field, docID)
-		return nil // Success
-	}
-
-	return fmt.Errorf("failed to set field after %d attempts", maxRetries)
+	return fmt.Sprintf("%d", response.DocumentID), recipientInfoMap, s3bucket, nil
 }
 
 // VerifyDocumentExists checks if a document ID is valid in Documenso with retries
@@ -645,6 +489,167 @@ func (c *DocumensoClient) GetTenantSigningURL(documentID string, tenantEmail str
 	}
 
 	return "", fmt.Errorf("tenant %s not found in document %s", tenantEmail, documentID)
+}
+
+// SetField updates a form field in a document with retries
+func (c *DocumensoClient) SetField(docID string, field, value string) error {
+	maxRetries := 3
+
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		// Step 1: Check if the document exists
+		exists, err := c.VerifyDocumentExists(docID)
+		if err != nil {
+			return fmt.Errorf("failed to verify document exists: %w", err)
+		}
+		if !exists {
+			return fmt.Errorf("document %s not found in Documenso", docID)
+		}
+
+		// Step 2: Get the document to find the first recipient
+		url := fmt.Sprintf("%s/documents/%s", c.BaseURL, docID)
+		req, err := http.NewRequest("GET", url, nil)
+		if err != nil {
+			return fmt.Errorf("failed to create document fetch request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+
+		resp, err := c.Client.Do(req)
+		if err != nil {
+			return fmt.Errorf("API request to get document failed: %w", err)
+		}
+		defer resp.Body.Close()
+
+		if resp.StatusCode != http.StatusOK {
+			body, _ := io.ReadAll(resp.Body)
+			return fmt.Errorf("Get document API returned status: %d, response: %s", resp.StatusCode, string(body))
+		}
+
+		// Parse response to get recipients
+		var docResponse struct {
+			Recipients []struct {
+				Id          int    `json:"id"`
+				RecipientId int    `json:"recipientId"`
+				Email       string `json:"email"`
+			} `json:"recipients"`
+		}
+
+		if err := json.NewDecoder(resp.Body).Decode(&docResponse); err != nil {
+			return fmt.Errorf("failed to parse document response: %w", err)
+		}
+
+		if len(docResponse.Recipients) == 0 {
+			return fmt.Errorf("document has no recipients")
+		}
+
+		recipientID := docResponse.Recipients[0].Id
+		log.Printf("Using recipient ID: %d for field: %s", recipientID, field)
+
+		// Step 3: Define positioning for fields
+		// Default positioning
+		pageNumber := 1
+		pageX := 20.0
+		pageY := 50.0
+		pageWidth := 50.0
+		pageHeight := 20.0
+
+		// Adjust positioning based on field type
+		switch field {
+		case "agreement_date":
+			pageX = 20
+			pageY = 20
+		case "landlord_name":
+			pageX = 20
+			pageY = 40
+		case "tenant_name":
+			pageX = 20
+			pageY = 60
+		case "property_address":
+			pageX = 20
+			pageY = 80
+			pageWidth = 100
+		case "lease_start_date":
+			pageX = 20
+			pageY = 100
+		case "lease_end_date":
+			pageX = 100
+			pageY = 100
+		case "rent_amount":
+			pageX = 20
+			pageY = 120
+		case "security_deposit":
+			pageX = 20
+			pageY = 140
+		default:
+			pageX = 20
+			pageY = 160
+		}
+
+		// Step 4: Construct field payload according to the API documentation
+		payload := map[string]interface{}{
+			"recipientId": recipientID,
+			"type":        "TEXT",
+			"pageNumber":  pageNumber,
+			"pageX":       pageX,
+			"pageY":       pageY,
+			"pageWidth":   pageWidth,
+			"pageHeight":  pageHeight,
+			"fieldMeta": map[string]interface{}{
+				"type":     "text",
+				"label":    field,
+				"text":     value,
+				"fontSize": 10,
+				"required": false,
+				"readOnly": true,
+			},
+		}
+
+		// Step 5: Send request to create field
+		requestJSON, err := json.Marshal(payload)
+		if err != nil {
+			return fmt.Errorf("failed to marshal field payload: %w", err)
+		}
+
+		apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, docID)
+		c.debugLog("Sending field creation request to: %s", apiURL)
+
+		req, err = http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
+		if err != nil {
+			return fmt.Errorf("failed to create field request: %w", err)
+		}
+		req.Header.Set("Authorization", "Bearer "+c.ApiKey)
+		req.Header.Set("Content-Type", "application/json")
+
+		resp, err = c.Client.Do(req)
+		if err != nil {
+			if attempt < maxRetries-1 {
+				log.Printf("API request failed: %v. Retrying in %d seconds...", err, attempt+1)
+				time.Sleep(time.Duration(attempt+1) * time.Second)
+				continue
+			}
+			return fmt.Errorf("field API request failed after %d attempts: %w", maxRetries, err)
+		}
+		defer resp.Body.Close()
+
+		// Step 6: Handle response
+		respBody, _ := io.ReadAll(resp.Body)
+		c.debugLog("Field creation response: %s", string(respBody))
+
+		if resp.StatusCode != http.StatusOK {
+			if attempt < maxRetries-1 {
+				log.Printf("API returned status: %d, response: %s. Retrying in %d seconds...",
+					resp.StatusCode, string(respBody), attempt+1)
+				time.Sleep(time.Duration(attempt+1) * time.Second)
+				continue
+			}
+			return fmt.Errorf("API returned status: %d, response: %s after %d attempts",
+				resp.StatusCode, string(respBody), maxRetries)
+		}
+
+		c.debugLog("Successfully set field %s for document %s", field, docID)
+		return nil // Success
+	}
+
+	return fmt.Errorf("failed to set field after %d attempts", maxRetries)
 }
 
 func (c *DocumensoClient) debugLog(format string, args ...interface{}) {

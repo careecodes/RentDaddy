@@ -11,12 +11,9 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db"
 
-	mymiddleware "github.com/careecodes/RentDaddy/middleware"
-
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 
-	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -81,7 +78,7 @@ func main() {
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
-		r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
+		//r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware

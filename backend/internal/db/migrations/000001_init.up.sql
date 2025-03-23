@@ -112,8 +112,8 @@ CREATE TABLE IF NOT EXISTS "apartments"
     "price"            NUMERIC(10, 2)                 NOT NULL,
     "size"             SMALLINT                       NOT NULL,
     "management_id"    BIGINT                         NOT NULL,
-    "availability"     BOOLEAN                        NOT NULL DEFAULT false,
-    "lease_id"         BIGINT                         NOT NULL,
+    "availability"     BOOLEAN                        NOT NULL DEFAULT true,
+    "lease_id"         BIGINT                  NULL,
     "updated_at"       TIMESTAMP(0)            DEFAULT now(),
     "created_at"       TIMESTAMP(0)            DEFAULT now()
 );
@@ -150,7 +150,7 @@ CREATE TABLE IF NOT EXISTS "lockers"
 (
     "id"          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "access_code" varchar,
-    "in_use"      BOOLEAN NOT NULL DEFAULT false,
+    "in_use"      BOOLEAN NOT NULL DEFAULT true,
     "user_id"     BIGINT
 );
 
@@ -188,3 +188,4 @@ ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
+

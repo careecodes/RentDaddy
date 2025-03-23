@@ -379,7 +379,7 @@ type Apartment struct {
 	Size         int16            `json:"size"`
 	ManagementID int64            `json:"management_id"`
 	Availability bool             `json:"availability"`
-	LeaseID      int64            `json:"lease_id"`
+	LeaseID      pgtype.Int8      `json:"lease_id"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
