@@ -199,11 +199,11 @@ export const TenantDashBoard = () => {
                 ]}
             >
                 <div style={{ textAlign: "center" }}>
-                    <WarningOutlined style={{ fontSize: "32px", color: "#faad14", marginBottom: "16px" }} />
-                    <h3 style={{ marginBottom: "16px" }}>Your Lease Requires Attention</h3>
+                    <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
+                    <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
                     <p>Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.</p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
-                    <p style={{ marginTop: "16px", fontStyle: "italic" }}>
+                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>
                         This action is required and cannot be dismissed.
                     </p>
                 </div>
