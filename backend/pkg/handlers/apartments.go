@@ -27,9 +27,9 @@ func NewApartmentHandler(pool *pgxpool.Pool, queries *db.Queries) *ApartmentHand
 
 type UpdateApartmentParams struct {
 	Price        pgtype.Numeric `json:"price"`
-	ManagementID int64          `json:"management_id"`
+	ManagementID pgtype.Int8    `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      int64          `json:"lease_id"`
+	LeaseID      pgtype.Int8    `json:"lease_id"`
 }
 
 func (h ApartmentHandler) GetApartmentHandler(w http.ResponseWriter, r *http.Request) {

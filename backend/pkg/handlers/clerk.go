@@ -2,17 +2,14 @@ package handlers
 
 import (
 	"encoding/json"
-	"errors"
 	"io"
 	"log"
-	"math/big"
 	"net/http"
 	"os"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/clerk/clerk-sdk-go/v2/user"
-	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	svix "github.com/svix/svix-webhooks/go"
@@ -180,56 +177,9 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 	qtx := queries.WithTx(tx)
 
-	// If tenant was invited by admin
-	if userMetadata.Apartment.ManagementId != "" && userMetadata.Apartment.UnitNumber != 0 {
-		log.Println("[CLERK_WEBHOOK] Invited user")
-		adminPayload, err := user.Get(r.Context(), userMetadata.Apartment.ManagementId)
-		if err != nil {
-			log.Printf("[CLERK_WEBHOOK] Failed querying for management ID: %v", err)
-			http.Error(w, "Error querying managementId", http.StatusInternalServerError)
-			return
-		}
-
-		var managementMetadata ClerkUserPublicMetaData
-		err = json.Unmarshal(adminPayload.PublicMetadata, &managementMetadata)
-		if err != nil {
-			log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
-			http.Error(w, "Error converting JSON", http.StatusInternalServerError)
-			return
-		}
-
-		_, err = qtx.GetApartmentByUnitNumber(r.Context(), int16(userMetadata.Apartment.UnitNumber))
-		// Error out if apartment found
-		if err == nil {
-			log.Printf("[CLERK_WEBHOOK] Apartment already exists with unit number: %d", userMetadata.Apartment.UnitNumber)
-			http.Error(w, "Database error", http.StatusConflict)
-			return
-		}
-		if !errors.Is(err, pgx.ErrNoRows) {
-			log.Printf("[CLERK_WEBHOOK] Error checking database for existing apartment: %v", err)
-			http.Error(w, "Database error", http.StatusInternalServerError)
-			return
-		}
-
-		// Create new apartment entry if no existing apartment with unit_number
-		_, err = qtx.CreateApartment(r.Context(), db.CreateApartmentParams{
-			UnitNumber:   int16(userMetadata.Apartment.UnitNumber),
-			Price:        pgtype.Numeric{Int: big.NewInt(int64(userMetadata.Apartment.Price)), Valid: true},
-			Size:         int16(userMetadata.Apartment.SizeSqFt),
-			ManagementID: int64(managementMetadata.DbId),
-			Availability: false,
-			LeaseID:      int64(userMetadata.Apartment.LeaseId),
-		})
-		if err != nil {
-			log.Printf("[CLERK_WEBHOOK] Failed inserting apartment in DB: %v", err)
-			http.Error(w, "Error inserting apartment", http.StatusInternalServerError)
-			return
-		}
-	}
-
 	//NOTE:
 	// For our first seeded admin
-	// so we can user there database ID for
+	// so we can User there database ID for
 	// new tenant apartment entrys
 	//
 	if userMetadata.Role == db.RoleAdmin {
@@ -241,10 +191,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
-		UnitNumber: pgtype.Int2{
-			Int16: int16(userMetadata.Apartment.UnitNumber),
-			Valid: true,
-		},
 		// Phone numbers are paid tier
 		// Create a phone number generator
 		Phone:    pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},

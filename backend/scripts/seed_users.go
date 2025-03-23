@@ -3,6 +3,9 @@ package main
 import (
 	"context"
 	"encoding/json"
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/jackc/pgx/v5"
+	_ "github.com/jackc/pgx/v5"
 	"log"
 	"os"
 	"time"
@@ -54,6 +57,19 @@ func main() {
 	rateLimitThreshold := 10
 	userCount := 3
 	unitNumber := 101
+
+	// check if users already seeded
+	temp, err := pgx.Connect(ctx, os.Getenv("PG_URL"))
+	row := temp.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE role = $1", db.RoleTenant)
+	var count int
+	if err := row.Scan(&count); err != nil {
+		log.Printf("[SEED_USERS] Error counting users: %v", err)
+		return
+	}
+	if count > 0 {
+		log.Printf("[SEED_USERS] Users already seeded: %d", count)
+		return
+	}
 
 	log.Printf("[SEED_USERS] Starting %d users", userCount)
 

@@ -100,7 +100,6 @@ CREATE TABLE IF NOT EXISTS "users"
     "created_at" TIMESTAMP(0)              DEFAULT now()
 );
 CREATE INDEX "user_clerk_id_index" ON "users" ("clerk_id");
-CREATE INDEX "user_unit_number_index" ON "users" ("unit_number");
 
 COMMENT ON COLUMN "users"."clerk_id" IS 'provided by Clerk';
 CREATE TABLE IF NOT EXISTS "apartments"

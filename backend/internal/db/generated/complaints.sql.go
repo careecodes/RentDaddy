@@ -31,7 +31,7 @@ type CreateComplaintParams struct {
 	Category        ComplaintCategory `json:"category"`
 	Title           string            `json:"title"`
 	Description     string            `json:"description"`
-	UnitNumber      int16             `json:"unit_number"`
+	UnitNumber      pgtype.Int2       `json:"unit_number"`
 	Status          Status            `json:"status"`
 }
 
@@ -85,7 +85,7 @@ type GetComplaintRow struct {
 	Category        ComplaintCategory `json:"category"`
 	Title           string            `json:"title"`
 	Description     string            `json:"description"`
-	UnitNumber      int16             `json:"unit_number"`
+	UnitNumber      pgtype.Int2       `json:"unit_number"`
 	Status          Status            `json:"status"`
 	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
 	CreatedAt       pgtype.Timestamp  `json:"created_at"`
@@ -173,7 +173,7 @@ type UpdateComplaintParams struct {
 	Category        ComplaintCategory `json:"category"`
 	Title           string            `json:"title"`
 	Description     string            `json:"description"`
-	UnitNumber      int16             `json:"unit_number"`
+	UnitNumber      pgtype.Int2       `json:"unit_number"`
 	Status          Status            `json:"status"`
 }
 

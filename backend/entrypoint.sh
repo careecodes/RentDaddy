@@ -15,10 +15,6 @@ echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 echo "Database migrations complete."
 
-echo "Seeding database..."
-task seed-users || echo "Seeding failed!"
-echo "Database seeding complete."
-
 if [ "$DEBUG_MODE" = "true" ]; then
   echo "Debug mode enabled. Container will stay alive."
   # Debugging: Show working directory and files

@@ -2,6 +2,7 @@ package utils
 
 import (
 	"context"
+	_ "database/sql"
 	"errors"
 	"fmt"
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
@@ -65,7 +66,6 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 			Category:    RandomWorkCategory(),
 			Title:       faker.Sentence(),
 			Description: faker.Paragraph(),
-			UnitNumber:  user.UnitNumber.Int16,
 			Status:      RandomStatus(),
 		})
 		if err != nil {
@@ -88,7 +88,6 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 			Category:        RandomComplaintCategory(),
 			Title:           faker.Sentence(),
 			Description:     faker.Paragraph(),
-			UnitNumber:      user.UnitNumber.Int16,
 			Status:          RandomStatus(),
 		})
 		if err != nil {
@@ -166,11 +165,12 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool) error {
 		return errors.New("[SEEDER] error counting users: " + err.Error())
 	}
 	if len(users) > 0 {
-		return errors.New("[SEEDER] tenant users found")
+		log.Println("[SEEDER] tenant users found")
+		return nil
 	}
 
 	// get random users from the database
-	row, err := pool.Query(ctx, "SELECT id, clerk_id, first_name, last_name, email, phone,role, unit_number, created_at FROM users ORDER BY RANDOM() LIMIT 3")
+	row, err := pool.Query(ctx, "SELECT id, clerk_id, first_name, last_name, email, phone,role, created_at FROM users ORDER BY RANDOM() LIMIT 3")
 	if err != nil {
 		return errors.New("[SEEDER] error getting seed user: " + err.Error())
 	}
@@ -188,7 +188,6 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool) error {
 			&u.Email,
 			&u.Phone,
 			&u.Role,
-			&u.UnitNumber,
 			&u.CreatedAt,
 		); err != nil {
 			return errors.New("[SEEDER] error seeding user: " + err.Error())
