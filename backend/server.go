@@ -77,11 +77,13 @@ func main() {
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
+	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
 		r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
+
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
@@ -145,6 +147,11 @@ func main() {
 		})
 	})
 
+	// ChatBot routes
+	r.Route("/api/chat", func(r chi.Router) {
+		r.Post("/", chatbotHandler.ChatHandler)
+		r.Get("/", chatbotHandler.ChatGetHandler)
+	})
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{
