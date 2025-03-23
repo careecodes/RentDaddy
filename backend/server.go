@@ -97,7 +97,9 @@ func main() {
 				r.Post("/invite", userHandler.InviteTenant)
 				r.Route("/{clerk_id}", func(r chi.Router) {
 					r.Get("/", userHandler.GetUserByClerkId)
-					r.Patch("/credentials", userHandler.UpdateTenantProfile)
+					r.Patch("/", userHandler.UpdateTenantProfile)
+					r.Get("/work_orders", userHandler.GetTenantWorkOrders)
+					r.Get("/complaints", userHandler.GetTenantComplaints)
 				})
 			})
 

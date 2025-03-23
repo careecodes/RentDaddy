@@ -1,11 +1,86 @@
 //TODO: Connect Backend whenever that is ready (Get Recent Complaints or Work Orders, and Submit the Form)
 import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd";
 import { useState } from "react";
+import TableComponent from "../components/reusableComponents/TableComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 
 const TenantComplaintsAndWorkOrders = () => {
     const [requestType, setRequestType] = useState("complaint");
     const [form] = Form.useForm();
+
+    const complaintColumns = [
+        {
+            title: "ID",
+            dataIndex: "id",
+            key: "id",
+        },
+        {
+            title: "Title",
+            dataIndex: "title",
+            key: "title",
+        },
+        {
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
+        },
+        {
+            title: "Type",
+            dataIndex: "type",
+            key: "type",
+        },
+        {
+            title: "Votes",
+            dataIndex: "votes",
+            key: "votes",
+        },
+    ];
+
+    const workOrderColumns = [
+        {
+            title: "ID",
+            dataIndex: "id",
+            key: "id",
+        },
+        {
+            title: "Title",
+            dataIndex: "title",
+            key: "title",
+        },
+        {
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
+        },
+        {
+            title: "Type",
+            dataIndex: "type",
+            key: "type",
+        },
+        {
+            title: "Votes",
+            dataIndex: "votes",
+            key: "votes",
+        },
+        {
+            title: "Importance",
+            dataIndex: "importance",
+            key: "importance",
+            render: (importance: string) => {
+                const statusMap: Record<string, "error" | "warning" | "default"> = {
+                    High: "error",
+                    Medium: "warning",
+                    Low: "default",
+                };
+                return (
+                    <Badge
+                        status={statusMap[importance]}
+                        text={importance}
+                    />
+                );
+            },
+        },
+    ];
 
     const complaints = [
         {
@@ -31,12 +106,7 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Work Order 1 Title",
             description: "Work Order 1 Description",
             votes: 10,
-            importance: (
-                <Badge
-                    status="error"
-                    text="High"
-                />
-            ),
+            importance: "High",
         },
         {
             id: 2,
@@ -44,12 +114,7 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Work Order 2 Title",
             description: "Work Order 2 Description",
             votes: 5,
-            importance: (
-                <Badge
-                    status="warning"
-                    text="Medium"
-                />
-            ),
+            importance: "Medium",
         },
         {
             id: 3,
@@ -57,12 +122,7 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Work Order 3 Title",
             description: "Work Order 3 Description",
             votes: 3,
-            importance: (
-                <Badge
-                    status="default"
-                    text="Low"
-                />
-            ),
+            importance: "Low",
         },
     ];
 
@@ -96,22 +156,15 @@ const TenantComplaintsAndWorkOrders = () => {
                 </Form.Item>
 
                 {/* Recent Complaints & Work Orders */}
-                <div className="grid grid-cols-2 gap-6 mb-6">
+                <div className="grid grid-cols-2 gap-6">
                     {/* Recent Complaints */}
                     {requestType === "complaint" && (
                         <div className="bg-gray-50 p-4 rounded-lg">
                             <h3 className="text-lg font-medium mb-4">Recent Complaints</h3>
-                            <div className="space-y-3 mb-4">
-                                {complaints.map((complaint) => (
-                                    <div className="flex flex-row items-center p-3 bg-white rounded shadow-sm mb-3 border border-gray-200 justify-content-evenly">
-                                        <p>{complaint.title}</p>
-                                        <p>{complaint.description}</p>
-                                        <p>Type: {complaint.type}</p>
-                                        <p>{complaint.votes}</p>
-                                    </div>
-                                ))}
-                                {complaints.length === 0 && <div className="text-gray-500 italic">No complaints found</div>}
-                            </div>
+                            <TableComponent
+                                columns={complaintColumns}
+                                dataSource={complaints}
+                            />
                         </div>
                     )}
 
@@ -119,23 +172,15 @@ const TenantComplaintsAndWorkOrders = () => {
                     {requestType === "workOrder" && (
                         <div className="bg-gray-50 p-4 rounded-lg">
                             <h3 className="text-lg font-medium mb-4">Recent Work Orders</h3>
-                            <div className="space-y-3 mb-4">
-                                {workOrders.map((workOrder) => (
-                                    <div className="flex flex-row items-center p-3 bg-white rounded shadow-sm mb-3 border border-gray-200 justify-content-evenly">
-                                        <p>{workOrder.title}</p>
-                                        <p>{workOrder.description}</p>
-                                        <p>Type: {workOrder.type}</p>
-                                        <p>{workOrder.votes}</p>
-                                        <p>{workOrder.importance}</p>
-                                    </div>
-                                ))}
-                                {workOrders.length === 0 && <div className="text-gray-500 italic">No work orders found</div>}
-                            </div>
+                            <TableComponent
+                                columns={workOrderColumns}
+                                dataSource={workOrders}
+                            />
                         </div>
                     )}
                 </div>
 
-                {/* Only show if it's a work order */}
+                {/* Only shows if it's a work order */}
                 {/* Importance (High, Medium, Low) with radio buttons */}
                 {requestType === "workOrder" && (
                     <Form.Item
