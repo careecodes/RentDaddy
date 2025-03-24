@@ -124,6 +124,78 @@ func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, erro
 	return i, err
 }
 
+const listTenantsWithLeases = `-- name: ListTenantsWithLeases :many
+SELECT 
+    users.id,
+    users.clerk_id,
+    users.first_name,
+    users.last_name,
+    users.email,
+    users.phone,
+    users.role,
+    users.unit_number,
+    users.status,
+    users.created_at,
+    leases.lease_status,
+    leases.lease_start_date,
+    leases.lease_end_date
+FROM users
+LEFT JOIN leases
+ON users.id = leases.tenant_id
+WHERE users.role = 'tenant'
+ORDER BY users.created_at DESC
+`
+
+type ListTenantsWithLeasesRow struct {
+	ID             int64            `json:"id"`
+	ClerkID        string           `json:"clerk_id"`
+	FirstName      string           `json:"first_name"`
+	LastName       string           `json:"last_name"`
+	Email          string           `json:"email"`
+	Phone          pgtype.Text      `json:"phone"`
+	Role           Role             `json:"role"`
+	UnitNumber     pgtype.Int2      `json:"unit_number"`
+	Status         AccountStatus    `json:"status"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	LeaseStatus    NullLeaseStatus  `json:"lease_status"`
+	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
+	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
+}
+
+func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithLeasesRow, error) {
+	rows, err := q.db.Query(ctx, listTenantsWithLeases)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListTenantsWithLeasesRow
+	for rows.Next() {
+		var i ListTenantsWithLeasesRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.ClerkID,
+			&i.FirstName,
+			&i.LastName,
+			&i.Email,
+			&i.Phone,
+			&i.Role,
+			&i.UnitNumber,
+			&i.Status,
+			&i.CreatedAt,
+			&i.LeaseStatus,
+			&i.LeaseStartDate,
+			&i.LeaseEndDate,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listUsersByRole = `-- name: ListUsersByRole :many
 SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
 FROM users

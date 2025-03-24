@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/react-router";
 import { Button, Divider, Dropdown, Form, Input, MenuProps, Modal } from "antd";
 import { CheckOutlined, CloseCircleOutlined, MailOutlined, NumberOutlined, PlusOutlined } from "@ant-design/icons";
-import { ComplaintsData, User, WorkOrderData } from "../types/types";
+import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 
 const SERVER_URL = import.meta.env.VITE_SERVER_URL;
@@ -49,12 +49,14 @@ const AddTenant = () => {
                 throw new Error("[TENANT_TABLE] Error request failed");
             }
 
-            return (await res.json()) as User[];
+            return (await res.json()) as TenantsWithLeaseStatus[];
         },
     });
 
+    console.log(`data: ${JSON.stringify(tenants)}\n\n`);
+
     // Mock data for tenant table
-    const columns: ColumnsType<User> = [
+    const columns: ColumnsType<TenantsWithLeaseStatus> = [
         {
             title: "ID",
             dataIndex: "id",
@@ -105,21 +107,24 @@ const AddTenant = () => {
                     year: "2-digit",
                 }),
         },
-        // {
-        //     title: "Lease Status",
-        //     dataIndex: "leaseStatus",
-        //     key: "leaseStatus",
-        // },
-        // {
-        //     title: "Lease Start",
-        //     dataIndex: "leaseStart",
-        //     key: "leaseStart",
-        // },
-        // {
-        //     title: "Lease End",
-        //     dataIndex: "leaseEnd",
-        //     key: "leaseEnd",
-        // },
+        {
+            title: "Lease Status",
+            dataIndex: "lease_status",
+            key: "leaseStatus",
+            render: (status: { Lease_Status: string; valid: boolean }) => status?.Lease_Status || "Draft",
+        },
+        {
+            title: "Lease Start",
+            dataIndex: "lease_start_date",
+            key: "leaseStart",
+            render: (date: string | null) => date ?? "N/A",
+        },
+        {
+            title: "Lease End",
+            dataIndex: "lease_end_date",
+            key: "leaseEnd",
+            render: (date: string | null) => date ?? "N/A",
+        },
         {
             title: "Actions",
             key: "actions",
@@ -173,6 +178,10 @@ function ActionMenu(props: ActionsDropdownProps) {
         {
             key: "2",
             label: <TenantWorkOrderModal tenantClerkId={props.tenantClerkId} />,
+        },
+        {
+            key: "3",
+            label: <TenantDeleteModal tenantClerkId={props.tenantClerkId} />,
         },
     ];
 
@@ -327,10 +336,10 @@ function InviteUserModal() {
     );
 }
 
-interface TenantWorkOrderProps {
+interface TenantModalProps {
     tenantClerkId: string;
 }
-function TenantWorkOrderModal(props: TenantWorkOrderProps) {
+function TenantWorkOrderModal(props: TenantModalProps) {
     const { getToken } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
 
@@ -413,10 +422,7 @@ function TenantWorkOrderModal(props: TenantWorkOrderProps) {
     );
 }
 
-interface TenantComplaintProps {
-    tenantClerkId: string;
-}
-function TenantComplaintModal(props: TenantComplaintProps) {
+function TenantComplaintModal(props: TenantModalProps) {
     const { getToken } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
 
@@ -494,6 +500,72 @@ function TenantComplaintModal(props: TenantComplaintProps) {
                         <p>No complaints....</p>
                     )}
                 </div>
+            </Modal>
+        </>
+    );
+}
+
+function TenantDeleteModal(props: TenantModalProps) {
+    const { getToken } = useAuth();
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+
+    const { mutate: deleteTenant, isPending } = useMutation({
+        mutationKey: [`${props.tenantClerkId}-delete`],
+        mutationFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("[TENANT_TABLE] Error unauthorized");
+            }
+
+            if (!props.tenantClerkId) {
+                throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
+            }
+
+            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/complaints`, {
+                method: "DELETE",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+            if (!res.ok) {
+                throw new Error("[TENANT_TABLE] Error deleting tenant failed");
+            }
+
+            return (await res.json()) as ComplaintsData[];
+        },
+        onSuccess: () => {
+            handleCancel();
+        },
+        onError: () => {},
+    });
+
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+    return (
+        <>
+            <div onClick={showModal}>Delete</div>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Are you absolutely sure?</h3>}
+                open={internalModalOpen}
+                onOk={() => deleteTenant()}
+                okText="Delete"
+                okType="danger"
+                onCancel={handleCancel}
+                okButtonProps={{ disabled: isPending ? true : false }}
+                // cancelButtonProps={{ hidden: true, disabled: true }}
+            >
+                <p>This action cannot be undone. This will permanently delete this account and remove this data from our servers.</p>
             </Modal>
         </>
     );

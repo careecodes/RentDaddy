@@ -172,7 +172,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request) {
-	tenants, err := u.queries.ListUsersByRole(r.Context(), db.RoleTenant)
+	tenants, err := u.queries.ListTenantsWithLeases(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed getting tenants: %v", err)
 		http.Error(w, "Failed getting tenants", http.StatusInternalServerError)
@@ -261,6 +261,30 @@ func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Successfully updated tenant"))
+}
+
+func (u UserHandler) DeleteTenant(w http.ResponseWriter, r *http.Request) {
+	tenantClerkId := chi.URLParam(r, "clerk_id")
+	if tenantClerkId == "" {
+		log.Printf("[USER_HANDLER] Failed no tenant clerk ID provided")
+		http.Error(w, "Error No tenant Clerk ID", http.StatusBadRequest)
+		return
+	}
+
+	res, err := user.Delete(r.Context(), tenantClerkId)
+	if err != nil {
+		log.Printf("[COMPLAINT_HANDLER] Failed getting tenant from Clerk")
+		http.Error(w, "Error getting tenant from Clerk", http.StatusBadRequest)
+		return
+	}
+
+	if res.Response.StatusCode != http.StatusOK {
+		log.Printf("[COMPLAINT_HANDLER] Failed deleting tenant from Clerk")
+		http.Error(w, "Error deleting tenant from Clerk", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // ADMIN END

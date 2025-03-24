@@ -1,3 +1,5 @@
+export type LeaseStatus = "draft" | "pending_approval" | "active" | "expired" | "terminated" | "renewed";
+
 export interface LeaseData {
     key: number;
     tenantName: string;
@@ -55,6 +57,22 @@ export type User = {
     unit_number: number | null;
     status: AccountStatus;
     created_at: string;
+};
+
+export type TenantsWithLeaseStatus = {
+    id: number;
+    clerk_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string | null;
+    role: Role;
+    unit_number: number | null;
+    status: AccountStatus;
+    created_at: string;
+    lease_status: string;
+    lease_start_date: string;
+    lease_end_date: string;
 };
 // The below is from the examples of Ant Design.
 export interface DataType {
