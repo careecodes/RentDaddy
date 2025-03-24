@@ -43,8 +43,7 @@ LIMIT 1;
 
 -- name: TerminateLease :one
 UPDATE leases
-SET 
-    
+SET
     status = 'terminated', 
     updated_by = $1, 
     updated_at = now()

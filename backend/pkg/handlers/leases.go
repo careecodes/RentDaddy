@@ -90,8 +90,20 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Could not terminate lease", http.StatusInternalServerError)
 		return
 	}
-
+	ctx := r.Context()
 	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, h.landlordID)
+	err = h.queries.UpdateApartment(ctx, db.UpdateApartmentParams{
+		ID:           terminatedLease.ApartmentID,
+		ManagementID: terminatedLease.LandlordID,
+		Availability: true,
+	})
+
+	if err != nil {
+		log.Printf("[WEBHOOK] Failed to update apartment availability: %v", err)
+		return
+	}
+
+	log.Printf("[WEBHOOK] Updated apartment ID %d to unavailable", terminatedLease.ApartmentID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -103,6 +115,7 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		log.Printf("Error encoding response: %v", err)
 		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
 	}
+
 }
 
 // NewLeaseHandler initializes a LeaseHandler
