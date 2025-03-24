@@ -1,8 +1,8 @@
 import "../styles/styles.scss";
 
-import dayjs from "dayjs";
 import { Tag } from "antd";
-import { Input } from "antd";
+import dayjs from "dayjs";
+import { Input, Select } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
@@ -10,50 +10,50 @@ import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
-import type { TableProps, TablePaginationConfig } from "antd";
-import Title from "antd/es/typography/Title";
-import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import type { TablePaginationConfig } from "antd";
+import { useState } from "react";
 
-const today = dayjs();
 
-// This is the dropdown that performs a search in each column
-const getColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => {
-    return {
-        filterDropdown: (filterDropdownProps) => {
-            return (
-                <div style={{ padding: 8 }}>
-                    <Input
-                        placeholder={"Search " + title}
-                        value={filterDropdownProps.selectedKeys[0]}
-                        onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
-                    />
-                    <ButtonComponent
-                        type="primary"
-                        title="Search"
-                        icon={<SearchOutlined />}
-                        size="small"
-                        onClick={() => filterDropdownProps.confirm()}
-                    />
-                    <ButtonComponent
-                        type="default"
-                        title="Reset"
-                        size="small"
-                        onClick={() => {
-                            filterDropdownProps.clearFilters && filterDropdownProps.clearFilters();
-                            filterDropdownProps.confirm();
-                        }}
-                    />
-                </div>
-            );
-        },
-        filterIcon: function (filtered) {
-            return <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />;
-        },
-        onFilter: function (value, record) {
-            return record[dataIndex].toString().toLowerCase().includes(value.toString().toLowerCase());
-        },
-    };
-};
+const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
+    filterDropdown: (filterDropdownProps) => (
+        <div style={{ padding: 8 }}>
+            <Input
+                placeholder={`Search ${title}`}
+                value={filterDropdownProps.selectedKeys[0]}
+                onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                onPressEnter={() => filterDropdownProps.confirm()}
+            />
+        </div>
+    ),
+    filterIcon: (filtered) => (
+        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
+    ),
+    onFilter: (value, record) => {
+        const val = record[dataIndex];
+        return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
+    },
+});
+
+const getComplaintColumnSearchProps = (dataIndex: keyof ComplaintsData, title: string): ColumnType<ComplaintsData> => ({
+    filterDropdown: (filterDropdownProps) => (
+        <div style={{ padding: 8 }}>
+            <Input
+                placeholder={`Search ${title}`}
+                value={filterDropdownProps.selectedKeys[0]}
+                onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                onPressEnter={() => filterDropdownProps.confirm()}
+            />
+        </div>
+    ),
+    filterIcon: (filtered) => (
+        <SearchOutlined style={{ color: filtered ? "#1890ff" : undefined }} />
+    ),
+    onFilter: (value, record) => {
+        const val = record[dataIndex];
+        return val?.toString().toLowerCase().includes((value as string).toLowerCase()) ?? false;
+    },
+});
+
 
 const shortenInput = (input: string, maxLength: number = 30) => {
     if (input.length > maxLength) {
@@ -189,54 +189,17 @@ const workOrderDataRaw: WorkOrderData[] = [
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
     {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in_progress" },
-            { text: "Awaiting Parts", value: "awaiting_parts" },
-            { text: "Completed", value: "completed" },
-        ],
-        onFilter: (value, record) => record.status === value,
-        render: (status) => {
-            let color = "";
-            let text = "";
-
-            // If naming convention here is changed, we will need to change the strings for cases
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in_progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "awaiting_parts":
-                    color = "orange";
-                    text = "Awaiting Parts";
-                    break;
-                case "completed":
-                    color = "green";
-                    text = "Completed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-
-            return <Tag color={color}>{text}</Tag>;
-        },
-        sorter: (a, b) => a.status.localeCompare(b.status),
-        className: "text-center",
+        title: "Work Order #",
+        dataIndex: "workOrderNumber",
+        key: "workOrderNumber",
+        ...getWorkOrderColumnSearchProps("workOrderNumber", "Work Order #"),
+        sorter: (a, b) => a.workOrderNumber - b.workOrderNumber,
     },
     {
         title: "Category",
         dataIndex: "category",
         key: "category",
-        sorter: (a, b) => a.category.localeCompare(b.category),
-        ...getColumnSearchProps("category", "Category"),
+        ...getWorkOrderColumnSearchProps("category", "Category"),
         render: (category) => {
             let color = "";
             let text = "";
@@ -267,33 +230,56 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         className: "text-center",
     },
     {
-        title: "Unit No.",
-        dataIndex: "apartmentNumber",
-        key: "apartmentNumber",
-        sorter: (a, b) => a.apartmentNumber.localeCompare(b.apartmentNumber),
-        ...getColumnSearchProps("apartmentNumber", "Unit No."),
-        className: "text-secondary text-left",
-    },
-    {
-        title: "Inquiry",
+        title: "Title",
         dataIndex: "title",
         key: "title",
         sorter: (a, b) => a.title.localeCompare(b.title),
-        ...getColumnSearchProps("title", "Inquiry"),
-        render: (title) => shortenInput(title, 25),
+        ...getWorkOrderColumnSearchProps("title", "Inquiry"),
+        render: (title: string) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
-        ...getColumnSearchProps("description", "Description"),
-        render: (description) => shortenInput(description),
+        ...getWorkOrderColumnSearchProps("description", "Description"),
+        render: (description: string) => shortenInput(description),
+    },
+    {
+        title: "Unit",
+        dataIndex: "apartmentNumber",
+        key: "apartmentNumber",
+        ...getWorkOrderColumnSearchProps("apartmentNumber", "Unit"),
+    },
+    {
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        ...getWorkOrderColumnSearchProps("status", "Status"),
+        render: (status: string) => {
+            let color = "default";
+            switch (status) {
+                case "open":
+                    color = "red";
+                    break;
+                case "in_progress":
+                    color = "blue";
+                    break;
+                case "awaiting_parts":
+                    color = "orange";
+                    break;
+                case "completed":
+                    color = "green";
+                    break;
+            }
+            return <Tag color={color}>{status.replace("_", " ").toUpperCase()}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Created",
         dataIndex: "createdAt",
         key: "createdAt",
-        ...getColumnSearchProps("createdAt", "Created"),
+        ...getWorkOrderColumnSearchProps("createdAt", "Created"),
         sorter: (a, b) => dayjs(a.createdAt).unix() - dayjs(b.createdAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
@@ -301,7 +287,7 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         title: "Updated",
         dataIndex: "updatedAt",
         key: "updatedAt",
-        ...getColumnSearchProps("createdAt", "Updated"),
+        ...getWorkOrderColumnSearchProps("updatedAt", "Updated"),
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
     },
@@ -360,44 +346,10 @@ const complaintsDataRaw: ComplaintsData[] = [
 
 const complaintsColumns: ColumnsType<ComplaintsData> = [
     {
-        title: "Status",
-        dataIndex: "status",
-        key: "status",
-        filters: [
-            { text: "Open", value: "open" },
-            { text: "In Progress", value: "in_progress" },
-            { text: "Resolved", value: "resolved" },
-            { text: "Closed", value: "closed" },
-        ],
-        onFilter: (value, record) => record.status === (value as ComplaintsData["status"]),
-        render: (status) => {
-            let color = "";
-            let text = "";
-
-            switch (status) {
-                case "open":
-                    color = "red";
-                    text = "Open";
-                    break;
-                case "in_progress":
-                    color = "blue";
-                    text = "In Progress";
-                    break;
-                case "resolved":
-                    color = "green";
-                    text = "Resolved";
-                    break;
-                case "closed":
-                    color = "gray";
-                    text = "Closed";
-                    break;
-                default:
-                    color = "default";
-                    text = status;
-            }
-            return <Tag color={color}>{text}</Tag>;
-        },
-        className: "text-center",
+        title: "Complaint #",
+        dataIndex: "complaintNumber",
+        key: "complaintNumber",
+        ...getComplaintColumnSearchProps("complaintNumber", "Complaint #"),
     },
     {
         title: "Category",
@@ -468,27 +420,49 @@ const complaintsColumns: ColumnsType<ComplaintsData> = [
         className: "text-center",
     },
     {
-        title: "Unit No.",
-        dataIndex: "unitNumber",
-        key: "unitNumber",
-        sorter: (a, b) => a.unitNumber.localeCompare(b.unitNumber),
-        ...getColumnSearchProps("unitNumber", "Unit No."),
-        className: "text-secondary text-left",
-    },
-    {
-        title: "Complaint",
+        title: "Title",
         dataIndex: "title",
         key: "title",
-        sorter: (a, b) => a.title.localeCompare(b.title),
-        ...getColumnSearchProps("title", "Complaint"),
-        render: (title) => shortenInput(title, 25),
+        ...getComplaintColumnSearchProps("title", "Title"),
+        render: (title: string) => shortenInput(title, 25),
     },
     {
         title: "Description",
         dataIndex: "description",
         key: "description",
-        ...getColumnSearchProps("description", "Description"),
-        render: (description) => shortenInput(description),
+        ...getComplaintColumnSearchProps("description", "Description"),
+        render: (description: string) => shortenInput(description),
+    },
+    {
+        title: "Unit",
+        dataIndex: "unitNumber",
+        key: "unitNumber",
+        ...getComplaintColumnSearchProps("unitNumber", "Unit"),
+    },
+    {
+        title: "Status",
+        dataIndex: "status",
+        key: "status",
+        ...getComplaintColumnSearchProps("status", "Status"),
+        render: (status: string) => {
+            let color = "default";
+            switch (status) {
+                case "in_progress":
+                    color = "blue";
+                    break;
+                case "resolved":
+                    color = "green";
+                    break;
+                case "closed":
+                    color = "gray";
+                    break;
+                case "open":
+                    color = "red";
+                    break;
+            }
+            return <Tag color={color}>{status.replace("_", " ").toUpperCase()}</Tag>;
+        },
+        className: "text-center",
     },
     {
         title: "Created",
@@ -512,33 +486,83 @@ const paginationConfig: TablePaginationConfig = {
 };
 
 const AdminWorkOrder = () => {
-    const handleAddWorkOrder = () => {
-        console.log("Added package successfully.");
+    const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
+    const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
+    const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
+    const [isModalVisible, setIsModalVisible] = useState(false);
+    const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
+    const [currentStatus, setCurrentStatus] = useState<string>("");
+
+    const handleStatusChange = (newStatus: string) => {
+        setCurrentStatus(newStatus);
     };
 
-    const handleAddComplaint = () => {
-        console.log("Added complaint successfully.");
+    const handleConfirm = () => {
+        if (selectedItem && currentStatus) {
+            if (itemType === "workOrder") {
+                const updatedWorkOrders = workOrderData.map(item => {
+                    if (item.key === selectedItem.key) {
+                        return {
+                            ...item,
+                            status: currentStatus,
+                            updatedAt: new Date(),
+                        } as WorkOrderData;
+                    }
+                    return item;
+                });
+                setWorkOrderData(updatedWorkOrders);
+            } else {
+                const updatedComplaints = complaintsData.map(item => {
+                    if (item.key === selectedItem.key) {
+                        return {
+                            ...item,
+                            status: currentStatus,
+                            updatedAt: new Date(),
+                        } as ComplaintsData;
+                    }
+                    return item;
+                });
+                setComplaintsData(updatedComplaints);
+            }
+            setIsModalVisible(false);
+        }
     };
 
-    const sortedWorkOrders = workOrderDataRaw.sort((a, b) => {
+    const handleRowClick = (record: WorkOrderData | ComplaintsData, type: "workOrder" | "complaint") => {
+        setSelectedItem(record);
+        setItemType(type);
+        setCurrentStatus(record.status);
+        setIsModalVisible(true);
+    }
+
+    const getUnitNumber = (item: WorkOrderData | ComplaintsData): string => {
+        // I HAVE NO CLUE WHAT THE NAMING CONVENTION IS NOW SO ADDING THIS SINCE I'VE SEEN BOTH
+        // FOR WORK ORDER AND COMPLAINTS
+        if ("apartmentNumber" in item) {
+            return item.apartmentNumber;
+        }
+        return item.unitNumber;
+    };
+
+    workOrderDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
         if (priorityDiff !== 0) return priorityDiff;
 
         if (a.status !== "completed" && b.status !== "completed") {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
     });
 
-    const sortedComplaints = complaintsDataRaw.sort((a, b) => {
+    complaintsDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) return priorityDiff;
+        if (priorityDiff !== 0) { return priorityDiff; }
 
         if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
-            return new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime();
+            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
         }
 
         return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
@@ -561,15 +585,62 @@ const AdminWorkOrder = () => {
         return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
     }).length;
 
+    let alerts: string[] = [];
+    if (overdueServiceCount > 0) {
+        alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
+    } else if (recentlyCreatedServiceCount > 0) {
+        alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`)
+    } else if (recentlyCompletedServiceCount > 0) {
+        alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`)
+    }
+    const alertDescription: string = alerts.join(" ") ?? "";
+
+    const modalContent = selectedItem && (
+        <div>
+            <div className="mb-4">
+                <strong>Title:</strong> {selectedItem.title}
+            </div>
+            <div className="mb-4">
+                <strong>Description:</strong> {selectedItem.description}
+            </div>
+            <div className="mb-4">
+                <strong>Unit Number:</strong> {getUnitNumber(selectedItem)}
+            </div>
+            <div>
+                <strong>Status:</strong>
+                <Select
+                    value={currentStatus}
+                    style={{ width: 200, marginLeft: 10 }}
+                    onChange={handleStatusChange}
+                >
+                    {itemType === "workOrder" ? (
+                        <>
+                            <Select.Option value="open">Open</Select.Option>
+                            <Select.Option value="in_progress">In Progress</Select.Option>
+                            <Select.Option value="awaiting_parts">Awaiting Parts</Select.Option>
+                            <Select.Option value="completed">Completed</Select.Option>
+                        </>
+                    ) : (
+                        <>
+                            <Select.Option value="open">Open</Select.Option>
+                            <Select.Option value="in_progress">In Progress</Select.Option>
+                            <Select.Option value="resolved">Resolved</Select.Option>
+                            <Select.Option value="closed">Closed</Select.Option>
+                        </>
+                    )}
+                </Select>
+            </div>
+        </div>
+    );
+
     return (
         <div className="container">
-            {/* <h1 className="mb-4 text-center">Work-Orders & Complaints</h1> */}
+            {/* PageTitleComponent header */}
             <PageTitleComponent title="Work Order & Complaints" />
+        
             {/* Alerts headers */}
-            <div className="d-flex w-100 justify-content-between mb-4">
-                {overdueServiceCount > 0 ? <AlertComponent description={`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`} /> : null}
-                {recentlyCreatedServiceCount > 0 ? <AlertComponent description={`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`} /> : null}
-                {recentlyCompletedServiceCount > 0 ? <AlertComponent description={`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`} /> : null}
+            <div className="w-100 justify-content-between mb-4 left-text text-start">
+                {alertDescription ? <AlertComponent description={alertDescription} /> : null}
             </div>
 
             {/* Work Order Table */}
@@ -577,17 +648,19 @@ const AdminWorkOrder = () => {
                 <h4 className="mb-3">Work Orders</h4>
                 <TableComponent<WorkOrderData>
                     columns={workOrderColumns}
-                    dataSource={sortedWorkOrders}
+                    dataSource={workOrderData}
                     style=".lease-table-container"
                     pagination={paginationConfig}
-                    onChange={(
-                        pagination: TablePaginationConfig,
-                        filters: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[1],
-                        sorter: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<WorkOrderData>["onChange"]>>[3]
-                    ) => {
+                    onChange={(pagination, filters, sorter, extra) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
+                    onRow={(record: WorkOrderData) => ({
+                        onClick: () => handleRowClick(record, "workOrder"),
+                        style: {
+                            cursor: 'pointer',
+                        },
+                        className: 'hoverable-row'
+                    })}
                 />
             </div>
 
@@ -597,19 +670,35 @@ const AdminWorkOrder = () => {
 
                 <TableComponent<ComplaintsData>
                     columns={complaintsColumns}
-                    dataSource={sortedComplaints}
+                    dataSource={complaintsData}
                     style=".lease-table-container"
                     pagination={paginationConfig}
-                    onChange={(
-                        pagination: TablePaginationConfig,
-                        filters: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[1],
-                        sorter: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[2],
-                        extra: Parameters<NonNullable<TableProps<ComplaintsData>["onChange"]>>[3]
-                    ) => {
+                    onChange={(pagination, filters, sorter, extra) => {
                         console.log("Table changed:", pagination, filters, sorter, extra);
                     }}
+                    onRow={(record: ComplaintsData) => ({
+                        onClick: () => handleRowClick(record, "complaint"),
+                        style: {
+                            cursor: 'pointer',
+                        },
+                        className: 'hoverable-row'
+                    })}
                 />
             </div>
+
+            {selectedItem && (
+                <ModalComponent
+                    buttonTitle=""
+                    buttonType="default"
+                    content={modalContent}
+                    type="default"
+                    handleOkay={handleConfirm}
+                    modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
+                    isModalOpen={isModalVisible}
+                    onCancel={() => setIsModalVisible(false)}
+                    apartmentBuildingSetEditBuildingState={() => { }}
+                />
+            )}
         </div>
     );
 };
