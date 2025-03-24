@@ -7,6 +7,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
 import { useQuery } from "@tanstack/react-query";
 
@@ -186,6 +187,8 @@ export const TenantDashBoard = () => {
                         />
                     }
                 />
+
+                <MyChatBot />
             </div>
 
             {/* Inescapable Modal for lease signing */}
