@@ -800,22 +800,22 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		log.Printf("Warning: Could not find valid tenant ID for email %s", req.TenantEmail)
 	}
 
-	_, hasLandlord := validRecipientIDs[landlordEmail]
+	landlordID, hasLandlord := validRecipientIDs[landlordEmail]
 	if hasLandlord {
-		if err := h.documenso_client.AddSignatureField(docID, int(h.landlordID), 7, 78, 35, 5); err != nil {
+		if err := h.documenso_client.AddSignatureField(docID, landlordID, 7, 78, 35, 5); err != nil {
 			log.Printf("Warning: Failed to add landlord signature: %v", err)
 		} else {
-			log.Printf("Successfully added signature field for landlord (ID: %d)", h.landlordID)
+			log.Printf("Successfully added signature field for landlord (ID: %d)", landlordID)
 		}
 	} else {
 		log.Printf("Warning: Could not find valid landlord ID for email %s", landlordEmail)
 	}
 
 	if hasLandlord {
-		if err := h.documenso_client.AddSignatureField(docID, int(h.landlordID), 7, 88, 35, 5, "DATE"); err != nil {
-			log.Printf("Warning: Failed to add landlord signature: %v", err)
+		if err := h.documenso_client.AddSignatureField(docID, landlordID, 7, 88, 35, 5, "DATE"); err != nil {
+			log.Printf("Warning: Failed to add landlord date field: %v", err)
 		} else {
-			log.Printf("Successfully added signature field for landlord (ID: %d)", h.landlordID)
+			log.Printf("Successfully added date field for landlord (ID: %d)", landlordID)
 		}
 	} else {
 		log.Printf("Warning: Could not find valid landlord ID for email %s", landlordEmail)
