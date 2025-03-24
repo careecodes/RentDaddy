@@ -12,7 +12,7 @@ import { useAuth } from "@clerk/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
 const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
 
 
