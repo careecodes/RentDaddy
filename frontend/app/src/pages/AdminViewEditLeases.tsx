@@ -28,7 +28,7 @@ const DEFAULT_STATUS_FILTERS = [
     { text: "Expired", value: "expired" },
     { text: "Draft", value: "draft" },
     { text: "Terminated", value: "terminated" },
-    { text: "Pending Approval", value: "pending_tenant_approval" }
+    { text: "Pending Approval", value: "pending_approval" }
 ];
 
 export default function AdminViewEditLeases() {

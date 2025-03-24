@@ -32,25 +32,25 @@ export const TenantDashBoard = () => {
         queryFn: async () => {
             // Simulate a delay to mimic network request and give dummy data
             await new Promise(resolve => setTimeout(resolve, 500));
-            // const leaseData = {
-            //     // userId: userId,
-            //     userId: "notme",
-            //     lease_status: "pending_approval",
-            // };
-            const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
-            if (!response.ok) {
-                throw new Error("Failed to fetch lease status");
-            }
-            const leaseData = await response.json();
-
-            // // Return dummy data if the userId matches
-            // if (userId === leaseData.userId) {
-            //     console.log(leaseData.lease_status);
-            //     return leaseData.lease_status;
-            // } else {
-            //     return "active";
+            const leaseData = {
+                // userId: userId,
+                userId: "notme",
+                lease_status: "pending_approval",
+            };
+            // const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
+            // if (!response.ok) {
+            //     throw new Error("Failed to fetch lease status");
             // }
-            return leaseData.
+            // const leaseData = await response.json();
+
+            // Return dummy data if the userId matches
+            if (userId === leaseData.userId) {
+                console.log(leaseData.lease_status);
+                return leaseData.lease_status;
+            } else {
+                return "active";
+            }
+            // return leaseData.
         },
         enabled: !!userId,
     });

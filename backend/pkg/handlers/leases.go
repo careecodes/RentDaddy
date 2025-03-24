@@ -26,7 +26,6 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/smtp"
-	"github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/go-chi/chi/v5"
 
@@ -107,7 +106,7 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewLeaseHandler initializes a LeaseHandler
-func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries, r *http.Request) *LeaseHandler {
+func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	baseURL := os.Getenv("DOCUMENSO_API_URL")
 	apiKey := os.Getenv("DOCUMENSO_API_KEY")
 	log.Printf("Documenso API URL: %s", baseURL)
@@ -119,33 +118,33 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries, r *http.Request) *
 	currentLandlordEmail := "wrldconnect1@gmail.com"
 
 	// Try to get user info from request if available
-	if r != nil {
-		currUserCtx, err := middleware.GetClerkUser(r)
-		if err == nil {
-			var adminMetadata struct {
-				DbId  int64  `json:"db_id"`
-				Email string `json:"email,omitempty"`
-				Name  string `json:"name,omitempty"`
-			}
+	// if r != nil {
+	// 	currUserCtx, err := middleware.GetClerkUser(r)
+	// 	if err == nil {
+	// 		var adminMetadata struct {
+	// 			DbId  int64  `json:"db_id"`
+	// 			Email string `json:"email,omitempty"`
+	// 			Name  string `json:"name,omitempty"`
+	// 		}
 
-			err = json.Unmarshal(currUserCtx.PublicMetadata, &adminMetadata)
-			if err == nil && adminMetadata.DbId > 0 {
-				currentLandlordID = adminMetadata.DbId
+	// 		err = json.Unmarshal(currUserCtx.PublicMetadata, &adminMetadata)
+	// 		if err == nil && adminMetadata.DbId > 0 {
+	// 			currentLandlordID = adminMetadata.DbId
 
-				// Update email and name if available
-				if adminMetadata.Email != "" {
-					currentLandlordEmail = adminMetadata.Email
-				}
-				if adminMetadata.Name != "" {
-					currentLandlordName = adminMetadata.Name
-				}
+	// 			// Update email and name if available
+	// 			if adminMetadata.Email != "" {
+	// 				currentLandlordEmail = adminMetadata.Email
+	// 			}
+	// 			if adminMetadata.Name != "" {
+	// 				currentLandlordName = adminMetadata.Name
+	// 			}
 
-				log.Printf("[LEASE_HANDLER] Using landlord ID %d from user context", currentLandlordID)
-			}
-		} else {
-			log.Printf("[LEASE_HANDLER] No user context available: %v", err)
-		}
-	}
+	// 			log.Printf("[LEASE_HANDLER] Using landlord ID %d from user context", currentLandlordID)
+	// 		}
+	// 	} else {
+	// 		log.Printf("[LEASE_HANDLER] No user context available: %v", err)
+	// 	}
+	// }
 
 	if tempDir == "" {
 		tempDir = "/app/temp" // Default fallback
@@ -1256,11 +1255,9 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		return
 	}
 
-	// First try to get externalId, then fall back to id if needed
+	// Get id
 	var documentID string
-	if extID, ok := payload["externalId"].(string); ok && extID != "" {
-		documentID = extID
-	} else if idValue, ok := payload["id"].(float64); ok {
+	if idValue, ok := payload["id"].(float64); ok {
 		documentID = strconv.FormatFloat(idValue, 'f', 0, 64)
 	} else {
 		log.Printf("[WEBHOOK] Missing document identifier in webhook payload")
@@ -1275,86 +1272,86 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	// Process the webhook asynchronously
-	go func() {
-		ctx := r.Context()
+	// go func() {
+	ctx := r.Context()
 
-		// 1. Get the lease associated with this document ID
-		lease, err := h.queries.GetLeaseByExternalDocID(ctx, documentID)
+	// 1. Get the lease associated with this document ID
+	lease, err := h.queries.GetLeaseByExternalDocID(ctx, documentID)
+	if err != nil {
+		log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", documentID, err)
+		return
+	}
+
+	log.Printf("[WEBHOOK] Document %s signed, marking lease %d as active", documentID, lease.ID)
+
+	// 2. Update the lease status to active
+	updatedLease, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
+		ID:        lease.ID,
+		Status:    db.LeaseStatusActive,
+		UpdatedBy: h.landlordID,
+	})
+
+	if err != nil {
+		log.Printf("[WEBHOOK] Failed to update lease status: %v", err)
+		return
+	}
+
+	log.Printf("[WEBHOOK] Lease %d marked as active", updatedLease.ID)
+
+	// 3. Check if there's an apartment associated with this lease
+	if updatedLease.ApartmentID != 0 {
+		// Get the current apartment info
+		apartment, err := h.queries.GetApartment(ctx, updatedLease.ApartmentID)
 		if err != nil {
-			log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", documentID, err)
+			log.Printf("[WEBHOOK] Failed to get apartment with ID %d: %v", updatedLease.ApartmentID, err)
 			return
 		}
 
-		log.Printf("[WEBHOOK] Document %s signed, marking lease %d as active", documentID, lease.ID)
+		// Update the apartment to unavailable
+		// Based on your errors, pgtype.Int8 is expected, not sql.NullInt64
+		leaseID := pgtype.Int8{
+			Int64: updatedLease.ID,
+			Valid: true,
+		}
 
-		// 2. Update the lease status to active
-		updatedLease, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
-			ID:        lease.ID,
-			Status:    db.LeaseStatusActive,
-			UpdatedBy: h.landlordID,
+		err = h.queries.UpdateApartment(ctx, db.UpdateApartmentParams{
+			ID:           apartment.ID,
+			Price:        apartment.Price,
+			ManagementID: apartment.ManagementID,
+			Availability: false,
+			LeaseID:      leaseID,
 		})
 
 		if err != nil {
-			log.Printf("[WEBHOOK] Failed to update lease status: %v", err)
+			log.Printf("[WEBHOOK] Failed to update apartment availability: %v", err)
 			return
 		}
 
-		log.Printf("[WEBHOOK] Lease %d marked as active", updatedLease.ID)
+		log.Printf("[WEBHOOK] Updated apartment ID %d to unavailable", apartment.ID)
+	}
 
-		// 3. Check if there's an apartment associated with this lease
-		if updatedLease.ApartmentID != 0 {
-			// Get the current apartment info
-			apartment, err := h.queries.GetApartment(ctx, updatedLease.ApartmentID)
-			if err != nil {
-				log.Printf("[WEBHOOK] Failed to get apartment with ID %d: %v", updatedLease.ApartmentID, err)
-				return
-			}
-
-			// Update the apartment to unavailable
-			// Based on your errors, pgtype.Int8 is expected, not sql.NullInt64
-			leaseID := pgtype.Int8{
-				Int64: updatedLease.ID,
-				Valid: true,
-			}
-
-			err = h.queries.UpdateApartment(ctx, db.UpdateApartmentParams{
-				ID:           apartment.ID,
-				Price:        apartment.Price,
-				ManagementID: apartment.ManagementID,
-				Availability: false,
-				LeaseID:      leaseID,
-			})
-
-			if err != nil {
-				log.Printf("[WEBHOOK] Failed to update apartment availability: %v", err)
-				return
-			}
-
-			log.Printf("[WEBHOOK] Updated apartment ID %d to unavailable", apartment.ID)
+	// 4. Download the signed document from Documenso if needed
+	downloadURL, err := h.documenso_client.GetDocumentDownloadURL(documentID)
+	if err == nil {
+		unescapedURL := downloadURL
+		decodedURL, decodeErr := url.QueryUnescape(downloadURL)
+		if decodeErr == nil {
+			unescapedURL = decodedURL
 		}
+		log.Printf("[WEBHOOK] Document download URL: %s", downloadURL)
+		// Update the lease record with the signed document URL
+		err = h.queries.UpdateSignedLeasePdfS3URL(ctx, db.UpdateSignedLeasePdfS3URLParams{
+			ID:         updatedLease.ID,
+			LeasePdfS3: pgtype.Text{String: unescapedURL, Valid: true},
+		})
 
-		// 4. Download the signed document from Documenso if needed
-		downloadURL, err := h.documenso_client.GetDocumentDownloadURL(documentID)
-		if err == nil {
-			unescapedURL := downloadURL
-			decodedURL, decodeErr := url.QueryUnescape(downloadURL)
-			if decodeErr == nil {
-				unescapedURL = decodedURL
-			}
-			log.Printf("[WEBHOOK] Document download URL: %s", downloadURL)
-			// Update the lease record with the signed document URL
-			err = h.queries.UpdateSignedLeasePdfS3URL(ctx, db.UpdateSignedLeasePdfS3URLParams{
-				ID:         updatedLease.ID,
-				LeasePdfS3: pgtype.Text{String: unescapedURL, Valid: true},
-			})
-
-			if err != nil {
-				log.Printf("[WEBHOOK] Failed to update signed document URL: %v", err)
-			} else {
-				log.Printf("[WEBHOOK] Updated lease %d with signed document URL %v", updatedLease.ID, unescapedURL)
-			}
+		if err != nil {
+			log.Printf("[WEBHOOK] Failed to update signed document URL: %v", err)
+		} else {
+			log.Printf("[WEBHOOK] Updated lease %d with signed document URL %v", updatedLease.ID, unescapedURL)
 		}
-	}()
+	}
+	// }()
 }
 
 // SendLease updates a lease from draft to pending_approval state

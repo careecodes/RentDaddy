@@ -39,7 +39,7 @@ func NewDocumensoClient(baseURL, apiKey string) *DocumensoClient {
 	return &DocumensoClient{
 		BaseURL: baseURL,
 		ApiKey:  apiKey,
-		Client:  &http.Client{Timeout: 30 * time.Second},
+		Client:  &http.Client{Timeout: 60 * time.Second},
 	}
 }
 
