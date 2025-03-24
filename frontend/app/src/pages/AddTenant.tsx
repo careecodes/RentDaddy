@@ -35,7 +35,7 @@ const AddTenant = () => {
         queryFn: async () => {
             const authToken = await getToken();
             if (!authToken) {
-                throw new Error("Error tenant email empty");
+                throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
             const res = await fetch(`http://localhost:8080/admin/tenants`, {
@@ -46,7 +46,7 @@ const AddTenant = () => {
                 },
             });
             if (!res.ok) {
-                throw new Error("Error request failed");
+                throw new Error("[TENANT_TABLE] Error request failed");
             }
 
             return (await res.json()) as User[];
@@ -127,13 +127,11 @@ const AddTenant = () => {
             render: (record: User) => (
                 <div className="flex flex-column gap-2">
                     {/* View Tenant Complaints */}
+                    {/* View Tenant Work Orders */}
                     <ActionMenu
                         key={record.id}
                         tenantClerkId={record.clerk_id}
                     />
-                    {/* <TenantComplaintModal tenantClerkId={record.clerk_id} /> */}
-                    {/* View Tenant Work Orders */}
-                    {/* <TenantWorkOrderModal tenantClerkId={record.clerk_id} /> */}
                     {/* Leaving these here because I think we might need them. */}
                     {/* Edit Tenant */}
                     {/* <ModalComponent type="Edit Tenant" modalTitle="Edit Tenant" buttonTitle="Edit" content="Edit Tenant" handleOkay={() => { }} buttonType="primary" /> */}
@@ -207,11 +205,11 @@ function InviteUserModal() {
         mutationFn: async () => {
             const authToken = await getToken();
             if (!authToken) {
-                throw new Error("Error tenant email empty");
+                throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
             if (!tenantInviteForm.getFieldValue("email") || !tenantInviteForm.getFieldValue("unitNumber")) {
-                throw new Error("Tenant ivnite schema invalid");
+                throw new Error("[TENANT_TABLE] Error ivnite schema invalid");
             }
 
             const res = await fetch(`http://localhost:8080/admin/tenants/invite`, {
@@ -223,7 +221,7 @@ function InviteUserModal() {
                 body: JSON.stringify(tenantInviteForm.getFieldsValue()),
             });
             if (!res.ok) {
-                throw new Error("Error request failed");
+                throw new Error("[TENANT_TABLE] Error request failed");
             }
             return;
         },
@@ -341,11 +339,11 @@ function TenantWorkOrderModal(props: TenantWorkOrderProps) {
         queryFn: async () => {
             const authToken = await getToken();
             if (!authToken) {
-                throw new Error("Error tenant email empty");
+                throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
             if (!props.tenantClerkId) {
-                throw new Error("Tenant invalid tenant Clerk Id");
+                throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
             const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/work_orders`, {
@@ -356,7 +354,7 @@ function TenantWorkOrderModal(props: TenantWorkOrderProps) {
                 },
             });
             if (!res.ok) {
-                throw new Error("Error request failed");
+                throw new Error("[TENANT_TABLE] Error request failed");
             }
 
             return (await res.json()) as WorkOrderData[];
@@ -427,11 +425,11 @@ function TenantComplaintModal(props: TenantComplaintProps) {
         queryFn: async () => {
             const authToken = await getToken();
             if (!authToken) {
-                throw new Error("Error tenant email empty");
+                throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
             if (!props.tenantClerkId) {
-                throw new Error("Tenant invalid tenant Clerk Id");
+                throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
             const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/complaints`, {
@@ -442,7 +440,7 @@ function TenantComplaintModal(props: TenantComplaintProps) {
                 },
             });
             if (!res.ok) {
-                throw new Error("Error request failed");
+                throw new Error("[TENANT_TABLE] Error request failed");
             }
 
             return (await res.json()) as ComplaintsData[];
