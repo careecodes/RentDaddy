@@ -10,6 +10,11 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useAuth } from "@clerk/react-router";
 import { useQuery } from "@tanstack/react-query";
 
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+
+
 export const TenantDashBoard = () => {
     const handleOpenLocker = () => {
         console.log("handle open locker");
@@ -19,30 +24,33 @@ export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
     const { userId } = useAuth();
 
+    //Query to fetch user by clerk id, then query to leases for 
+
     // Simulate fetching lease status using TanStack Query
     const { data: leaseStatus, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             // Simulate a delay to mimic network request and give dummy data
             await new Promise(resolve => setTimeout(resolve, 500));
-            const leaseData = {
-                // userId: userId,
-                userId: "notme",
-                lease_status: "pending_approval",
-            };
-            // const response = await fetch(`/api/leases?tenantId=${userId}`);
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch lease status");
-            // }
-            // const data = await response.json();
-
-            // Return dummy data if the userId matches
-            if (userId === leaseData.userId) {
-                console.log(leaseData.lease_status);
-                return leaseData.lease_status;
-            } else {
-                return "active";
+            // const leaseData = {
+            //     // userId: userId,
+            //     userId: "notme",
+            //     lease_status: "pending_approval",
+            // };
+            const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                throw new Error("Failed to fetch lease status");
             }
+            const leaseData = await response.json();
+
+            // // Return dummy data if the userId matches
+            // if (userId === leaseData.userId) {
+            //     console.log(leaseData.lease_status);
+            //     return leaseData.lease_status;
+            // } else {
+            //     return "active";
+            // }
+            return leaseData.
         },
         enabled: !!userId,
     });

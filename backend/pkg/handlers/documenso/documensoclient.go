@@ -402,10 +402,6 @@ func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y,
 			}
 		}
 
-		payload["fieldMeta"] = map[string]interface{}{
-			"color": "#000000",
-		}
-
 		// Log the payload for debugging
 		requestJSON, err := json.Marshal(payload)
 		if err != nil {

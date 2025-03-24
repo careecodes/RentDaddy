@@ -90,7 +90,9 @@ func main() {
 				r.Post("/invite", userHandler.InviteTenant)
 				r.Route("/{clerk_id}", func(r chi.Router) {
 					r.Get("/", userHandler.GetUserByClerkId)
-					r.Patch("/credentials", userHandler.UpdateTenantProfile)
+					r.Patch("/", userHandler.UpdateTenantProfile)
+					r.Get("/work_orders", userHandler.GetTenantWorkOrders)
+					r.Get("/complaints", userHandler.GetTenantComplaints)
 				})
 				r.Route("/leases", func(r chi.Router) {
 					r.Get("/", func(w http.ResponseWriter, r *http.Request) {
@@ -133,10 +135,7 @@ func main() {
 						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
 						leaseHandler.DocumensoWebhookHandler(w, r)
 					})
-					r.Get("/{leaseID}/signing-url", func(w http.ResponseWriter, r *http.Request) {
-						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
-						leaseHandler.GetTenantSigningURL(w, r)
-					})
+
 					r.Get("/{leaseID}/url", func(w http.ResponseWriter, r *http.Request) {
 						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
 						leaseHandler.DocumensoGetDocumentURL(w, r)
@@ -188,7 +187,10 @@ func main() {
 				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
 			})
 			r.Route("/leases", func(r chi.Router) {
-
+				r.Get("/{user_id}/signing-url", func(w http.ResponseWriter, r *http.Request) {
+					leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+					leaseHandler.GetTenantSigningURL(w, r)
+				})
 			})
 		})
 	})

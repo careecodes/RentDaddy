@@ -1448,22 +1448,25 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
+// deprecated to combine URL with status in GetTenantLeaseStatusAndURLByUserID
 func (h *LeaseHandler) GetTenantSigningURL(w http.ResponseWriter, r *http.Request) {
-	leaseIDStr := chi.URLParam(r, "leaseID")
+
+	// needs to get user id --> lookup largest-numbered lease for that user.
+	userIdStr := chi.URLParam(r, "user_id")
 	tenantEmail := r.URL.Query().Get("email")
 
-	if leaseIDStr == "" || tenantEmail == "" {
-		http.Error(w, "Missing leaseID or email", http.StatusBadRequest)
+	if userIdStr == "" || tenantEmail == "" {
+		http.Error(w, "Missing userID or email", http.StatusBadRequest)
 		return
 	}
 
-	leaseID, err := strconv.ParseInt(leaseIDStr, 10, 64)
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
 	if err != nil {
-		http.Error(w, "Invalid leaseID", http.StatusBadRequest)
+		http.Error(w, "Invalid userID", http.StatusBadRequest)
 		return
 	}
 
-	lease, err := h.queries.GetLeaseByID(r.Context(), leaseID)
+	lease, err := h.queries.GetLeaseByID(r.Context(), userId)
 	if err != nil {
 		http.Error(w, "Lease not found", http.StatusNotFound)
 		return
@@ -1554,4 +1557,37 @@ func (h *LeaseHandler) GetSignedLeaseURL(w http.ResponseWriter, r *http.Request)
 		log.Printf("Error encoding response: %v", err)
 		return
 	}
+}
+
+func (h *LeaseHandler) GetTenantLeaseStatusAndURLByUserID(w http.ResponseWriter, r *http.Request) {
+
+	// needs to get user id --> lookup largest-numbered lease for that user.
+	userIdStr := chi.URLParam(r, "user_id")
+
+	if userIdStr == "" {
+		http.Error(w, "Missing userID or email", http.StatusBadRequest)
+		return
+	}
+
+	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+	if err != nil {
+		http.Error(w, "Invalid userID", http.StatusBadRequest)
+		return
+	}
+
+	lease, err := h.queries.GetTenantLeaseStatusAndURLByUserID(r.Context(), userId)
+	if err != nil {
+		http.Error(w, "Failed to retrieve signing URL: "+err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	if err := json.NewEncoder(w).Encode(map[string]string{
+		"url":    lease.TenantSigningUrl.String,
+		"status": string(lease.Status),
+	}); err != nil {
+		http.Error(w, "Failed to encode response: "+err.Error(), http.StatusInternalServerError)
+		log.Printf("Error encoding response: %v", err)
+		return
+	}
+
 }

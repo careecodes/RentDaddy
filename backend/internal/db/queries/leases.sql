@@ -30,7 +30,11 @@ RETURNING id, lease_number;
 
 
 -- name: GetDuplicateLease :one
-SELECT * FROM leases
+SELECT id,lease_number, external_doc_id, lease_pdf_s3,
+  tenant_id, landlord_id, apartment_id,
+  lease_start_date, lease_end_date, rent_amount,
+  status, created_by, updated_by,
+  previous_lease_id, tenant_signing_url FROM leases
 WHERE tenant_id = $1
   AND apartment_id = $2
   AND status = $3
@@ -143,7 +147,12 @@ SET
 WHERE id = $1;
 
 -- name: GetConflictingActiveLease :one
-SELECT * FROM leases
+SELECT id, lease_number, external_doc_id, lease_pdf_s3,
+  tenant_id, landlord_id, apartment_id,
+  lease_start_date, lease_end_date, rent_amount,
+  status, created_by, updated_by,
+  previous_lease_id, tenant_signing_url,previous_lease_id
+FROM leases
 WHERE tenant_id = $1
   AND status = 'active'
   AND lease_start_date <= $3
@@ -168,12 +177,20 @@ FROM expired_leases;
 
 
 -- name: ListActiveLeases :one
-SELECT * FROM leases
+SELECT id, lease_number, external_doc_id, lease_pdf_s3,
+  tenant_id, landlord_id, apartment_id,
+  lease_start_date, lease_end_date, rent_amount,
+  status, created_by, updated_by,
+  previous_lease_id, tenant_signing_url FROM leases
 WHERE status = 'active'
 LIMIT 1;
 
 -- name: GetLeaseByExternalDocID :one
-SELECT * FROM leases
+SELECT id, lease_number, external_doc_id, lease_pdf_s3,
+  tenant_id, landlord_id, apartment_id,
+  lease_start_date, lease_end_date, rent_amount,
+  status, created_by, updated_by,
+  previous_lease_id, tenant_signing_url FROM leases
 WHERE external_doc_id = $1
 LIMIT 1;
 
@@ -227,3 +244,12 @@ RETURNING
         'apartment_id', ul.apartment_id,
         'success', true
     ) FROM updated_lease ul);
+
+
+-- name: GetTenantLeaseStatusAndURLByUserID :one
+SELECT status,tenant_signing_url, lease_number
+FROM leases
+WHERE tenant_id = $1
+ORDER BY lease_number DESC
+LIMIT 1;
+
