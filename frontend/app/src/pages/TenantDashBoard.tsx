@@ -7,6 +7,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
 import { useQuery } from "@tanstack/react-query";
 
@@ -20,11 +21,15 @@ export const TenantDashBoard = () => {
     const { userId } = useAuth();
 
     // Simulate fetching lease status using TanStack Query
-    const { data: leaseStatus, isLoading, isError } = useQuery({
+    const {
+        data: leaseStatus,
+        isLoading,
+        isError,
+    } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             // Simulate a delay to mimic network request and give dummy data
-            await new Promise(resolve => setTimeout(resolve, 500));
+            await new Promise((resolve) => setTimeout(resolve, 500));
             const leaseData = {
                 // userId: userId,
                 userId: "notme",
@@ -97,7 +102,7 @@ export const TenantDashBoard = () => {
                             <ButtonComponent
                                 title="View All"
                                 type="primary"
-                                onClick={() => { }}
+                                onClick={() => {}}
                             />
                         </Link>
                     }
@@ -131,7 +136,7 @@ export const TenantDashBoard = () => {
                             buttonTitle="Add Guest"
                             content="Add guest to be able to park in the complex"
                             buttonType="primary"
-                            handleOkay={() => { }}
+                            handleOkay={() => {}}
                         />
                     }
                 />
@@ -150,7 +155,7 @@ export const TenantDashBoard = () => {
                             buttonTitle="View Lease"
                             content="Lease should go here"
                             buttonType="primary"
-                            handleOkay={() => { }}
+                            handleOkay={() => {}}
                         />
                     }
                 />
@@ -164,7 +169,7 @@ export const TenantDashBoard = () => {
                             buttonTitle="View all work orders"
                             content="Work orders should go here"
                             buttonType="primary"
-                            handleOkay={() => { }}
+                            handleOkay={() => {}}
                         />
                     }
                 />
@@ -178,10 +183,12 @@ export const TenantDashBoard = () => {
                             buttonTitle="View all complaints"
                             content="Complaint should go here"
                             buttonType="primary"
-                            handleOkay={() => { }}
+                            handleOkay={() => {}}
                         />
                     }
                 />
+
+                <MyChatBot />
             </div>
 
             {/* Inescapable Modal for lease signing */}
@@ -189,26 +196,29 @@ export const TenantDashBoard = () => {
                 title="Action Required: Lease Signing"
                 open={isSigningModalVisible}
                 onOk={handleOk}
-                onCancel={() => { }} // Empty function prevents closing
+                onCancel={() => {}} // Empty function prevents closing
                 maskClosable={false} // Prevents closing when clicking outside
                 keyboard={false} // Prevents closing with ESC key
                 closable={false} // Removes the X button
                 footer={[
-                    <Button key="submit" type="primary" onClick={handleOk}>
+                    <Button
+                        key="submit"
+                        type="primary"
+                        onClick={handleOk}>
                         Sign Lease Now
-                    </Button>
-                ]}
-            >
+                    </Button>,
+                ]}>
                 <div style={{ textAlign: "center" }}>
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
-                    <p>Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.</p>
-                    <p>You must sign your lease to continue using the tenant portal.</p>
-                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>
-                        This action is required and cannot be dismissed.
+                    <p>
+                        Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.
                     </p>
+                    <p>You must sign your lease to continue using the tenant portal.</p>
+                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
                 </div>
             </Modal>
         </div>
     );
 };
+
