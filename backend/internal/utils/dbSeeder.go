@@ -5,15 +5,16 @@ import (
 	_ "database/sql"
 	"errors"
 	"fmt"
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/go-faker/faker/v4"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"math/big"
 	"math/rand"
 	"strconv"
 	"time"
+
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-faker/faker/v4"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func RandomWorkCategory() db.WorkCategory {
@@ -80,7 +81,6 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 }
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
-
 	for i := 0; i < 10; i++ {
 		complaintNum := user.ID + int64(rand.Intn(1000))
 		_, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
@@ -166,7 +166,6 @@ func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx 
 			&apartment.Price,
 			&apartment.Size,
 			&apartment.ManagementID,
-			&apartment.LeaseID,
 		); err != nil {
 			return errors.New("[SEEDER] error scanning apartment: " + err.Error())
 		}
@@ -174,9 +173,7 @@ func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx 
 		err := queries.UpdateApartment(ctx, db.UpdateApartmentParams{
 			ID:           apartment.ID,
 			Price:        apartment.Price,
-			ManagementID: apartment.ManagementID,
-			LeaseID:      pgtype.Int8{Int64: 0, Valid: true},
-			Availability: false,
+			ManagementID: apartment.ManagementID, Availability: false,
 		})
 		if err != nil {
 			return errors.New("[SEEDER] error updating apartment availability: " + err.Error())
@@ -236,7 +233,7 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool) error {
 		}
 	}
 
-	//count users
+	// count users
 	users, err := queries.ListUsersByRole(ctx, db.RoleTenant)
 	if err != nil {
 		return errors.New("[SEEDER] error counting users: " + err.Error())
@@ -245,7 +242,7 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool) error {
 		log.Println("[SEEDER] tenant users found")
 	}
 
-	//err = createLockers(queries, users, ctx)
+	// err = createLockers(queries, users, ctx)
 
 	// get random users from the database
 	row, err := pool.Query(ctx, "SELECT id, clerk_id, first_name, last_name, email, phone,role, created_at FROM users ORDER BY RANDOM() LIMIT 3")
