@@ -23,6 +23,8 @@ It covers:
 
 ---
 
+📌 For a refresher on Docker and Docker Compose, please see [the Appendix](#appendix-docker--docker-compose-quick-reference)
+
 ## ===
 
 ## 1⃣ Download & Set Up Documenso Docker Compose
@@ -388,3 +390,134 @@ See [SMTP_README.md](./../../../internal/smtp/SMTP_README.md) for full troublesh
 - GitHub: https://github.com/documenso/documenso
 - Docs: https://docs.documenso.com
 - Discord: https://documen.so/discord
+
+
+## Appendix: Docker & Docker Compose Quick Reference
+
+If you're new to Docker or need a refresher, this section outlines common Docker commands used throughout this guide.
+
+---
+
+### Starting Services
+
+Start all services defined in `docker-compose.yml`:
+
+```bash
+docker-compose --env-file .env up -d
+```
+
+The `-d` flag runs containers in detached mode (in the background).
+
+---
+
+### Stopping Services
+
+Stop and remove all containers:
+
+```bash
+docker-compose down
+```
+
+To also remove named volumes (e.g., to reset the database):
+
+```bash
+docker-compose down -v
+```
+
+> ⚠️ Use this with caution — `-v` deletes volumes and erases data such as your PostgreSQL contents.
+
+---
+
+### Viewing Logs
+
+Tail logs for the `documenso` service:
+
+```bash
+docker-compose logs -f documenso
+```
+
+Or for the backend:
+
+```bash
+docker-compose logs -f backend
+```
+
+---
+
+### Executing Commands Inside a Container
+
+To access a shell inside a running container:
+
+```bash
+docker exec -it <container_name> /bin/sh
+```
+
+Or for bash-based containers:
+
+```bash
+docker exec -it <container_name> /bin/bash
+```
+
+To find running containers:
+
+```bash
+docker ps
+```
+
+#### Example container names:
+
+| Service   | Container Name                    |
+|-----------|-----------------------------------|
+| Documenso | `documenso-production-documenso-1` |
+| Backend   | `rentdaddy-backend`               |
+
+#### Example usage:
+
+```bash
+docker exec -it documenso-production-documenso-1 /bin/sh
+docker exec -it rentdaddy-backend /bin/sh
+```
+
+Once inside the container, you can run shell commands like inspecting logs, `curl` requests, or testing DB/API connectivity.
+
+---
+
+### Accessing PostgreSQL from Backend Container
+
+After exec-ing into `rentdaddy-backend`, connect to the PostgreSQL database:
+
+```bash
+psql -U ${POSTGRES_USER} -d ${POSTGRES_DB} -h ${POSTGRES_HOST}
+```
+
+If using hardcoded values:
+
+```bash
+psql -U appuser -d appdb -h postgres
+```
+
+> Replace with actual values from your `.env` file or container environment.
+
+---
+
+### Rebuilding Images
+
+Rebuild all images:
+
+```bash
+docker-compose build
+```
+
+Rebuild only the backend:
+
+```bash
+docker-compose build backend
+```
+
+Then restart:
+
+```bash
+docker-compose up -d
+```
+
+---
