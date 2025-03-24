@@ -55,9 +55,13 @@ export const TenantDashBoard = () => {
         }
     }, [leaseData.status]);
 
+    // This is used to redirect to signing URL when button is clicked
     const handleOk = () => {
-        // Redirect to the lease signing page (THIS ISNT IT AT ALL, NEEDS documenso uri. TMP for now)
-        window.location.href = "/tenant/sign-lease";
+        if (leaseData.url) {
+            window.location.href = leaseData.url;
+        } else {
+            console.error("No signing URL available");
+        }
     };
 
     if (isLoading) {
