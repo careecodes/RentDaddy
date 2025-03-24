@@ -2,6 +2,7 @@ import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, U
 import { Tag, Modal, Button } from "antd";
 import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
+import { TenantLeaseStatusAndURL } from "../types/types";
 import ModalComponent from "../components/ModalComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
@@ -24,47 +25,35 @@ export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
     const { userId } = useAuth();
 
-    //Query to fetch user by clerk id, then query to leases for 
-
-    // Simulate fetching lease status using TanStack Query
-    const { data: leaseStatus, isLoading, isError } = useQuery({
+    // Fetch lease status using TanStack Query
+    const { data: leaseData, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            // Simulate a delay to mimic network request and give dummy data
-            await new Promise(resolve => setTimeout(resolve, 500));
-            const leaseData = {
-                // userId: userId,
-                userId: "notme",
-                lease_status: "pending_approval",
-            };
-            // const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch lease status");
-            // }
-            // const leaseData = await response.json();
-
-            // Return dummy data if the userId matches
-            if (userId === leaseData.userId) {
-                console.log(leaseData.lease_status);
-                return leaseData.lease_status;
-            } else {
-                return "active";
+            const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                throw new Error("Failed to fetch lease status");
             }
-            // return leaseData.
+            const leaseData: TenantLeaseStatusAndURL = await response.json();
+            return leaseData;
         },
         enabled: !!userId,
     });
+    if (isError) {
+        throw new Error("error found fetching signing url");
+    } else if (!leaseData) {
+        throw new Error("lease data returned empty");
+    }
 
     // This is the recommended approach in newer versions of TanStack Query. `onSuccess` is deprecated
     useEffect(() => {
-        if (leaseStatus) {
-            console.log("Lease status updated:", leaseStatus);
-            if (["pending_approval", "terminated", "expired"].includes(leaseStatus)) {
+        if (leaseData.status) {
+            console.log("Lease status updated:", leaseData.status);
+            if (["pending_approval", "terminated", "expired"].includes(leaseData.status)) {
                 console.log("Setting modal visible based on lease status");
                 setSigningModalVisible(true);
             }
         }
-    }, [leaseStatus]);
+    }, [leaseData.status]);
 
     const handleOk = () => {
         // Redirect to the lease signing page (THIS ISNT IT AT ALL, NEEDS documenso uri. TMP for now)
