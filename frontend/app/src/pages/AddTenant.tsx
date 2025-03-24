@@ -1,63 +1,71 @@
-import { useMutation } from "@tanstack/react-query";
-import ModalComponent from "../components/ModalComponent";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
-import { useState } from "react";
-import { useUser } from "@clerk/react-router";
+import { useEffect, useState } from "react";
+import { useAuth } from "@clerk/react-router";
+import { Button, Divider, Dropdown, Form, Input, MenuProps, Modal } from "antd";
+import { CheckOutlined, CloseCircleOutlined, MailOutlined, NumberOutlined, PlusOutlined } from "@ant-design/icons";
+import { ComplaintsData, User, WorkOrderData } from "../types/types";
+import { ColumnsType } from "antd/es/table";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
+const SERVER_URL = import.meta.env.VITE_SERVER_URL;
 const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
+const API_URL = `${SERVER_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
 
+// type InviteTenant = {
+//     email: string;
+//     unitNumber: number;
+//     management_id: string;
+// };
 type InviteTenant = {
     email: string;
-    unitNumber: number;
-    management_id: string;
+    unitNumber: number; //TODO: this is no longer needed
 };
 
+interface InviteStatusNotification {
+    show: boolean;
+    message: string;
+    type: "default" | "success" | "error";
+}
+
 const AddTenant = () => {
-    const { user } = useUser();
-
-    const [inviteTenantObj, setInviteTenantObj] = useState<InviteTenant>({
-        email: "",
-        unitNumber: 0,
-        management_id: user!.id,
-    });
-
-    const { mutate: inviteTenant } = useMutation({
-        mutationKey: ["inviteTenant"],
-        mutationFn: async () => {
-            console.log("starting inviteTenant TanStack Mutation");
-            console.log(inviteTenantObj, "inviteTenantObj in Tanstack PreSend");
-            const res = await fetch(`${API_URL}/admins/leases/sendLease`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ inviteTenantObj }),
-            });
-
-            console.log(res, "Response after the fetch in TanStack Mutation");
-
-            if (!res.ok) {
-                throw new Error("Failed to fetch lease templates");
+    const { getToken } = useAuth();
+    const { data: tenants } = useQuery({
+        queryKey: ["tenants"],
+        queryFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("Error tenant email empty");
             }
 
-            return res;
-        },
-        onSuccess: () => {
-            console.log("Success!");
-        },
-        onError: () => {
-            console.log("Failure :(");
+            const res = await fetch(`http://localhost:8080/admin/tenants`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+            if (!res.ok) {
+                throw new Error("Error request failed");
+            }
+
+            return (await res.json()) as User[];
         },
     });
 
     // Mock data for tenant table
-    const columns = [
+    const columns: ColumnsType<User> = [
+        {
+            title: "ID",
+            dataIndex: "id",
+            key: "id",
+            fixed: "left",
+        },
         {
             title: "Name",
-            dataIndex: "name",
-            key: "name",
-            fixed: "left",
+            dataIndex: "",
+            key: "fullName",
+            render: (record: User) => `${record.first_name} ${record.last_name}`,
         },
         {
             title: "Email",
@@ -68,97 +76,64 @@ const AddTenant = () => {
             title: "Phone",
             dataIndex: "phone",
             key: "phone",
+            render: (phone: string | null) => phone ?? "N/A",
+        },
+        {
+            title: "Role",
+            dataIndex: "role",
+            key: "role",
         },
         {
             title: "Unit Number",
             dataIndex: "unitNumber",
             key: "unitNumber",
+            render: (unitNumber: number | null) => unitNumber ?? "N/A",
         },
         {
-            title: "Lease Status",
-            dataIndex: "leaseStatus",
-            key: "leaseStatus",
+            title: "Status",
+            dataIndex: "status",
+            key: "status",
         },
         {
-            title: "Lease Start",
-            dataIndex: "leaseStart",
-            key: "leaseStart",
+            title: "Created At",
+            dataIndex: "created_at",
+            key: "createdAt",
+            render: (createdAt: string) =>
+                new Date(createdAt).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "2-digit",
+                }),
         },
-        {
-            title: "Lease End",
-            dataIndex: "leaseEnd",
-            key: "leaseEnd",
-        },
+        // {
+        //     title: "Lease Status",
+        //     dataIndex: "leaseStatus",
+        //     key: "leaseStatus",
+        // },
+        // {
+        //     title: "Lease Start",
+        //     dataIndex: "leaseStart",
+        //     key: "leaseStart",
+        // },
+        // {
+        //     title: "Lease End",
+        //     dataIndex: "leaseEnd",
+        //     key: "leaseEnd",
+        // },
         {
             title: "Actions",
             key: "actions",
             fixed: "right",
-            render: (text: any, record: any) => (
+            render: (record: User) => (
                 <div className="flex flex-column gap-2">
                     {/* View Tenant Complaints */}
-                    <ModalComponent
-                        type="View Tenant Complaints"
-                        modalTitle="View Tenant Complaints"
-                        buttonTitle="View Complaints"
-                        content={
-                            <div>
-                                <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    {/* Title */}
-                                    <p>Complaint 1</p>
-                                    {/* Status */}
-                                    <p>
-                                        Status: <span style={{ color: "green" }}>Resolved</span>
-                                    </p>
-                                </div>
-                                <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    {/* Title */}
-                                    <p>Complaint 2</p>
-                                    {/* Status */}
-                                    <p>
-                                        Status: <span style={{ color: "red" }}>Pending</span>
-                                    </p>
-                                </div>
-                            </div>
-                        }
-                        handleOkay={() => {}}
-                        buttonType="default"
+                    <ActionMenu
+                        key={record.id}
+                        tenantClerkId={record.clerk_id}
                     />
+                    {/* <TenantComplaintModal tenantClerkId={record.clerk_id} /> */}
                     {/* View Tenant Work Orders */}
-                    <ModalComponent
-                        type="View Tenant Work Orders"
-                        modalTitle="View Tenant Work Orders"
-                        buttonTitle="View Work Orders"
-                        content={
-                            <div>
-                                <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    {/* Title */}
-                                    <p>Work Order 1</p>
-                                    {/* Status */}
-                                    <p>
-                                        Status: <span style={{ color: "green" }}>Completed</span>
-                                    </p>
-                                    {/* Importance */}
-                                    <p>
-                                        Importance: <span style={{ color: "green" }}>Low</span>
-                                    </p>
-                                </div>
-                                <div className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    {/* Title */}
-                                    <p>Work Order 2</p>
-                                    {/* Status */}
-                                    <p>
-                                        Status: <span style={{ color: "red" }}>Pending</span>
-                                    </p>
-                                    {/* Importance */}
-                                    <p>
-                                        Importance: <span style={{ color: "red" }}>High</span>
-                                    </p>
-                                </div>
-                            </div>
-                        }
-                        handleOkay={() => {}}
-                        buttonType="default"
-                    />
+                    {/* <TenantWorkOrderModal tenantClerkId={record.clerk_id} /> */}
                     {/* Leaving these here because I think we might need them. */}
                     {/* Edit Tenant */}
                     {/* <ModalComponent type="Edit Tenant" modalTitle="Edit Tenant" buttonTitle="Edit" content="Edit Tenant" handleOkay={() => { }} buttonType="primary" /> */}
@@ -169,56 +144,16 @@ const AddTenant = () => {
         },
     ];
 
-    const mockTenants = [
-        {
-            key: "1",
-            name: "John Doe",
-            email: "john.doe@email.com",
-            phone: "(555) 123-4567",
-            unitNumber: "101",
-            leaseStatus: <span style={{ color: "green" }}>Active</span>,
-            leaseStart: "2023-01-01",
-            leaseEnd: "2024-01-01",
-        },
-        {
-            key: "2",
-            name: "Jane Smith",
-            email: "jane.smith@email.com",
-            phone: "(555) 234-5678",
-            unitNumber: "202",
-            leaseStatus: <span style={{ color: "green" }}>Active</span>,
-            leaseStart: "2023-03-15",
-            leaseEnd: "2024-03-15",
-        },
-        {
-            key: "3",
-            name: "Bob Wilson",
-            email: "bob.wilson@email.com",
-            phone: "(555) 345-6789",
-            unitNumber: "303",
-            leaseStatus: <span style={{ color: "red" }}>Expired</span>,
-            leaseStart: "2023-06-01",
-            leaseEnd: "2024-06-01",
-        },
-    ];
-
     return (
         <div className="container">
             {/* <h1 className="p-3">View or Add Tenants</h1> */}
             <PageTitleComponent title="View or Add Tenants" />
             <div className="mb-3 flex">
-                <ModalComponent
-                    type="Invite Tenant"
-                    buttonTitle="Invite Tenant"
-                    content="Add Tenant"
-                    buttonType="primary"
-                    handleOkay={inviteTenant}
-                    setInviteTenantObjProps={setInviteTenantObj}
-                />
+                <InviteUserModal />
             </div>
             <TableComponent
                 columns={columns}
-                dataSource={mockTenants}
+                dataSource={tenants}
                 onChange={() => {}}
             />
         </div>
@@ -226,3 +161,342 @@ const AddTenant = () => {
 };
 
 export default AddTenant;
+
+interface ActionsDropdownProps {
+    tenantClerkId: string;
+}
+
+function ActionMenu(props: ActionsDropdownProps) {
+    const items: MenuProps["items"] = [
+        {
+            key: "1",
+            label: <TenantComplaintModal tenantClerkId={props.tenantClerkId} />,
+        },
+        {
+            key: "2",
+            label: <TenantWorkOrderModal tenantClerkId={props.tenantClerkId} />,
+        },
+    ];
+
+    return (
+        <div>
+            <Dropdown
+                menu={{ items }}
+                placement="bottomRight"
+                overlayClassName={"custom-dropdown"}>
+                <Button>
+                    <p className="fs-3 fw-bold">...</p>
+                </Button>
+            </Dropdown>
+        </div>
+    );
+}
+
+function InviteUserModal() {
+    const { getToken } = useAuth();
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const [tenantInviteForm] = Form.useForm<InviteTenant>();
+
+    const [inviteStatus, setInviteStatus] = useState<InviteStatusNotification>({
+        show: false,
+        message: "",
+        type: "default",
+    });
+    const { mutate: inviteTenant, isPending } = useMutation({
+        mutationKey: ["inviteTenant"],
+        mutationFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("Error tenant email empty");
+            }
+
+            if (!tenantInviteForm.getFieldValue("email") || !tenantInviteForm.getFieldValue("unitNumber")) {
+                throw new Error("Tenant ivnite schema invalid");
+            }
+
+            const res = await fetch(`http://localhost:8080/admin/tenants/invite`, {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+                body: JSON.stringify(tenantInviteForm.getFieldsValue()),
+            });
+            if (!res.ok) {
+                throw new Error("Error request failed");
+            }
+            return;
+        },
+        onSuccess: () => {
+            setInviteStatus({
+                show: true,
+                message: "Successfully invited tenant",
+                type: "success",
+            });
+            tenantInviteForm.resetFields();
+        },
+        onError: () => {
+            setInviteStatus({
+                show: true,
+                message: "Oops try again another time",
+                type: "error",
+            });
+        },
+    });
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+
+    useEffect(() => {
+        const timer = setTimeout(() => {
+            setInviteStatus((prev) => ({ ...prev, show: false }));
+        }, 3000);
+
+        return () => clearTimeout(timer);
+    }, [inviteStatus.show]);
+
+    return (
+        <>
+            <Button
+                type="primary"
+                onClick={showModal}>
+                <PlusOutlined />
+                Invite Tenant
+            </Button>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Invite Tenant</h3>}
+                open={internalModalOpen}
+                okText="Invite"
+                onOk={tenantInviteForm.submit}
+                onCancel={handleCancel}
+                okButtonProps={{ disabled: isPending ? true : false }}
+                // cancelButtonProps={{ hidden: true, disabled: true }}
+            >
+                <Divider />
+                <Form
+                    form={tenantInviteForm}
+                    onFinish={() => {
+                        inviteTenant();
+                    }}
+                    initialValues={{ email: "", unitNumber: 0 }}
+                    className="">
+                    <p>Tenant Email</p>
+                    <Form.Item
+                        name="email"
+                        rules={[{ required: true, message: "Please provide a valid email" }, { type: "email" }, { min: 5 }, { max: 255 }]}>
+                        <Input
+                            prefix={<MailOutlined />}
+                            placeholder="Tenant Email"
+                            value={tenantInviteForm.getFieldValue("email")}
+                            onChange={(e) => {
+                                tenantInviteForm.setFieldValue("email", e.target.value);
+                            }}
+                        />
+                    </Form.Item>
+                    <p>Tenant Unit Number</p>
+                    <Form.Item name="unitNumber">
+                        <Input
+                            prefix={<NumberOutlined />}
+                            placeholder="Unit Number"
+                            type="number"
+                            value={tenantInviteForm.getFieldValue("unitNumber")}
+                            onChange={(e) => {
+                                tenantInviteForm.setFieldValue("unitNumber", e.target.valueAsNumber);
+                            }}
+                        />
+                    </Form.Item>
+                    {inviteStatus.show ? (
+                        <div className="d-flex align-items-center">
+                            {inviteStatus.type === "success" ? <CheckOutlined className="text-success fs-6 mb-3 mx-1" /> : <CloseCircleOutlined className="text-danger fs-6 mb-3 mx-1" />}
+                            <p className={`fs-6 ${inviteStatus.type === "success" ? "text-success" : "text-danger"}`}>{inviteStatus.message}</p>
+                        </div>
+                    ) : (
+                        <p style={{ minHeight: "16px" }}></p>
+                    )}
+                </Form>
+            </Modal>
+        </>
+    );
+}
+
+interface TenantWorkOrderProps {
+    tenantClerkId: string;
+}
+function TenantWorkOrderModal(props: TenantWorkOrderProps) {
+    const { getToken } = useAuth();
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+
+    const { data } = useQuery({
+        queryKey: [`${props.tenantClerkId}-work-orders`],
+        queryFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("Error tenant email empty");
+            }
+
+            if (!props.tenantClerkId) {
+                throw new Error("Tenant invalid tenant Clerk Id");
+            }
+
+            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/work_orders`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+            if (!res.ok) {
+                throw new Error("Error request failed");
+            }
+
+            return (await res.json()) as WorkOrderData[];
+        },
+    });
+
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+
+    return (
+        <>
+            <div onClick={showModal}>Work Orders</div>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Tenant Work Orders</h3>}
+                open={internalModalOpen}
+                onCancel={handleCancel}
+                okButtonProps={{ hidden: true, disabled: true }}
+                cancelButtonProps={{ hidden: true, disabled: true }}>
+                <div>
+                    {data ? (
+                        <>
+                            {data.map((order, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                                    {/* Title */}
+                                    <p>{order.title}</p>
+                                    {/* Category */}
+                                    <p>
+                                        Category: <span style={{ color: "green" }}>{order.category}</span>
+                                    </p>
+                                    {/* Status */}
+                                    <p>
+                                        Status: <span style={{ color: "green" }}>{order.status}</span>
+                                    </p>
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        <p>No work orders....</p>
+                    )}
+                </div>
+            </Modal>
+        </>
+    );
+}
+
+interface TenantComplaintProps {
+    tenantClerkId: string;
+}
+function TenantComplaintModal(props: TenantComplaintProps) {
+    const { getToken } = useAuth();
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+
+    const { data } = useQuery({
+        queryKey: [`${props.tenantClerkId}-complaints`],
+        queryFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("Error tenant email empty");
+            }
+
+            if (!props.tenantClerkId) {
+                throw new Error("Tenant invalid tenant Clerk Id");
+            }
+
+            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/complaints`, {
+                method: "GET",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+            if (!res.ok) {
+                throw new Error("Error request failed");
+            }
+
+            return (await res.json()) as ComplaintsData[];
+        },
+    });
+
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+
+    return (
+        <>
+            <div onClick={showModal}>Complaints</div>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Tenant Complaints</h3>}
+                open={internalModalOpen}
+                onCancel={handleCancel}
+                okButtonProps={{ hidden: true, disabled: true }}
+                cancelButtonProps={{ hidden: true, disabled: true }}>
+                <div>
+                    {data ? (
+                        <>
+                            {data.map((order, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                                    {/* Title */}
+                                    <p>{order.title}</p>
+                                    {/* Category */}
+                                    <p>
+                                        Category: <span style={{ color: "green" }}>{order.category}</span>
+                                    </p>
+                                    {/* Status */}
+                                    <p>
+                                        Status: <span style={{ color: "green" }}>{order.status}</span>
+                                    </p>
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        <p>No complaints....</p>
+                    )}
+                </div>
+            </Modal>
+        </>
+    );
+}
