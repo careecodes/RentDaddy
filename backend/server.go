@@ -93,21 +93,55 @@ func main() {
 					r.Patch("/credentials", userHandler.UpdateTenantProfile)
 				})
 				r.Route("/leases", func(r chi.Router) {
-					leaseHandler := handlers.NewLeaseHandler(pool, queries)
-					r.Get("/", leaseHandler.GetLeases)
-					r.Post("/create", leaseHandler.CreateLease)
-					r.Post("/send/{leaseID}", leaseHandler.SendLease)
-					r.Post("/renew", leaseHandler.RenewLease)
-					r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
-					r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
-					r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
-					r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
-					r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
-					r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
-					r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
-					r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
+					r.Get("/", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.GetLeases(w, r)
+					})
+					r.Post("/create", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.CreateLease(w, r)
+					})
+					r.Post("/send/{leaseID}", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.SendLease(w, r)
+					})
+					r.Post("/renew", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.RenewLease(w, r)
+					})
+					r.Post("/terminate/{leaseID}", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.TerminateLease(w, r)
+					})
+					r.Get("/without-lease", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.GetTenantsWithoutLease(w, r)
+					})
+					r.Get("/apartments-available", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.GetApartmentsWithoutLease(w, r)
+					})
+					r.Get("/update-statuses", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.UpdateAllLeaseStatuses(w, r)
+					})
+					r.Post("/notify-expiring", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.NotifyExpiringLeases(w, r)
+					})
+					r.Post("/webhooks/documenso", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.DocumensoWebhookHandler(w, r)
+					})
+					r.Get("/{leaseID}/signing-url", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.GetTenantSigningURL(w, r)
+					})
+					r.Get("/{leaseID}/url", func(w http.ResponseWriter, r *http.Request) {
+						leaseHandler := handlers.NewLeaseHandler(pool, queries, r)
+						leaseHandler.DocumensoGetDocumentURL(w, r)
+					})
 				})
-
 			})
 
 			// ParkingPermits

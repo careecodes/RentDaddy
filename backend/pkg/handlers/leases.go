@@ -26,6 +26,7 @@ import (
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/smtp"
+	"github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/go-chi/chi/v5"
 
@@ -47,9 +48,9 @@ Lease Renewal Summary:
 */
 
 // HARDCODED LANDLORD INFO FOR TESTING - need to do this with Clerk
-var landlordID = int64(100)
-var landlordName = "First Landlord"
-var landlordEmail = "wrldconnect1@gmail.com"
+// var landlordID = int64(100)
+// var landlordName = "First Landlord"
+// var landlordEmail = "wrldconnect1@gmail.com"
 
 // Temp dir for storing generated leases
 var tempDir = os.Getenv("TEMP_DIR")
@@ -59,6 +60,9 @@ type LeaseHandler struct {
 	pool             *pgxpool.Pool
 	queries          *db.Queries
 	documenso_client *documenso.DocumensoClient
+	landlordID       int64
+	landlordName     string
+	landlordEmail    string
 }
 
 // Helper for Create Lease Request Struct
@@ -79,7 +83,7 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	terminatedLease, err := h.queries.TerminateLease(r.Context(), db.TerminateLeaseParams{
-		UpdatedBy: landlordID,
+		UpdatedBy: h.landlordID,
 		ID:        int64(leaseID),
 	})
 	if err != nil {
@@ -88,7 +92,7 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, landlordID)
+	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, h.landlordID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -103,19 +107,57 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 }
 
 // NewLeaseHandler initializes a LeaseHandler
-func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
+func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries, r *http.Request) *LeaseHandler {
 	baseURL := os.Getenv("DOCUMENSO_API_URL")
 	apiKey := os.Getenv("DOCUMENSO_API_KEY")
 	log.Printf("Documenso API URL: %s", baseURL)
 	log.Printf("Documenso API Key: %s", apiKey)
 
+	// Default fallback values
+	currentLandlordID := int64(100) // Default to the original hardcoded value
+	currentLandlordName := "First Landlord"
+	currentLandlordEmail := "wrldconnect1@gmail.com"
+
+	// Try to get user info from request if available
+	if r != nil {
+		currUserCtx, err := middleware.GetClerkUser(r)
+		if err == nil {
+			var adminMetadata struct {
+				DbId  int64  `json:"db_id"`
+				Email string `json:"email,omitempty"`
+				Name  string `json:"name,omitempty"`
+			}
+
+			err = json.Unmarshal(currUserCtx.PublicMetadata, &adminMetadata)
+			if err == nil && adminMetadata.DbId > 0 {
+				currentLandlordID = adminMetadata.DbId
+
+				// Update email and name if available
+				if adminMetadata.Email != "" {
+					currentLandlordEmail = adminMetadata.Email
+				}
+				if adminMetadata.Name != "" {
+					currentLandlordName = adminMetadata.Name
+				}
+
+				log.Printf("[LEASE_HANDLER] Using landlord ID %d from user context", currentLandlordID)
+			}
+		} else {
+			log.Printf("[LEASE_HANDLER] No user context available: %v", err)
+		}
+	}
+
 	if tempDir == "" {
 		tempDir = "/app/temp" // Default fallback
 	}
+
 	return &LeaseHandler{
 		pool:             pool,
 		queries:          queries,
 		documenso_client: documenso.NewDocumensoClient(baseURL, apiKey),
+		landlordID:       currentLandlordID,
+		landlordName:     currentLandlordName,
+		landlordEmail:    currentLandlordEmail,
 	}
 }
 
@@ -136,7 +178,7 @@ type LeaseValidationResult struct {
 
 type LeaseUpsertRequest struct {
 	TenantID        int64   `json:"tenant_id"`
-	LandlordID      int64   `json:"landlord_id"`
+	LandlordID      int64   `json:"landlord_id,omitempty"` // Optional for admin, will be set by middleware
 	ApartmentID     int64   `json:"apartment_id"`
 	StartDate       string  `json:"start_date"`
 	EndDate         string  `json:"end_date"`
@@ -144,8 +186,8 @@ type LeaseUpsertRequest struct {
 	Status          string  `json:"lease_status"`
 	ExternalDocID   string  `json:"external_doc_id,omitempty"`
 	DocumentTitle   string  `json:"document_title"`
-	CreatedBy       int64   `json:"created_by"`
-	UpdatedBy       int64   `json:"updated_by"`
+	CreatedBy       int64   `json:"created_by,omitempty"` // Will be set by middleware
+	UpdatedBy       int64   `json:"updated_by,omitempty"` // Will be set by middleware
 	LeaseNumber     int64   `json:"lease_number"`
 	PreviousLeaseID *int64  `json:"previous_lease_id,omitempty"`
 	ReplaceExisting bool    `json:"replace_existing,omitempty"`
@@ -157,10 +199,10 @@ type LeaseUpsertRequest struct {
 func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request, req LeaseUpsertRequest) {
 	// Set landlord ID if not provided
 	if req.LandlordID == 0 {
-		req.LandlordID = landlordID // Use the global landlord ID
+		req.LandlordID = h.landlordID // Use the global landlord ID
 	}
-	req.UpdatedBy = landlordID
-	req.CreatedBy = landlordID
+	req.UpdatedBy = h.landlordID
+	req.CreatedBy = h.landlordID
 
 	log.Println("[LEASE_UPSERT] Starting lease upsert handler")
 
@@ -219,7 +261,7 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 	// Step 2: Generate the lease PDF
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
-		landlordName, // TODO: Replace with actual landlord name lookup
+		h.landlordName, // TODO: Replace with actual landlord name lookup
 		req.TenantName,
 		req.PropertyAddress,
 		req.RentAmount,
@@ -246,8 +288,8 @@ func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request,
 			EndDate:         endDate.Format("2006-01-02"),
 			DocumentTitle:   req.DocumentTitle,
 		},
-		landlordName, // TODO: replace with Clerk user context
-		landlordEmail,
+		h.landlordName, // TODO: replace with Clerk user context
+		h.landlordEmail,
 	)
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Documenso upload error: %v", err)
@@ -486,7 +528,7 @@ type LeaseWithSignersRequest struct {
 	DocumentTitle string `json:"document_title,omitempty"`
 }
 
-func (h *LeaseHandler) ValidateLeaseRequest(r *http.Request, landlordID int64) (*LeaseValidationResult, error) {
+func (h *LeaseHandler) ValidateLeaseRequest(r *http.Request) (*LeaseValidationResult, error) {
 	var req LeaseWithSignersRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		return nil, fmt.Errorf("invalid request format: %w", err)
@@ -523,7 +565,7 @@ func (h *LeaseHandler) ValidateLeaseRequest(r *http.Request, landlordID int64) (
 	}
 
 	if req.LandlordID == 0 {
-		req.LandlordID = landlordID
+		req.LandlordID = h.landlordID
 	}
 
 	return &LeaseValidationResult{
@@ -758,22 +800,22 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		log.Printf("Warning: Could not find valid tenant ID for email %s", req.TenantEmail)
 	}
 
-	landlordID, hasLandlord := validRecipientIDs[landlordEmail]
+	_, hasLandlord := validRecipientIDs[landlordEmail]
 	if hasLandlord {
-		if err := h.documenso_client.AddSignatureField(docID, landlordID, 7, 78, 35, 5); err != nil {
+		if err := h.documenso_client.AddSignatureField(docID, int(h.landlordID), 7, 78, 35, 5); err != nil {
 			log.Printf("Warning: Failed to add landlord signature: %v", err)
 		} else {
-			log.Printf("Successfully added signature field for landlord (ID: %d)", landlordID)
+			log.Printf("Successfully added signature field for landlord (ID: %d)", h.landlordID)
 		}
 	} else {
 		log.Printf("Warning: Could not find valid landlord ID for email %s", landlordEmail)
 	}
 
 	if hasLandlord {
-		if err := h.documenso_client.AddSignatureField(docID, landlordID, 7, 88, 35, 5, "DATE"); err != nil {
+		if err := h.documenso_client.AddSignatureField(docID, int(h.landlordID), 7, 88, 35, 5, "DATE"); err != nil {
 			log.Printf("Warning: Failed to add landlord signature: %v", err)
 		} else {
-			log.Printf("Successfully added signature field for landlord (ID: %d)", landlordID)
+			log.Printf("Successfully added signature field for landlord (ID: %d)", h.landlordID)
 		}
 	} else {
 		log.Printf("Warning: Could not find valid landlord ID for email %s", landlordEmail)
@@ -791,7 +833,7 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 
 	// Set landlord ID if not provided
 	if req.LandlordID == 0 {
-		req.LandlordID = landlordID // Use the global landlord ID
+		req.LandlordID = h.landlordID // Use the global landlord ID
 	}
 
 	log.Printf("[LEASE_RENEW] Renewing lease for tenant %d using previous lease ID %v", req.TenantID, req.PreviousLeaseID)
@@ -843,7 +885,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	var req LeaseWithSignersRequest
 
 	// 1-3 inside HandleLeaseRequest: Parse and validate fields, and return response
-	validationResult, err := h.ValidateLeaseRequest(r, landlordID)
+	validationResult, err := h.ValidateLeaseRequest(r)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
@@ -855,7 +897,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	// 4. Generate the full lease PDF
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
-		landlordName,
+		h.landlordName,
 		req.TenantName,
 		req.PropertyAddress,
 		req.RentAmount,
@@ -871,8 +913,8 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	docID, _, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		req,
-		landlordName,
-		landlordEmail,
+		h.landlordName,
+		h.landlordEmail,
 	)
 	if err != nil {
 		log.Printf("Documenso processing error: %v", err)
@@ -885,15 +927,15 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		LeaseNumber:    1,
 		ExternalDocID:  docID,
 		TenantID:       req.TenantID,
-		LandlordID:     landlordID, // TODO: This should be dependent on clerk_id
+		LandlordID:     h.landlordID, // TODO: This should be dependent on clerk_id
 		ApartmentID:    req.ApartmentID,
 		LeaseStartDate: pgtype.Date{Time: startDate, Valid: true},
 		LeaseEndDate:   pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:         db.LeaseStatus(db.LeaseStatusPendingApproval),
 		LeasePdfS3:     pgtype.Text{String: s3bucket, Valid: true},
-		CreatedBy:      landlordID, // Use landlord ID from database
-		UpdatedBy:      landlordID,
+		CreatedBy:      h.landlordID, // Use landlord ID from database
+		UpdatedBy:      h.landlordID,
 		TenantSigningUrl: pgtype.Text{
 			String: tenantSigningURL,
 			Valid:  tenantSigningURL != "",
@@ -1001,7 +1043,7 @@ func (h *LeaseHandler) NotifyExpiringLeases(w http.ResponseWriter, r *http.Reque
 	// Send notification emails if leases are expiring soon
 	if len(expiringLeases) > 0 {
 		// Send email to administrator
-		err = sendExpiringLeasesNotification(expiringLeases)
+		err = h.sendExpiringLeasesNotification(expiringLeases)
 		if err != nil {
 			log.Printf("[LEASE_NOTIFY] Failed to send notification email: %v", err)
 		}
@@ -1020,11 +1062,11 @@ func (h *LeaseHandler) NotifyExpiringLeases(w http.ResponseWriter, r *http.Reque
 }
 
 // Helper function to send email notifications about expiring leases
-func sendExpiringLeasesNotification(expiringLeases []map[string]interface{}) error {
+func (h *LeaseHandler) sendExpiringLeasesNotification(expiringLeases []map[string]interface{}) error {
 	// Get admin email from environment or use default
 	adminEmail := os.Getenv("ADMIN_EMAIL")
 	if adminEmail == "" {
-		adminEmail = landlordEmail // Fallback to global landlord email
+		adminEmail = h.landlordEmail // Fallback to global landlord email
 	}
 
 	// Build email subject and body
@@ -1200,7 +1242,9 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	if eventType != "DOCUMENT_COMPLETED" {
 		log.Printf("[WEBHOOK] Ignoring non-completion event: %s", eventType)
 		w.WriteHeader(http.StatusOK)
-		w.Write([]byte(`{"status":"acknowledged"}`))
+		if _, err := w.Write([]byte(`{"status":"acknowledged"}`)); err != nil {
+			log.Printf("Error writing response: %v", err)
+		}
 		return
 	}
 
@@ -1226,7 +1270,9 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	// Acknowledge receipt of the webhook immediately
 	w.WriteHeader(http.StatusOK)
-	w.Write([]byte(`{"status":"processing"}`))
+	if _, err := w.Write([]byte(`{"status":"processing"}`)); err != nil {
+		log.Printf("Error writing response: %v", err)
+	}
 
 	// Process the webhook asynchronously
 	go func() {
@@ -1245,7 +1291,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		updatedLease, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
 			ID:        lease.ID,
 			Status:    db.LeaseStatusActive,
-			UpdatedBy: landlordID,
+			UpdatedBy: h.landlordID,
 		})
 
 		if err != nil {
@@ -1305,7 +1351,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			if err != nil {
 				log.Printf("[WEBHOOK] Failed to update signed document URL: %v", err)
 			} else {
-				log.Printf("[WEBHOOK] Updated lease %d with signed document URL", unescapedURL)
+				log.Printf("[WEBHOOK] Updated lease %d with signed document URL %v", updatedLease.ID, unescapedURL)
 			}
 		}
 	}()
@@ -1374,7 +1420,7 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 	updateParams := db.UpdateLeaseStatusParams{
 		ID:        leaseID,
 		Status:    db.LeaseStatus(db.LeaseStatusPendingApproval),
-		UpdatedBy: landlordID, // TODO: Make sure landlordID is set correctly here
+		UpdatedBy: h.landlordID, // TODO: Make sure h.landlordID is set correctly here
 	}
 
 	updatedLease, err := h.queries.UpdateLeaseStatus(r.Context(), updateParams)
