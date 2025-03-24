@@ -23,6 +23,11 @@ FROM complaints
 ORDER BY created_at DESC
 LIMIT $1 OFFSET $2;
 
+-- name: ListTenantComplaints :many
+SELECT *
+FROM complaints
+WHERE created_by = $1;
+
 -- name: UpdateComplaint :exec
 UPDATE complaints
 SET

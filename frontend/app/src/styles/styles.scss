@@ -247,6 +247,17 @@ body {
     background-color: #00674f;
 }
 
+.hoverable-row {
+    &:hover {
+        background-color: #1890ff20 !important; // Light blue with opacity
+        transition: background-color 0.3s;
+    }
+}
+
+.ant-table-tbody>tr.hoverable-row:hover>td {
+    background-color: #1890ff20 !important;
+}
+
 // Text Sizes
 // H1 Page Titles
 // H2 Section Titles
@@ -278,6 +289,7 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); // Adds a slight shadow for contrast
 }
 
+
 // Hover Effects for the Sidebar Links
 .hover-lift {
     transition: transform 0.3s ease-in-out;
@@ -286,3 +298,4 @@ body {
 .hover-lift:hover {
     transform: translateY(-5px);
 }
+

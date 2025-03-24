@@ -94,6 +94,43 @@ func (q *Queries) GetWorkOrder(ctx context.Context, id int64) (WorkOrder, error)
 	return i, err
 }
 
+const listTenantWorkOrders = `-- name: ListTenantWorkOrders :many
+SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
+FROM work_orders
+WHERE created_by = $1
+`
+
+func (q *Queries) ListTenantWorkOrders(ctx context.Context, createdBy int64) ([]WorkOrder, error) {
+	rows, err := q.db.Query(ctx, listTenantWorkOrders, createdBy)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []WorkOrder
+	for rows.Next() {
+		var i WorkOrder
+		if err := rows.Scan(
+			&i.ID,
+			&i.CreatedBy,
+			&i.OrderNumber,
+			&i.Category,
+			&i.Title,
+			&i.Description,
+			&i.UnitNumber,
+			&i.Status,
+			&i.UpdatedAt,
+			&i.CreatedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listWorkOrders = `-- name: ListWorkOrders :many
 SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders

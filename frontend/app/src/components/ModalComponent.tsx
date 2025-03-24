@@ -33,23 +33,34 @@ interface ModalComponentProps {
     userRole?: string;
     setInviteTenantObjProps?: React.Dispatch<React.SetStateAction<InviteTenant>>;
     leases?: Lease[];
+    isModalOpen?: boolean;
+    onCancel?: () => void;
 }
 
 // In code we are sending management_id
 
 const ModalComponent = (props: ModalComponentProps) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+
+    const isModalOpen = props.isModalOpen !== undefined ? props.isModalOpen : internalModalOpen;
 
     if (props.userRole === "") {
         props.userRole = "admin";
     }
 
     const showModal = () => {
-        setIsModalOpen(true);
+        if (props.isModalOpen === undefined) {
+            setInternalModalOpen(true);
+        }
     };
 
     const handleCancel = () => {
-        setIsModalOpen(false);
+        if (props.onCancel) {
+            props.onCancel();
+        }
+        if (props.isModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
     };
 
     const titles = {
@@ -97,7 +108,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 <Button
                                     type="default"
                                     onClick={() => {
-                                        setIsModalOpen(false);
+                                        handleCancel();
                                     }}>
                                     Cancel
                                 </Button>
@@ -140,7 +151,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                             type="primary"
                             onClick={() => {
                                 props.handleOkay;
-                                setIsModalOpen(false);
+                                handleCancel();
                             }}>
                             Okay
                         </Button>
@@ -230,7 +241,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     <Button
                                         type="default"
                                         onClick={() => {
-                                            setIsModalOpen(false);
+                                            handleCancel();
                                         }}>
                                         Cancel
                                     </Button>
@@ -261,6 +272,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
                     // okButtonProps={{ hidden: true, disabled: true }}
                     // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
@@ -415,7 +428,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     <Button
                                         type="default"
                                         onClick={() => {
-                                            setIsModalOpen(false);
+                                            handleCancel();
                                         }}>
                                         Cancel
                                     </Button>
@@ -497,6 +510,41 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 Confirm
                             </Button>
                         </div>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Send Tenant Lease" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // leases={leaseTemplates || []} // Add null check
+                        okButtonProps={{ disabled: !props.leases?.length }}
+                    // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                    >
+                        <Form>
+                            {/* Pick a Lease */}
+                            <Form.Item name="lease-template">
+                                <Select
+                                    placeholder="Select a Lease Template"
+                                    options={
+                                        props.leases?.map((lease) => ({
+                                            label: lease.title,
+                                            value: lease.id,
+                                        })) || []
+                                    }
+                                />
+                            </Form.Item>
+                            <p>Please go create a template in Documenso.</p>
+                        </Form>
                     </Modal>
                 </>
             )}
