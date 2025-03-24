@@ -853,8 +853,26 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Missing previous_lease_id for renewal", http.StatusBadRequest)
 		return
 	}
+	ctx := r.Context()
+	//req.PreviousLeaseID in db as LeaseID great. If not, you gotta return.
+	if lease, err := h.queries.GetLeaseByID(ctx, *req.PreviousLeaseID); err != nil {
+		http.Error(w, "No previous lease for tenant", http.StatusBadRequest)
+		return
+	} else {
+		req.LeaseNumber = lease.LeaseNumber + 1
+	}
 
-	req.LeaseNumber += 1 // Or increment based on lookup if needed
+	if tenant, err := h.queries.GetUserByID(ctx, req.TenantID); err != nil {
+		log.Printf("No tenant with id %v exists", tenant.ID)
+		http.Error(w, "Invalid tenant id", http.StatusBadRequest)
+		return
+	}
+
+	if apartment, err := h.queries.GetApartment(ctx, req.ApartmentID); err != nil {
+		log.Printf("No apt with id %v exists", apartment.ID)
+		http.Error(w, "Invalid apartment id", http.StatusBadRequest)
+		return
+	}
 
 	req.ReplaceExisting = false
 	req.CreatedBy = req.LandlordID
