@@ -14,6 +14,11 @@ export interface LeaseData {
     formattedEndDate?: dayjs.Dayjs;
 }
 
+export interface TenantLeaseData {
+    id: number;
+    status: string;
+
+}
 
 export interface WorkOrderData {
     key: number;

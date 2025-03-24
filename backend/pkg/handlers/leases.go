@@ -745,13 +745,13 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		return "", 0, "", "", fmt.Errorf("upload to Documenso failed: %w", err)
 
 	}
-
-	// Save PDF to disk in background
-	go func() {
-		if err := SavePDFToDisk(pdfData, documentTitle, req.TenantName); err != nil {
-			log.Printf("Error saving PDF to disk: %v", err)
-		}
-	}()
+	// To avoid overhead disabling saving PDF to disk  - please keep this code for future debugging purposes.
+	// // Save PDF to disk in background
+	// go func() {
+	// 	if err := SavePDFToDisk(pdfData, documentTitle, req.TenantName); err != nil {
+	// 		log.Printf("Error saving PDF to disk: %v", err)
+	// 	}
+	// }()
 
 	// Add a longer delay to ensure document is fully processed
 	time.Sleep(5 * time.Second)
