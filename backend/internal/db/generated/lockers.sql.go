@@ -123,6 +123,19 @@ func (q *Queries) GetLockers(ctx context.Context) ([]Locker, error) {
 	return items, nil
 }
 
+const getNumberOfLockersInUse = `-- name: GetNumberOfLockersInUse :one
+SELECT COUNT(*)
+FROM lockers
+WHERE in_use = true
+`
+
+func (q *Queries) GetNumberOfLockersInUse(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getNumberOfLockersInUse)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const updateAccessCode = `-- name: UpdateAccessCode :exec
 UPDATE lockers
 SET access_code = $2

@@ -47,3 +47,7 @@ FROM lockers
 WHERE user_id = $1
 LIMIT 1;
 
+-- name: GetNumberOfLockersInUse :one
+SELECT COUNT(*)
+FROM lockers
+WHERE in_use = true;

@@ -10,13 +10,13 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
-
 	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
+
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -115,6 +115,7 @@ func main() {
 
 			// Work Orders
 			r.Route("/work_orders", func(r chi.Router) {
+				// r.Post("/test", workOrderHandler.CreateManyWorkOrdersHandler)
 				r.Get("/", workOrderHandler.ListWorkOrdersHandler)
 				r.Post("/", workOrderHandler.CreateWorkOrderHandler)
 				r.Route("/{order_id}", func(r chi.Router) {
@@ -123,10 +124,11 @@ func main() {
 					r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
 				})
 			})
-
+			
 			// Start of Locker Handlers
 			r.Route("/lockers", func(r chi.Router) {
 				r.Get("/", lockerHandler.GetLockers)
+				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
 				r.Get("/{id}", lockerHandler.GetLocker)
 				// Used to change the user assigned to a locker or the status of a locker
 				r.Patch("/{id}", lockerHandler.UpdateLocker)
@@ -182,7 +184,7 @@ func main() {
 		}
 	}()
 
-	// Block until we reveive an interrupt signal
+	// Block until we revive an interrupt signal
 	<-sigChan
 	log.Println("shutting down server...")
 

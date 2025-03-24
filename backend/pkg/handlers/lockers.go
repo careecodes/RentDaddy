@@ -19,9 +19,9 @@ type LockerHandler struct {
 
 // Need the pointers to handle the case where the field is not provided.
 type UpdateLockerRequest struct {
-	UserID     *int64  `json:"user_id,omitempty"`
-	InUse      *bool   `json:"in_use,omitempty"`
-	AccessCode *string `json:"access_code,omitempty"`
+	UserID     *string  `json:"user_id,omitempty"`
+	InUse      *bool    `json:"in_use,omitempty"`
+	AccessCode *string  `json:"access_code,omitempty"`
 }
 
 func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
@@ -201,8 +201,14 @@ func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
 			// If there is no userId the field is invalid
 			userID = pgtype.Int8{Valid: false}
 		} else {
-			// If there is a userId, it is stored and valid.
-			userID = pgtype.Int8{Int64: *req.UserID, Valid: true}
+			// Get the user's DB ID from Clerk ID
+			user, err := l.queries.GetUser(r.Context(), *req.UserID)
+			if err != nil {
+				log.Printf("Error getting user by clerk_id: %v", err)
+				http.Error(w, "Invalid user ID", http.StatusBadRequest)
+				return
+			}
+			userID = pgtype.Int8{Int64: user.ID, Valid: true}
 		}
 
 		// inUse is false by default, but takes in a value if given
@@ -236,7 +242,10 @@ func (l LockerHandler) UpdateLocker(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{
+		"message": "Locker updated successfully",
+	})
 }
 
 // This is the function that we are using to create all the lockers based off the given number in the Apartment setup page.
@@ -268,5 +277,20 @@ func (l LockerHandler) CreateManyLockers(w http.ResponseWriter, r *http.Request)
 	w.WriteHeader(http.StatusCreated)
 	json.NewEncoder(w).Encode(map[string]int64{
 		"lockers_created": rowsAffected,
+	})
+}
+
+// For the Admin Dashboard Card that shows the number of lockers in use
+func (l LockerHandler) GetNumberOfLockersInUse(w http.ResponseWriter, r *http.Request) {
+	count, err := l.queries.GetNumberOfLockersInUse(r.Context())
+	if err != nil {
+		log.Printf("Error getting number of lockers in use: %v", err)
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]int64{
+		"lockers_in_use": count,
 	})
 }
