@@ -597,6 +597,42 @@ func (q *Queries) UpdateLease(ctx context.Context, arg UpdateLeaseParams) error 
 	return err
 }
 
+const updateLeaseAndApartmentOnDocumentCompletion = `-- name: UpdateLeaseAndApartmentOnDocumentCompletion :one
+WITH updated_lease AS (
+    UPDATE leases
+    SET 
+        status = 'active',
+        updated_at = now(),
+        updated_by = $2
+    WHERE external_doc_id = $1
+    RETURNING id, apartment_id, rent_amount, landlord_id
+)
+UPDATE apartments
+SET 
+    availability = false,
+    lease_id = (SELECT id FROM updated_lease),
+    updated_at = now()
+WHERE id = (SELECT apartment_id FROM updated_lease WHERE apartment_id IS NOT NULL)
+RETURNING 
+    (SELECT json_build_object(
+        'lease_id', ul.id,
+        'apartment_id', ul.apartment_id,
+        'success', true
+    ) FROM updated_lease ul)
+`
+
+type UpdateLeaseAndApartmentOnDocumentCompletionParams struct {
+	ExternalDocID string `json:"external_doc_id"`
+	UpdatedBy     int64  `json:"updated_by"`
+}
+
+func (q *Queries) UpdateLeaseAndApartmentOnDocumentCompletion(ctx context.Context, arg UpdateLeaseAndApartmentOnDocumentCompletionParams) ([]byte, error) {
+	row := q.db.QueryRow(ctx, updateLeaseAndApartmentOnDocumentCompletion, arg.ExternalDocID, arg.UpdatedBy)
+	var json_build_object []byte
+	err := row.Scan(&json_build_object)
+	return json_build_object, err
+}
+
 const updateLeasePDF = `-- name: UpdateLeasePDF :exec
 UPDATE leases
 SET 

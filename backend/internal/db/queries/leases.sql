@@ -203,3 +203,27 @@ WHERE id = $1;
 SELECT lease_pdf_s3
 FROM leases
 WHERE id = $1;
+
+
+-- name: UpdateLeaseAndApartmentOnDocumentCompletion :one
+WITH updated_lease AS (
+    UPDATE leases
+    SET 
+        status = 'active',
+        updated_at = now(),
+        updated_by = $2
+    WHERE external_doc_id = $1
+    RETURNING id, apartment_id, rent_amount, landlord_id
+)
+UPDATE apartments
+SET 
+    availability = false,
+    lease_id = (SELECT id FROM updated_lease),
+    updated_at = now()
+WHERE id = (SELECT apartment_id FROM updated_lease WHERE apartment_id IS NOT NULL)
+RETURNING 
+    (SELECT json_build_object(
+        'lease_id', ul.id,
+        'apartment_id', ul.apartment_id,
+        'success', true
+    ) FROM updated_lease ul);

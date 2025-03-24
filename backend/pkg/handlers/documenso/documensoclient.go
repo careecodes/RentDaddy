@@ -367,21 +367,39 @@ func (c *DocumensoClient) GetSigningURL(documentID string) string {
 
 }
 
-// AddSignatureField adds a signature field to a document for a specific recipient with retries
-func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y, width, height float64) error {
+// AddSignatureField adds a signature field or date field to a document for a specific recipient with retries
+func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y, width, height float64, fieldType ...string) error {
 	maxRetries := 3
+
+	// Default to signature field if no type is specified
+	actualFieldType := "SIGNATURE"
+	if len(fieldType) > 0 && fieldType[0] == "DATE" {
+		actualFieldType = "DATE"
+	}
 
 	for attempt := 0; attempt < maxRetries; attempt++ {
 		// Format payload according to API spec
 		payload := map[string]interface{}{
 			"recipientId": recipientID,
-			"type":        "SIGNATURE", // SIGNATURE is the correct type for signature fields
-			"pageNumber":  1,           // First page
+			"type":        actualFieldType, // SIGNATURE or DATE
+			"pageNumber":  1,               // First page
 			"pageX":       x,
 			"pageY":       y,
 			"pageWidth":   width,
 			"pageHeight":  height,
-			// The fieldMeta might not be needed for signature fields, but can be added if required
+		}
+
+		// Add field metadata for DATE fields - using proper format based on Documenso API
+		if actualFieldType == "DATE" {
+			payload["fieldMeta"] = map[string]interface{}{
+				"type":        "date", // This should be lowercase "date" for the fieldMeta
+				"required":    true,
+				"label":       "Date",
+				"placeholder": "MM/DD/YYYY", // Add a placeholder format
+				"readOnly":    false,
+				"textAlign":   "left",
+				"fontSize":    12,
+			}
 		}
 
 		// Log the payload for debugging
@@ -389,7 +407,7 @@ func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y,
 		if err != nil {
 			return fmt.Errorf("failed to marshal payload: %v", err)
 		}
-		log.Printf("Signature field request payload: %s", string(requestJSON))
+		log.Printf("%s field request payload: %s", actualFieldType, string(requestJSON))
 
 		apiURL := fmt.Sprintf("%s/documents/%s/fields", c.BaseURL, docID)
 		req, err := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
@@ -400,7 +418,6 @@ func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y,
 		req.Header.Set("Content-Type", "application/json")
 
 		resp, err := c.Client.Do(req)
-
 		if err != nil {
 			log.Printf("API request failed: %v. Retrying in %d seconds...",
 				err, attempt+1)
@@ -411,28 +428,27 @@ func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y,
 
 		// Log full response for debugging
 		respBody, _ := io.ReadAll(resp.Body)
-		log.Printf("Signature field creation response: %s", string(respBody))
+		log.Printf("%s field creation response: %s", actualFieldType, string(respBody))
 
 		if resp.StatusCode == http.StatusOK {
-			log.Printf("Successfully created signature field for recipient %d", recipientID)
+			log.Printf("Successfully created %s field for recipient %d", actualFieldType, recipientID)
 			return nil
 		}
 
 		// If not successful, retry after delay
 		if attempt < maxRetries-1 {
-			log.Printf("Failed to create signature field (status %d). Retrying in %d seconds...",
-				resp.StatusCode, attempt+1)
+			log.Printf("Failed to create %s field (status %d). Retrying in %d seconds...",
+				actualFieldType, resp.StatusCode, attempt+1)
 			time.Sleep(time.Duration(attempt+1) * time.Second)
 			continue
 		}
 
-		return fmt.Errorf("failed to create signature field after %d attempts: status %d, response: %s",
-			maxRetries, resp.StatusCode, string(respBody))
+		return fmt.Errorf("failed to create %s field after %d attempts: status %d, response: %s",
+			actualFieldType, maxRetries, resp.StatusCode, string(respBody))
 	}
 
-	return fmt.Errorf("failed to create signature field after %d attempts", maxRetries)
+	return fmt.Errorf("failed to create %s field after %d attempts", actualFieldType, maxRetries)
 }
-
 func (c *DocumensoClient) withRetry(maxRetries int, operation func() error) error {
 	var err error
 	for attempt := 0; attempt < maxRetries; attempt++ {

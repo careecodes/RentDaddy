@@ -151,13 +151,13 @@ func (ns NullComplianceStatus) Value() (driver.Value, error) {
 type LeaseStatus string
 
 const (
-	LeaseStatusDraft                   LeaseStatus = "draft"
-	LeaseStatusPendingTenantApproval   LeaseStatus = "pending_tenant_approval"
-	LeaseStatusPendingLandlordApproval LeaseStatus = "pending_landlord_approval"
-	LeaseStatusActive                  LeaseStatus = "active"
-	LeaseStatusExpired                 LeaseStatus = "expired"
-	LeaseStatusTerminated              LeaseStatus = "terminated"
-	LeaseStatusRenewed                 LeaseStatus = "renewed"
+	LeaseStatusDraft           LeaseStatus = "draft"
+	LeaseStatusPendingApproval LeaseStatus = "pending_approval"
+	LeaseStatusActive          LeaseStatus = "active"
+	LeaseStatusExpired         LeaseStatus = "expired"
+	LeaseStatusTerminated      LeaseStatus = "terminated"
+	LeaseStatusRenewed         LeaseStatus = "renewed"
+	LeaseStatusCanceled        LeaseStatus = "canceled"
 )
 
 func (e *LeaseStatus) Scan(src interface{}) error {

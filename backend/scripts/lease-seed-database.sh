@@ -38,13 +38,13 @@ echo "Using date range: $TODAY to $ONE_YEAR"
 # Define user data
 ADMIN_NAME=$ADMIN_FIRST_NAME + " " + $ADMIN_LAST_NAME
 ADMIN_EMAIL="wrldconnect1@gmail.com"
-TENANT_FIRST_NAMES="Dude We Are Done ForReal"
+TENANT_FIRST_NAMES="Sam Noah John Malik Rhyn"
 TENANT_LAST_NAMES="Ogg Lewis Wilson Soon SchraderBachar"
-TENANT_CLERK_IDS="user_dude user_we user_are user_done user_forreal"
+TENANT_CLERK_IDS="user_ogg user_lewis user_wilson user_soon user_scharderbachar"
 TENANT_PHONES="+15551234001 +15551234002 +15551234003 +15551234004 +15551234005"
 
 # Define apartment data
-APARTMENT_UNIT_NUMBERS="103 207 214 335 181"
+APARTMENT_UNIT_NUMBERS="104 208 215 336 182"
 APARTMENT_PRICES="2000.00 1800.00 2223.00 1950.00 2150.00"
 APARTMENT_SIZES="850 800 900 825 875"
 
@@ -212,7 +212,7 @@ for i in $(seq 1 $NUM_RECORDS); do
     echo "Testing Documenso URL retrieval for lease #$i (ID: $LEASE_ID)"
     
     DOC_URL_RESPONSE=$(curl -s -X GET \
-      $API_URL/admin/tenants/leases/$LEASE_ID/documenso-url)
+      $API_URL/admin/tenants/leases/$LEASE_ID/url)
     
     if echo "$DOC_URL_RESPONSE" | grep -q '"download_url":'; then
       echo "  ✅ Successfully retrieved Documenso URL"
@@ -242,7 +242,7 @@ for i in $(seq 1 $NUM_RECORDS); do
     URL_RESPONSE=$(curl -s -X GET \
       $API_URL/admin/tenants/leases/$LEASE_ID/url)
     
-    if echo "$URL_RESPONSE" | grep -q '"lease_pdf_s3":'; then
+    if echo "$URL_RESPONSE" | grep -q '"download_url":'; then
       echo "  ✅ Successfully retrieved S3 URL"
       echo "  Response: $URL_RESPONSE"
     else

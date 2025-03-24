@@ -24,15 +24,16 @@ CREATE TYPE "Type" AS ENUM (
     'termination',
     'addendum'
     );
+
 CREATE TYPE "Lease_Status" AS ENUM (
-    'draft',
-    'pending_tenant_approval',
-    'pending_landlord_approval',
-    'active',
-    'expired',
-    'terminated',
-    'renewed'
-    );
+  'draft',
+  'pending_approval', 
+  'active',
+  'expired',
+  'terminated',
+  'renewed',
+  'canceled'          
+);
 CREATE TYPE "Compliance_Status" AS ENUM (
     'pending_review',
     'compliant',

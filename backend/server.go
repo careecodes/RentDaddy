@@ -103,10 +103,9 @@ func main() {
 					r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
 					r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
 					r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
+					r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 					r.Get("/{leaseID}/signing-url", leaseHandler.GetTenantSigningURL)
 					r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
-
-					r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 				})
 
 			})
@@ -153,6 +152,9 @@ func main() {
 				r.Get("/", parkingPermitHandler.TenantGetParkingPermits)
 				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
 				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
+			})
+			r.Route("/leases", func(r chi.Router) {
+
 			})
 		})
 	})
