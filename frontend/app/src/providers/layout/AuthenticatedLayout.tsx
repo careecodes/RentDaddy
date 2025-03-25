@@ -9,7 +9,6 @@ import SidebarLinks from "../../components/SidebarLinks";
 const { Header, Content, Footer, Sider } = Layout;
 
 const siderStyle: React.CSSProperties = {
-    overflow: "auto", // If we don't want the scrollbar to be scrollable, we can set this to hidden
     height: "100vh",
     position: "sticky",
     insetInlineStart: 0,
@@ -130,11 +129,8 @@ const AuthenticatedLayout: React.FC = () => {
                 {/* Menu Container */}
                 {/* <Menu theme='dark' style={{ backgroundColor: '#7789f4', color: '#000000' }} mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} /> */}
 
-                {/* We can change the h-100 here once we show only the admin or tenant menu items based off the user role */}
-                <div className="sidebar-content position-relative h-100 d-flex flex-column">
-                    <div className="flex-grow-1 overflow-y-auto">
-                        <SidebarLinks />
-                    </div>
+                
+                    <SidebarLinks />
 
                     {/* Avatar and Login Container */}
                     <div className="avatar-container mt-auto pb-3">
@@ -165,7 +161,6 @@ const AuthenticatedLayout: React.FC = () => {
                             </Link>
                         )}
                     </div>
-                </div>
             </Sider>
 
             {/* Content Container */}
