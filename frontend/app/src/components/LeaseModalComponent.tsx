@@ -493,7 +493,18 @@ export const LeaseModalComponent = ({
                             <Select
                                 placeholder="Select a tenant"
                                 loading={loadingTenants}
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                    (option?.children as unknown as string)
+                                        .toLowerCase()
+                                        .includes(input.toLowerCase())
+                                }
                                 notFoundContent={loadingTenants ? <Spin size="small" /> : "No tenants available"}
+                                listHeight={256}
+                                virtual={true}
+                                popupMatchSelectWidth={false}
+                                style={{ width: '100%' }}
                             >
                                 {tenants && tenants.length > 0 ? tenants.map((tenant: Tenant) => (
                                     <Option key={tenant.id} value={tenant.id}>
@@ -512,8 +523,19 @@ export const LeaseModalComponent = ({
                             <Select
                                 placeholder="Select an apartment"
                                 loading={loadingApartments}
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                    (option?.children as unknown as string)
+                                        .toLowerCase()
+                                        .includes(input.toLowerCase())
+                                }
                                 notFoundContent={loadingApartments ? <Spin size="small" /> : "No apartments available"}
                                 onChange={handleApartmentChange}
+                                listHeight={256}
+                                virtual={true}
+                                popupMatchSelectWidth={false}
+                                style={{ width: '100%' }}
                             >
                                 {apartments && apartments.length > 0 ? apartments.map((apartment: Apartment) => (
                                     <Option key={apartment.id} value={apartment.id}>
@@ -681,7 +703,18 @@ export const LeaseModalComponent = ({
                                 placeholder="Select a new apartment"
                                 loading={loadingApartments}
                                 allowClear
+                                showSearch
+                                optionFilterProp="children"
+                                filterOption={(input, option) =>
+                                    (option?.children as unknown as string)
+                                        .toLowerCase()
+                                        .includes(input.toLowerCase())
+                                }
                                 notFoundContent={loadingApartments ? <Spin size="small" /> : "No apartments available"}
+                                listHeight={256} // Set a fixed height for the dropdown
+                                virtual={true}   // Enable virtual scrolling for better performance
+                                popupMatchSelectWidth={false} // Allow dropdown to be wider than the select
+                                style={{ width: '100%' }}
                                 onChange={(value) => {
                                     if (value) {
                                         const selectedApt = apartments.find((a: Apartment) => a.id === value);

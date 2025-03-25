@@ -19,7 +19,7 @@ echo "Using database connection: $PG_HOST / $PG_USER / $PG_DB"
 echo "Using API URL: $API_URL"
 
 # Number of records to create
-NUM_RECORDS=5
+NUM_RECORDS=10
 
 # Alternating email addresses
 EMAIL_ONE="reem@reemock.com" 
@@ -38,15 +38,15 @@ echo "Using date range: $TODAY to $ONE_YEAR"
 # Define user data
 ADMIN_NAME=$ADMIN_FIRST_NAME + " " + $ADMIN_LAST_NAME
 ADMIN_EMAIL="wrldconnect1@gmail.com"
-TENANT_FIRST_NAMES="Sam Noah John Malik Rhyn"
-TENANT_LAST_NAMES="Ogg Lewis Wilson Soon SchraderBachar"
+TENANT_FIRST_NAMES="Sam Noah John Malik Rhyn JJ Yoon James Diego Carree"
+TENANT_LAST_NAMES="Ogg Lewis Wilson Soon Ogg SchraderBachar Soon Dude Mora Chrome"
 TENANT_CLERK_IDS="user_ogg user_lewis user_wilson user_soon user_scharderbachar"
 TENANT_PHONES="+15551234001 +15551234002 +15551234003 +15551234004 +15551234005"
 
 # Define apartment data
-APARTMENT_UNIT_NUMBERS="104 208 215 336 182"
-APARTMENT_PRICES="2000.00 1800.00 2223.00 1950.00 2150.00"
-APARTMENT_SIZES="850 800 900 825 875"
+APARTMENT_UNIT_NUMBERS="104 208 215 336 182 160 134 240 260 320"
+APARTMENT_PRICES="2000.00 1800.00 2223.00 1950.00 2150.00 2010.00 1900.00 2280.00 1975.00 2250.00"
+APARTMENT_SIZES="850 800 900 825 875 874 860 854 810 910"
 
 # Helper function to get an item from a space-separated list by index
 get_item() {
@@ -143,7 +143,7 @@ echo "✅ Created $NUM_RECORDS apartments"
 
 # Create leases
 echo "Step 4: Creating leases..."
-for i in $(seq 1 $NUM_RECORDS); do
+for i in $(seq 1 $(($NUM_RECORDS - 5))); do
   TENANT_FIRST_NAME=$(get_item "$TENANT_FIRST_NAMES" $i)
   TENANT_LAST_NAME=$(get_item "$TENANT_LAST_NAMES" $i)
   TENANT_NAME="$TENANT_FIRST_NAME $TENANT_LAST_NAME"

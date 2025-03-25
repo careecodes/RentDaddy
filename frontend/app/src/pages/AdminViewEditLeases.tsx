@@ -13,6 +13,7 @@ import { Input, message } from "antd";
 import type { ColumnType } from "antd/es/table";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
+import { FileTextOutlined } from "@ant-design/icons";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
 const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
@@ -227,6 +228,7 @@ export default function AdminViewEditLeases() {
             leaseEndDate: dayjs(lease.leaseEndDate).format("YYYY-MM-DD"),
             rentAmount: lease.rentAmount ? lease.rentAmount / 100 : 0,
             status: lease.status === "terminated" ? "terminated" : getLeaseStatus(lease),
+            adminDocUrl: lease.admin_doc_url
         };
     }) : [];
 
@@ -401,7 +403,21 @@ export default function AdminViewEditLeases() {
             title: "Actions",
             key: "actions",
             render: (_, record) => (
+
+
                 <Space size="middle" wrap={true}>
+                    {record.admin_doc_url && (
+                        <a
+                            href={record.admin_doc_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-info"
+                            style={{ padding: '4px 10px', borderRadius: 4 }}
+                        >
+                            <FileTextOutlined style={{ marginRight: 4 }} />
+                            View Lease
+                        </a>
+                    )}
                     {record.status === "draft" && (
                         <ButtonComponent
                             type="primary"
@@ -433,6 +449,7 @@ export default function AdminViewEditLeases() {
                 </Space>
             ),
         }
+
     ];
 
     // Render authentication errors if needed
@@ -500,6 +517,7 @@ export default function AdminViewEditLeases() {
                     <TableComponent<LeaseData>
                         columns={leaseColumns}
                         dataSource={filteredData}
+                        scroll={{ x: "100%" }}
                         onChange={(pagination, filters, sorter, extra) => {
                             // This properly forwards the event to the underlying Table component
                             console.log('Table changed:', { pagination, filters, sorter, extra });

@@ -11,6 +11,7 @@ interface TableComponentProps<T> {
     style?: string;
     pagination?: TablePaginationConfig;
     onRow?: (record: T) => { onClick: () => void };
+    scroll?: TableProps<T>["scroll"];
 }
 const useStyle = createStyles(({ css, token }) => {
     const antCls = token.antCls || ""; // Ensure compatibility if antCls is undefined
@@ -33,7 +34,7 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, scroll: scrollProp, }: TableComponentProps<T>) => {
     const { styles } = useStyle();
 
     return (
@@ -46,7 +47,7 @@ const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, paginati
                 pagination={pagination}
                 onChange={onChange}
                 onRow={onRow}
-                scroll={{ x: "max-content" }}
+                scroll={scrollProp ?? { x: "max-content" }}
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}
             />
         </>

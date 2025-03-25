@@ -12,6 +12,8 @@ export interface LeaseData {
     status: string;
     formattedStartDate?: dayjs.Dayjs;
     formattedEndDate?: dayjs.Dayjs;
+    admin_doc_url?: string;
+
 }
 
 export interface TenantLeaseStatusAndURL {

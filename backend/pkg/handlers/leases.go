@@ -480,6 +480,12 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Failed to fetch leases", http.StatusInternalServerError)
 		return
 	}
+	publicHost := os.Getenv("DOCUMENSO_PUBLIC_URL")
+	if publicHost == "" {
+		publicHost = strings.Replace(h.documenso_client.BaseURL, "/api/v1", "", 1)
+	}
+
+	publicHost = strings.TrimSuffix(publicHost, "/")
 
 	var leaseResponses []map[string]interface{}
 	for _, lease := range leases {
@@ -510,7 +516,7 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 			}
 			status = h.GetLeaseStatus(dbLease)
 		}
-
+		adminDocURL := fmt.Sprintf("%s/documents/%s", publicHost, lease.ExternalDocID)
 		// Add data to response array
 		leaseResponses = append(leaseResponses, map[string]interface{}{
 			"id":             lease.ID,
@@ -522,6 +528,7 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 			"leaseEndDate":   lease.LeaseEndDate.Time.Format("2006-01-02"),
 			"rentAmount":     lease.RentAmount.Int.String(),
 			"status":         status,
+			"admin_doc_url":  adminDocURL,
 		})
 	}
 
