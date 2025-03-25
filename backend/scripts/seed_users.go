@@ -48,8 +48,7 @@ func main() {
 	ctx := context.Background()
 	// CLerk 10 request per second
 	rateLimitThreshold := 10
-	userCount := 3
-	unitNumber := 101
+	userCount := 9
 
 	// check if users already seeded
 	pool, err := pgxpool.New(ctx, os.Getenv("PG_URL"))
@@ -66,7 +65,7 @@ func main() {
 		log.Printf("[SEED_USERS] Error counting users: %v", err)
 		return
 	}
-	if count > 50 {
+	if count > 90 {
 		log.Printf("[SEED_USERS] Users already seeded: %d", count)
 	} else {
 		log.Printf("[SEED_USERS] Starting %d users", userCount)
@@ -82,7 +81,6 @@ func main() {
 			if err := createTenant(ctx); err != nil {
 				log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
 			}
-			unitNumber = unitNumber + 1
 
 			if userCount+1 > rateLimitThreshold {
 				time.Sleep(2 * time.Second)
@@ -92,15 +90,6 @@ func main() {
 		log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
 	}
 
-	log.Println("[SEED] Calling db seeder")
-	clerkAdminUser, err := json.Marshal(adminUser)
-	if err != nil {
-		log.Printf("[SEED] Error marshalling adminUser: %v", err)
-		return
-	}
-
-	log.Printf("before clerkAdminUser: %v", string(clerkAdminUser))
-
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
 	time.Sleep(5 * time.Second)
 
@@ -109,16 +98,15 @@ func main() {
 	aUser := pool.QueryRow(ctx, qString)
 	var aID int
 	if err := aUser.Scan(&aID); err != nil {
-		log.Printf("[SEED] Error getting adminUser: %v", err)
+		log.Printf("[SEED_USERS] Error getting adminUser: %v", err)
 		return
 	}
 
-	log.Printf("aUser id: %v", aID)
 	queries := db.New(pool)
 
 	err = utils.SeedDB(queries, pool, int32(aID))
 	if err != nil {
-		log.Printf("[SEED] Error seeding db: %v", err)
+		log.Printf("[SEED_USERS] Error seeding db: %v", err)
 		return
 	}
 	log.Println("[SEED_USERS] Finished seeding db")
