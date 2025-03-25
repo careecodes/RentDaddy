@@ -5,7 +5,6 @@ import (
 	"log"
 	"math/rand"
 	"os"
-	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -41,13 +40,4 @@ func ConvertToPgTimestamp(input string) (pgtype.Timestamp, error) {
 
 	// Assign it to pgtype.Timestamp
 	return pgtype.Timestamp{Time: parsedTime, Valid: true}, nil
-}
-
-func ConvertStringToInt64(input string) int64 {
-	newNum, err := strconv.Atoi(input)
-	if err != nil {
-		fmt.Println(err)
-	}
-
-	return int64(newNum)
 }
