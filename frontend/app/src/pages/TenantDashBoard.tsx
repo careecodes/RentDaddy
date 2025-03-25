@@ -58,7 +58,7 @@ export const TenantDashBoard = () => {
     const { mutate: postParking } = useMutation({
         mutationFn: async (parking) => {
             console.log(parking);
-            const res = await fetch(`http://localhost:8080/parking`, {
+            const res = await fetch(`http://localhost:8080/tenants/parking`, {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(parking),

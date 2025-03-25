@@ -2,9 +2,8 @@
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
 import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
-import { EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-import { useMutation } from "@tanstack/react-query";
 
 type InviteTenant = {
     email: string;
@@ -31,7 +30,7 @@ interface ModalComponentProps {
     handleOkay: (data?: any) => void;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
-    apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
+    apartmentBuildingSetEditBuildingState?: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
     leases?: Lease[];
     isModalOpen?: boolean;
@@ -40,7 +39,7 @@ interface ModalComponentProps {
 
 const onFinish: FormProps<any>["onFinish"] = (values: any) => {
     console.log("Success:", values);
-    props;
+    props.handleOkay(values);
 };
 
 // In code we are sending management_id
