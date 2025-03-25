@@ -147,7 +147,7 @@ export const TenantDashBoard = () => {
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
                     button={
-                        <Link to="/tenant/tenant-view-and-edit-work-orders-and-complaints">
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
                             <ButtonComponent
                                 title="View All"
                                 type="primary"

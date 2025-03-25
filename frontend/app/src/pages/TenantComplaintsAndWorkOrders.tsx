@@ -1,12 +1,58 @@
-//TODO: Connect Backend whenever that is ready (Get Recent Complaints or Work Orders, and Submit the Form)
+import { useMutation } from "@tanstack/react-query";
 import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd";
 import { useState } from "react";
-import TableComponent from "../components/reusableComponents/TableComponent";
+import ButtonComponent from "../components/reusableComponents/ButtonComponent";
+import { useUser } from "@clerk/react-router";
+
+export interface Complaint {
+    complaintNumber: number;
+    createdBy: string;
+    category: any;
+    title: string;
+    description: string;
+    unitNumber: number;
+    status: any;
+}
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import TableComponent from "../components/reusableComponents/TableComponent";
 
 const TenantComplaintsAndWorkOrders = () => {
+    const { user } = useUser();
+
     const [requestType, setRequestType] = useState("complaint");
     const [form] = Form.useForm();
+
+    const [complaints, setComplaints] = useState<Complaint[]>([]);
+
+    const [description, setDescription] = useState<string>("");
+
+    const [complaint, setComplaint] = useState<Complaint>({
+        complaintNumber: complaints.length + 1,
+        createdBy: user?.id ?? "",
+        category: "internet",
+        title: "test title",
+        description: description,
+        unitNumber: 222,
+        status: "open",
+    });
+
+    const { mutate: getComplaints } = useMutation({
+        mutationFn: async () => {
+            const res = await fetch(`http://localhost:8080/${user?.id}/complaints`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            const data = await res.json();
+            setComplaints([data]);
+            return res;
+        },
+        onSuccess: () => {
+            console.log(complaints);
+        },
+        onError: (e: any) => {
+            console.log("error ", e);
+        },
+    });
 
     const complaintColumns = [
         {
@@ -82,22 +128,26 @@ const TenantComplaintsAndWorkOrders = () => {
         },
     ];
 
-    const complaints = [
-        {
-            id: 1,
-            type: "Complaint",
-            title: "Complaint 1 Title",
-            description: "Complaint 1 Description",
-            votes: 10,
+    const { mutate: postComplaint } = useMutation({
+        mutationFn: async () => {
+            complaint.description = description;
+            console.log("complain being sent", complaint);
+            const res = await fetch(`http://localhost:8080/complaints`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(complaint),
+            });
+            const data = await res.json();
+            setComplaints([...complaints, data]);
+            return res;
         },
-        {
-            id: 2,
-            type: "Complaint",
-            title: "Complaint 2 Title",
-            description: "Complaint 2 Description",
-            votes: 5,
+        onSuccess: () => {
+            console.log();
         },
-    ];
+        onError: (e: any) => {
+            console.log("error ", e);
+        },
+    });
 
     const workOrders = [
         {
@@ -126,6 +176,10 @@ const TenantComplaintsAndWorkOrders = () => {
         },
     ];
 
+    const handleDescriptionChange = (e: any) => {
+        setDescription(e.target.value);
+    };
+
     const onSubmit = (values: any) => {
         console.log("Form values:", values);
         //need to post these to the db
@@ -136,6 +190,12 @@ const TenantComplaintsAndWorkOrders = () => {
             {/* Title */}
             {/* <h1 className="mb-4">Complaints and Work Orders</h1> */}
             <PageTitleComponent title="Complaints and Work Orders" />
+
+            <ButtonComponent
+                title="get complaints"
+                type="primary"
+                onClick={getComplaints}
+            />
 
             {/* Start of Form */}
             <Form
@@ -226,16 +286,19 @@ const TenantComplaintsAndWorkOrders = () => {
                     name="description"
                     label="Description"
                     rules={[{ required: true, message: "Please enter a description" }]}>
-                    <Input.TextArea rows={4} />
+                    <Input.TextArea
+                        rows={4}
+                        onChange={handleDescriptionChange}
+                    />
                 </Form.Item>
 
                 {/* Submit button */}
                 <Form.Item>
-                    <Button
+                    <ButtonComponent
+                        title="Submit"
                         type="primary"
-                        htmlType="submit">
-                        Submit
-                    </Button>
+                        onClick={postComplaint}
+                    />
                 </Form.Item>
             </Form>
         </div>

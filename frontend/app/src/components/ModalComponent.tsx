@@ -33,11 +33,15 @@ interface ModalComponentProps {
     apartmentBuildingEditProps?: Building;
     apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
-    setInviteTenantObjProps?: React.Dispatch<React.SetStateAction<InviteTenant>>;
     leases?: Lease[];
     isModalOpen?: boolean;
     onCancel?: () => void;
 }
+
+const onFinish: FormProps<any>["onFinish"] = (values: any) => {
+    console.log("Success:", values);
+    props;
+};
 
 // In code we are sending management_id
 
@@ -323,58 +327,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Modal>
                 </>
             )}
-            {props.type === "Invite Tenant" && (
-                <>
-                    <Button
-                        type="primary"
-                        onClick={showModal}>
-                        <PlusOutlined />
 
-                        {props.buttonTitle}
-                    </Button>
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{titles[props.type]}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
-                    >
-                        <Divider />
-                        <Form>
-                            <Form.Item name="tenant-email">
-                                <Input
-                                    placeholder="Tenant Email"
-                                    onChange={(e) => {
-                                        const updatedValue = e.target.value;
-
-                                        props.setInviteTenantObjProps!((prev) => ({
-                                            ...prev,
-                                            email: updatedValue,
-                                        }));
-                                    }}
-                                />
-                            </Form.Item>
-                            <Form.Item name="unit-number">
-                                <Input
-                                    placeholder="Unit Number"
-                                    type="number"
-                                    onChange={(e) => {
-                                        const updatedValue = Number(e.target.value);
-
-                                        props.setInviteTenantObjProps!((prev) => ({
-                                            ...prev,
-                                            unitNumber: updatedValue,
-                                        }));
-                                    }}
-                                />
-                            </Form.Item>
-                            <Divider />
-                        </Form>
-                    </Modal>
-                </>
-            )}
             {props.type === "Edit Tenant" && (
                 <>
                     <Button
