@@ -3,6 +3,7 @@
 // The ProtectedRoutes component is used in the Main.tsx file as a Route element that wraps the Tenant and Admin routes
 
 import { useUser } from "@clerk/react-router";
+import { Spin } from "antd";
 import { Navigate, Outlet, useLocation } from "react-router";
 
 const ProtectedRoutes = () => {
@@ -16,7 +17,39 @@ const ProtectedRoutes = () => {
     // Show loading state while Clerk is initializing
     // If we don't do this, the user will be redirected to the login page before the Clerk is initialized, even if they are signed in
     if (!isLoaded) {
-        return <div>Loading...</div>;
+        return (
+            <div
+                style={{
+                    display: "flex",
+                    flexDirection: "column",
+                    justifyContent: "center",
+                    alignItems: "center",
+                    height: "100vh",
+                    backgroundColor: "#f0f8ff",
+                    fontFamily: "'Poppins', sans-serif",
+                }}>
+                <div
+                    style={{
+                        fontSize: "2rem",
+                        color: "#00674f",
+                        marginBottom: "1rem",
+                        fontWeight: "bold",
+                    }}>
+                    Loading
+                    <span
+                        style={{
+                            animation: "ellipsis 1.5s infinite",
+                            color: "#00674f",
+                        }}>
+                        ...
+                    </span>
+                </div>
+                <Spin
+                    size="large"
+                    className="mt-2"
+                />
+            </div>
+        );
     }
 
     // If user is not signed in, redirect to login
