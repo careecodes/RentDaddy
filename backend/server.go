@@ -203,7 +203,7 @@ func main() {
 			r.Route("/leases", func(r chi.Router) {
 				r.Get("/{user_id}/signing-url", func(w http.ResponseWriter, r *http.Request) {
 					leaseHandler := handlers.NewLeaseHandler(pool, queries)
-					leaseHandler.GetTenantSigningURL(w, r)
+					leaseHandler.GetTenantLeaseStatusAndURLByUserID(w, r)
 				})
 			})
 		})

@@ -30,6 +30,7 @@ export const TenantDashBoard = () => {
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
+            console.log(response)
             if (!response.ok) {
                 throw new Error("Failed to fetch lease status");
             }
@@ -38,26 +39,29 @@ export const TenantDashBoard = () => {
         },
         enabled: !!userId,
     });
+    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+    sleep(6);
     if (isError) {
         throw new Error("error found fetching signing url");
-    } else if (!leaseData) {
-        throw new Error("lease data returned empty");
     }
+    // } else if (!leaseData) {
+    //     throw new Error("lease data returned empty");
+    // }
 
     // This is the recommended approach in newer versions of TanStack Query. `onSuccess` is deprecated
     useEffect(() => {
-        if (leaseData.status) {
+        if (leaseData && leaseData.status) {
             console.log("Lease status updated:", leaseData.status);
             if (["pending_approval", "terminated", "expired"].includes(leaseData.status)) {
                 console.log("Setting modal visible based on lease status");
                 setSigningModalVisible(true);
             }
         }
-    }, [leaseData.status]);
+    }, [leaseData]);
 
     // This is used to redirect to signing URL when button is clicked
     const handleOk = () => {
-        if (leaseData.url) {
+        if (leaseData && leaseData.url) {
             window.location.href = leaseData.url;
         } else {
             console.error("No signing URL available");
@@ -203,7 +207,7 @@ export const TenantDashBoard = () => {
                 <div style={{ textAlign: "center" }}>
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
-                    <p>Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.</p>
+                    <p>Your lease status is <strong>{leaseData.status === "pending_approval" ? "Pending Approval" : leaseData.status}</strong>.</p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>
                         This action is required and cannot be dismissed.

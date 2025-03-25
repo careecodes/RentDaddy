@@ -237,7 +237,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	log.Printf("Documenso API Key: %s", apiKey)
 
 	// Default fallback values
-	currentLandlordID := int64(1) // Default to the original hardcoded value
+	currentLandlordID := int64(100) // Default to the original hardcoded value
 	currentLandlordName := "First Landlord"
 	currentLandlordEmail := "wrldconnect1@gmail.com"
 
@@ -1702,7 +1702,7 @@ func (h *LeaseHandler) GetSignedLeaseURL(w http.ResponseWriter, r *http.Request)
 }
 
 func (h *LeaseHandler) GetTenantLeaseStatusAndURLByUserID(w http.ResponseWriter, r *http.Request) {
-
+	log.Printf("Beginning of GetTenantLeaseStatusAndURLByUserID")
 	// needs to get user id --> lookup largest-numbered lease for that user.
 	userIdStr := chi.URLParam(r, "user_id")
 
