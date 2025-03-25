@@ -1,7 +1,6 @@
 package handlers
 
 import (
-	"context"
 	"encoding/json"
 	"log"
 	"net/http"
@@ -47,14 +46,12 @@ func (h *ComplaintHandler) GetComplaintHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h ComplaintHandler) ListComplaintsHandler(w http.ResponseWriter, r *http.Request){
-	ctx := context.Background()
-
 	props := db.ListComplaintsParams{
 		Limit: 10,
 		Offset: 0,
 	}
 
-	complaints, err := h.queries.ListComplaints(ctx,props)
+	complaints, err := h.queries.ListComplaints(r.Context(),props)
 	log.Println("complaints",complaints)
 	if err != nil {
 		log.Println("error:", err)
@@ -62,19 +59,9 @@ func (h ComplaintHandler) ListComplaintsHandler(w http.ResponseWriter, r *http.R
 		return
 	}
 
-	ret := db.CreateComplaintParams{
-		ComplaintNumber: 1 + int64(1),
-		Status:      db.StatusOpen,
-		Description: "test",
-		Category: db.ComplaintCategoryInternet,
-		CreatedBy:    int64(1),
-		UnitNumber:  101 + int16(1),
-		Title:       "Test complaint",
-	}
-
 
 	w.Header().Set("Content-Type", "application/json")
-	err = json.NewEncoder(w).Encode(ret)
+	err = json.NewEncoder(w).Encode(complaints)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
