@@ -23,15 +23,16 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
     && chmod +x /usr/local/bin/migrate \
     && rm migrate.tar.gz
 
-# Vendor dependencies to avoid downloading on rebuild
+# Copy application source files
+COPY . .
+
+# Go package dependencies
 RUN go mod tidy && go mod download
 
 # Install Air for development mode
 RUN go install github.com/air-verse/air@latest \
     && mv /go/bin/air /usr/local/bin/air
 
-# Copy application source files
-COPY . .
 
 # Create necessary directories
 RUN mkdir -p /app/tmp /app/temp
