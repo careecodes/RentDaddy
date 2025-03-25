@@ -30,25 +30,26 @@ export const TenantDashBoard = () => {
     const { data: leaseData, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            if (!userId) { throw new Error("UserID is not available for tenant.") }
-            const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
-            console.log(response)
-            if (!response.ok) {
-                throw new Error("Failed to fetch lease status");
+            if (!userId) {
+                console.log("`userId` variable is not populated");
+                return null;
             }
-            const leaseData: TenantLeaseStatusAndURL = await response.json();
+            const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                return null;
+            }
+
+            // If empty, return null so tenant dashboard can still load
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                return null;
+            }
+
+            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
             return leaseData;
         },
         enabled: !!userId,
     });
-    const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
-    sleep(6);
-    if (isError) {
-        throw new Error("error found fetching signing url");
-    }
-    // } else if (!leaseData) {
-    //     throw new Error("lease data returned empty");
-    // }
 
     // This is the recommended approach in newer versions of TanStack Query. `onSuccess` is deprecated
     useEffect(() => {
@@ -72,10 +73,6 @@ export const TenantDashBoard = () => {
 
     if (isLoading) {
         return <div>Loading...</div>;
-    }
-
-    if (isError) {
-        return <div>Error fetching tenant's lease status. Please try again later.</div>;
     }
 
     return (
@@ -209,7 +206,7 @@ export const TenantDashBoard = () => {
                 <div style={{ textAlign: "center" }}>
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
-                    <p>Your lease status is <strong>{leaseData.status === "pending_approval" ? "Pending Approval" : leaseData.status}</strong>.</p>
+                    <p>Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.</p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>
                         This action is required and cannot be dismissed.
