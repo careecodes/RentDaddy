@@ -11,19 +11,9 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2/user"
 )
 
-type Apartment struct {
-	UnitNumber int `json:"unit_number"`
-	Price      int `json:"price"`
-	SizeSqFt   int `json:"sqft"`
-	// Admin(clerk_id) inviting tenant
-	ManagementId string `json:"management_id"`
-	LeaseId      int    `json:"lease_id"`
-}
-
 type ClerkUserPublicMetaData struct {
-	DbId      int32     `json:"db_id"`
-	Role      db.Role   `json:"role"`
-	Apartment Apartment `json:"apartment"`
+	DbId int32   `json:"db_id"`
+	Role db.Role `json:"role"`
 }
 
 type UserContext struct {
