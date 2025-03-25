@@ -3,7 +3,10 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"github.com/careecodes/RentDaddy/internal/utils"
+
+	//"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"os"
@@ -55,20 +58,21 @@ func main() {
 		return
 	}
 	defer pool.Close()
-	queries := db.New(pool)
 
 	row := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE role = $1", db.RoleTenant)
 	var count int
+	var adminUser *clerk.User
 	if err := row.Scan(&count); err != nil {
 		log.Printf("[SEED_USERS] Error counting users: %v", err)
 		return
 	}
-	if count > 10 {
+	if count > 50 {
 		log.Printf("[SEED_USERS] Users already seeded: %d", count)
 	} else {
 		log.Printf("[SEED_USERS] Starting %d users", userCount)
 
-		if err := createAdmin(ctx); err != nil {
+		adminUser, err = createAdmin(ctx)
+		if err != nil {
 			log.Printf("[SEED_USERS] Error seeding admin: %v", err)
 			return
 
@@ -87,8 +91,32 @@ func main() {
 
 		log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
 	}
+
 	log.Println("[SEED] Calling db seeder")
-	err = utils.SeedDB(queries, pool)
+	clerkAdminUser, err := json.Marshal(adminUser)
+	if err != nil {
+		log.Printf("[SEED] Error marshalling adminUser: %v", err)
+		return
+	}
+
+	log.Printf("before clerkAdminUser: %v", string(clerkAdminUser))
+
+	log.Println("[SEED_USERS] Waiting for clerk to sync")
+	time.Sleep(5 * time.Second)
+
+	qString := fmt.Sprintf(`SELECT id FROM users WHERE clerk_id = '%s' AND role = 'admin'`, adminUser.ID)
+
+	aUser := pool.QueryRow(ctx, qString)
+	var aID int
+	if err := aUser.Scan(&aID); err != nil {
+		log.Printf("[SEED] Error getting adminUser: %v", err)
+		return
+	}
+
+	log.Printf("aUser id: %v", aID)
+	queries := db.New(pool)
+
+	err = utils.SeedDB(queries, pool, int32(aID))
 	if err != nil {
 		log.Printf("[SEED] Error seeding db: %v", err)
 		return
@@ -96,14 +124,14 @@ func main() {
 	log.Println("[SEED_USERS] Finished seeding db")
 }
 
-func createAdmin(ctx context.Context) error {
+func createAdmin(ctx context.Context) (*clerk.User, error) {
 	userMetadata := ClerkUserPublicMetaData{
 		DbId: 0,
 		Role: RoleAdmin,
 	}
 	metadataBytes, err := json.Marshal(userMetadata)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	metadataRaw := json.RawMessage(metadataBytes)
 
@@ -114,16 +142,16 @@ func createAdmin(ctx context.Context) error {
 		PublicMetaData: metadataRaw,
 	}
 
-	_, err = user.Create(ctx, &user.CreateParams{
+	adminUser, err := user.Create(ctx, &user.CreateParams{
 		EmailAddresses: &userEntry.EmailAddresses,
 		FirstName:      &userEntry.FirstName,
 		LastName:       &userEntry.LastName,
 		PublicMetadata: &userEntry.PublicMetaData,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	return adminUser, nil
 }
 
 func createTenant(ctx context.Context) error {

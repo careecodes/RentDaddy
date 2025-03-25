@@ -123,7 +123,8 @@ func convertToPgTypeNumeric(value int) pgtype.Numeric {
 	return numeric
 }
 
-func createApartments(queries *db.Queries, userID int64, ctx context.Context) error {
+func createApartments(queries *db.Queries, adminID int64, ctx context.Context) error {
+	log.Println("adminID: ", adminID)
 	for i := 0; i < 4; i++ {
 		for j := range 54 {
 			sqft, err := faker.RandomInt(500, 2000)
@@ -140,10 +141,10 @@ func createApartments(queries *db.Queries, userID int64, ctx context.Context) er
 				UnitNumber:   pgtype.Int2{Int16: int16(unitNum), Valid: true},
 				Price:        convertToPgTypeNumeric(2 * sqft[0]),
 				Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
-				ManagementID: pgtype.Int8{Int64: userID, Valid: true},
+				ManagementID: pgtype.Int8{Int64: adminID, Valid: true},
 			})
 			if err != nil {
-				return errors.New(fmt.Sprintf("[SEEDER] error creating apartment: %d %v", userID, err.Error()))
+				return errors.New(fmt.Sprintf("[SEEDER] error creating apartment: %d %v", adminID, err.Error()))
 			}
 		}
 	}
@@ -200,18 +201,10 @@ func createLockers(queries *db.Queries, tenants []db.User, ctx context.Context) 
 	return nil
 }
 
-func SeedDB(queries *db.Queries, pool *pgxpool.Pool) error {
+func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 	ctx := context.Background()
 
 	log.Println("[SEEDER] seeding work orders")
-
-	admins, err := queries.ListUsersByRole(ctx, db.RoleAdmin)
-	if err != nil {
-		return errors.New("[SEEDER] error counting users: " + err.Error())
-	}
-	if len(admins) == 0 {
-		return errors.New("[SEEDER] no admins found, please seed users")
-	}
 
 	apartments, err := pool.Query(ctx, "SELECT COUNT(*) FROM apartments")
 	if err != nil {
@@ -224,7 +217,7 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool) error {
 			return errors.New("[SEEDER] error scanning apartments: " + err.Error())
 		}
 		if aCount < 100 {
-			err := createApartments(queries, admins[0].ID, ctx)
+			err := createApartments(queries, int64(adminID), ctx)
 			if err != nil {
 				return errors.New("[SEEDER] error creating apartments: " + err.Error())
 			}
