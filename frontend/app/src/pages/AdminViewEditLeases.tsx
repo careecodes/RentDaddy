@@ -37,7 +37,7 @@ export default function AdminViewEditLeases() {
 
     const [modalConfig, setModalConfig] = useState({
         visible: false,
-        mode: "add" as "add" | "send" | "renew",
+        mode: "add" as "add" | "send" | "renew" | "amend",
         selectedLease: null as LeaseData | null
     });
     const [statusFilters, setStatusFilters] = useState<{ text: string; value: string }[]>(DEFAULT_STATUS_FILTERS);
@@ -138,6 +138,8 @@ export default function AdminViewEditLeases() {
             }
 
             const data = await response.json();
+            console.log("Raw API response:", data);
+            console.log("Sample lease data:", data[0]);
             extractStatusFilters(data);
             return data || [];
         },
@@ -224,7 +226,6 @@ export default function AdminViewEditLeases() {
             leaseStartDate: dayjs(lease.leaseStartDate).format("YYYY-MM-DD"),
             leaseEndDate: dayjs(lease.leaseEndDate).format("YYYY-MM-DD"),
             rentAmount: lease.rentAmount ? lease.rentAmount / 100 : 0,
-            // Ensure we respect terminated status
             status: lease.status === "terminated" ? "terminated" : getLeaseStatus(lease),
         };
     }) : [];
@@ -275,6 +276,43 @@ export default function AdminViewEditLeases() {
                 formattedEndDate: dayjs().add(1, 'year'),
             }
         });
+    };
+
+
+    const handleAmend = (lease: LeaseData) => {
+        console.log("Amend button clicked", lease);
+
+        // Ensure we have the correct IDs
+        if (!lease.apartmentId) {
+            console.error("Missing apartmentId in lease:", lease);
+            message.error("Cannot amend lease: Missing apartment ID");
+            return;
+        }
+
+        console.log("Setting modal config:", {
+            visible: true,
+            mode: "amend",
+            selectedLease: {
+                ...lease,
+                formattedStartDate: dayjs(lease.leaseStartDate),
+                formattedEndDate: dayjs(lease.leaseEndDate),
+            }
+        });
+
+        setModalConfig({
+            visible: true,
+            mode: "amend",
+            selectedLease: {
+                ...lease,
+                formattedStartDate: dayjs(lease.leaseStartDate),
+                formattedEndDate: dayjs(lease.leaseEndDate),
+            }
+        });
+
+        // Log state change after setting it
+        setTimeout(() => {
+            console.log("Modal config after state update:", modalConfig);
+        }, 0);
     };
 
     const handleTerminate = async (leaseId: number) => {
@@ -363,7 +401,7 @@ export default function AdminViewEditLeases() {
             title: "Actions",
             key: "actions",
             render: (_, record) => (
-                <Space size="middle">
+                <Space size="middle" wrap={true}>
                     {record.status === "draft" && (
                         <ButtonComponent
                             type="primary"
@@ -378,7 +416,14 @@ export default function AdminViewEditLeases() {
                             onClick={() => handleRenew(record)}
                         />
                     )}
-                    {(record.status === "active" || record.status === "pending_tenant_approval" || record.status === "expires_soon") && (
+                    {(record.status === "active" || record.status === "expires_soon" || record.status === "draft") && (
+                        <ButtonComponent
+                            type="info"
+                            title="Amend Lease"
+                            onClick={() => handleAmend(record)}
+                        />
+                    )}
+                    {(record.status === "active" || record.status === "pending_approval" || record.status === "expires_soon") && (
                         <ButtonComponent
                             type="danger"
                             title="Terminate Lease"
@@ -387,7 +432,7 @@ export default function AdminViewEditLeases() {
                     )}
                 </Space>
             ),
-        },
+        }
     ];
 
     // Render authentication errors if needed

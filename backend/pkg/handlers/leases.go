@@ -72,6 +72,117 @@ func derefOrZero(ptr *int64) int64 {
 	return 0
 }
 
+func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
+	var req LeaseUpsertRequest
+	log.Printf("[LEASE_AMEND] Incoming payload: %+v", req)
+
+	// Decode JSON body
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid amendment request", http.StatusBadRequest)
+		return
+	}
+
+	// Default landlord ID if not provided
+	if req.LandlordID == 0 {
+		req.LandlordID = h.landlordID
+	}
+	ctx := r.Context()
+
+	var (
+		existingLease      db.GetLeaseForAmendingRow
+		isApartmentChange  bool
+		foundExistingLease bool
+	)
+
+	// Try to fetch lease using tenant + apartment
+	existingLease, err := h.queries.GetLeaseForAmending(ctx, db.GetLeaseForAmendingParams{
+		TenantID:    req.TenantID,
+		ApartmentID: req.ApartmentID,
+	})
+	if err == nil {
+		foundExistingLease = true
+		log.Printf("[LEASE_AMEND] Found existing lease for tenant %d at apartment %d", req.TenantID, req.ApartmentID)
+	}
+
+	// If not found, fall back to any active lease for this tenant
+	if !foundExistingLease {
+		log.Printf("[LEASE_AMEND] No exact match. Looking for any active lease for tenant %d", req.TenantID)
+		leases, err := h.queries.GetActiveLeasesByTenant(ctx, req.TenantID)
+		if err != nil || len(leases) == 0 {
+			log.Printf("[LEASE_AMEND] No active leases found for tenant %d: %v", req.TenantID, err)
+			http.Error(w, "No existing lease found for amendment", http.StatusBadRequest)
+			return
+		}
+
+		// Use the first active lease
+		active := leases[0]
+		existingLease = db.GetLeaseForAmendingRow{
+			ID:             active.ID,
+			TenantID:       active.TenantID,
+			ApartmentID:    active.ApartmentID,
+			Status:         active.Status,
+			ExternalDocID:  active.ExternalDocID,
+			LeaseNumber:    active.LeaseNumber,
+			LeaseStartDate: active.LeaseStartDate,
+			LeaseEndDate:   active.LeaseEndDate,
+			RentAmount:     active.RentAmount,
+		}
+
+		log.Printf("[LEASE_AMEND] Found fallback lease ID %d at apartment %d", existingLease.ID, existingLease.ApartmentID)
+
+		if existingLease.ApartmentID != req.ApartmentID {
+			isApartmentChange = true
+			log.Printf("[LEASE_AMEND] Apartment change detected from %d ➝ %d", existingLease.ApartmentID, req.ApartmentID)
+		}
+	}
+
+	// Validate that lease is amendable
+	if string(existingLease.Status) != string(db.LeaseStatusActive) && string(existingLease.Status) != "draft" {
+		log.Printf("[LEASE_AMEND] Lease ID %d is not amendable. Status: %s", existingLease.ID, existingLease.Status)
+		http.Error(w, "Only active or draft leases can be amended", http.StatusBadRequest)
+		return
+	}
+
+	// Assign inherited fields
+	req.PreviousLeaseID = &existingLease.ID
+	req.LeaseNumber = existingLease.LeaseNumber
+	req.CreatedBy = h.landlordID
+	req.UpdatedBy = h.landlordID
+	req.ReplaceExisting = true
+	req.Status = "draft" // All amendments start as draft
+
+	// Conditionally delete old Documenso document only on apartment change
+	if isApartmentChange && existingLease.ExternalDocID != "" {
+		log.Printf("[LEASE_AMEND] Deleting previous Documenso document ID %s", existingLease.ExternalDocID)
+		if err := h.documenso_client.DeleteDocument(existingLease.ExternalDocID); err != nil {
+			log.Printf("[LEASE_AMEND] Failed to delete old document: %v", err)
+			// Not fatal — continue
+		}
+	} else {
+		log.Printf("[LEASE_AMEND] Skipping Documenso deletion (no apartment change or no external doc ID)")
+	}
+
+	// Upsert new lease record
+	h.handleLeaseUpsert(w, r, req)
+
+	// Cancel the original lease after amending (if not already terminated, expired, or canceled)
+	if existingLease.Status != db.LeaseStatusTerminated &&
+		existingLease.Status != db.LeaseStatusExpired &&
+		existingLease.Status != db.LeaseStatusCanceled {
+
+		_, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
+			ID:        existingLease.ID,
+			Status:    db.LeaseStatusCanceled,
+			UpdatedBy: h.landlordID,
+		})
+		if err != nil {
+			log.Printf("[LEASE_AMEND] Failed to cancel original lease ID %d: %v", existingLease.ID, err)
+		} else {
+			log.Printf("[LEASE_AMEND] Canceled original lease ID %d after amendment", existingLease.ID)
+		}
+	}
+}
+
 func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 
 	leaseIDStr := chi.URLParam(r, "leaseID")
@@ -126,7 +237,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	log.Printf("Documenso API Key: %s", apiKey)
 
 	// Default fallback values
-	currentLandlordID := int64(100) // Default to the original hardcoded value
+	currentLandlordID := int64(1) // Default to the original hardcoded value
 	currentLandlordName := "First Landlord"
 	currentLandlordEmail := "wrldconnect1@gmail.com"
 
@@ -403,6 +514,8 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 		// Add data to response array
 		leaseResponses = append(leaseResponses, map[string]interface{}{
 			"id":             lease.ID,
+			"tenantId":       lease.TenantID,
+			"apartmentId":    lease.ApartmentID, // This is the key addition
 			"tenantName":     tenant.FirstName + " " + tenant.LastName,
 			"apartment":      apartment.UnitNumber,
 			"leaseStartDate": lease.LeaseStartDate.Time.Format("2006-01-02"),
@@ -423,24 +536,25 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 // GetLeaseStatus is a helper method that returns the current status of a lease
 // This centralizes lease status calculation logic and can be used anywhere a status check is needed
 func (h *LeaseHandler) GetLeaseStatus(lease db.Lease) string {
-	// Special statuses that override date-based calculation
-	if string(lease.Status) == string(db.LeaseStatusTerminated) ||
-		string(lease.Status) == "draft" ||
-		string(lease.Status) == string(db.LeaseStatusPendingApproval) {
+	switch string(lease.Status) {
+	case string(db.LeaseStatusTerminated),
+		string(db.LeaseStatusDraft),
+		string(db.LeaseStatusPendingApproval),
+		string(db.LeaseStatusCanceled),
+		string(db.LeaseStatusRenewed),
+		string(db.LeaseStatusExpired):
 		return string(lease.Status)
 	}
 
-	// Calculate date-based statuses
+	// Fallback to date-based logic
 	today := time.Now()
 	leaseEnd := lease.LeaseEndDate.Time
 
 	if leaseEnd.Before(today) {
-		return "expired"
+		return string(db.LeaseStatusExpired)
 	}
 
-	// Check if lease expires within 60 days
-	daysUntilExpiration := leaseEnd.Sub(today).Hours() / 24
-	if daysUntilExpiration <= 60 {
+	if leaseEnd.Sub(today).Hours()/24 <= 60 {
 		return "expires_soon"
 	}
 

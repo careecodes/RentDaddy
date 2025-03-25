@@ -114,6 +114,51 @@ func (q *Queries) ExpireLeasesEndingToday(ctx context.Context) (ExpireLeasesEndi
 	return i, err
 }
 
+const getActiveLeasesByTenant = `-- name: GetActiveLeasesByTenant :many
+SELECT id, lease_number, external_doc_id, lease_pdf_s3, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at, previous_lease_id, tenant_signing_url FROM leases
+WHERE tenant_id = $1
+AND status IN ('active', 'draft', 'pending_approval')
+ORDER BY id DESC
+`
+
+func (q *Queries) GetActiveLeasesByTenant(ctx context.Context, tenantID int64) ([]Lease, error) {
+	rows, err := q.db.Query(ctx, getActiveLeasesByTenant, tenantID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Lease
+	for rows.Next() {
+		var i Lease
+		if err := rows.Scan(
+			&i.ID,
+			&i.LeaseNumber,
+			&i.ExternalDocID,
+			&i.LeasePdfS3,
+			&i.TenantID,
+			&i.LandlordID,
+			&i.ApartmentID,
+			&i.LeaseStartDate,
+			&i.LeaseEndDate,
+			&i.RentAmount,
+			&i.Status,
+			&i.CreatedBy,
+			&i.UpdatedBy,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.PreviousLeaseID,
+			&i.TenantSigningUrl,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const getConflictingActiveLease = `-- name: GetConflictingActiveLease :one
 SELECT id, lease_number, external_doc_id, lease_pdf_s3,
   tenant_id, landlord_id, apartment_id,
@@ -338,6 +383,65 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 		&i.CreatedBy,
 		&i.UpdatedBy,
 		&i.PreviousLeaseID,
+	)
+	return i, err
+}
+
+const getLeaseForAmending = `-- name: GetLeaseForAmending :one
+SELECT id, lease_number, external_doc_id, lease_pdf_s3,
+  tenant_id, landlord_id, apartment_id,
+  lease_start_date, lease_end_date, rent_amount,
+  status, created_by, updated_by,
+  previous_lease_id, tenant_signing_url FROM leases
+WHERE tenant_id = $1
+  AND apartment_id = $2
+  AND (status = 'active' OR status = 'draft')
+ORDER BY created_at DESC
+LIMIT 1
+`
+
+type GetLeaseForAmendingParams struct {
+	TenantID    int64 `json:"tenant_id"`
+	ApartmentID int64 `json:"apartment_id"`
+}
+
+type GetLeaseForAmendingRow struct {
+	ID               int64          `json:"id"`
+	LeaseNumber      int64          `json:"lease_number"`
+	ExternalDocID    string         `json:"external_doc_id"`
+	LeasePdfS3       pgtype.Text    `json:"lease_pdf_s3"`
+	TenantID         int64          `json:"tenant_id"`
+	LandlordID       int64          `json:"landlord_id"`
+	ApartmentID      int64          `json:"apartment_id"`
+	LeaseStartDate   pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate     pgtype.Date    `json:"lease_end_date"`
+	RentAmount       pgtype.Numeric `json:"rent_amount"`
+	Status           LeaseStatus    `json:"status"`
+	CreatedBy        int64          `json:"created_by"`
+	UpdatedBy        int64          `json:"updated_by"`
+	PreviousLeaseID  pgtype.Int8    `json:"previous_lease_id"`
+	TenantSigningUrl pgtype.Text    `json:"tenant_signing_url"`
+}
+
+func (q *Queries) GetLeaseForAmending(ctx context.Context, arg GetLeaseForAmendingParams) (GetLeaseForAmendingRow, error) {
+	row := q.db.QueryRow(ctx, getLeaseForAmending, arg.TenantID, arg.ApartmentID)
+	var i GetLeaseForAmendingRow
+	err := row.Scan(
+		&i.ID,
+		&i.LeaseNumber,
+		&i.ExternalDocID,
+		&i.LeasePdfS3,
+		&i.TenantID,
+		&i.LandlordID,
+		&i.ApartmentID,
+		&i.LeaseStartDate,
+		&i.LeaseEndDate,
+		&i.RentAmount,
+		&i.Status,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.PreviousLeaseID,
+		&i.TenantSigningUrl,
 	)
 	return i, err
 }
@@ -598,8 +702,7 @@ func (q *Queries) StoreGeneratedLeasePDFURL(ctx context.Context, arg StoreGenera
 
 const terminateLease = `-- name: TerminateLease :one
 UPDATE leases
-SET 
-    
+SET
     status = 'terminated', 
     updated_by = $1, 
     updated_at = now()

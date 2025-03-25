@@ -65,11 +65,11 @@ INSERT INTO leases (
 
 (911, 1, 'doc_test_911', 's3_bucket_url', 13, 100, 12, 
  CURRENT_DATE, CURRENT_DATE + INTERVAL '365 days', 2200.00, 
- 'pending_tenant_approval', 100, 100, NOW(), NOW()),
+ 'pending_approval', 100, 100, NOW(), NOW()),
 
 (912, 1, 'doc_test_912', 's3_bucket_url', 14, 100, 13, 
  CURRENT_DATE, CURRENT_DATE + INTERVAL '365 days', 2300.00, 
- 'pending_landlord_approval', 100, 100, NOW(), NOW());
+ 'pending_approval', 100, 100, NOW(), NOW());
 
 -- Print summary of test data
 SELECT id, status, 

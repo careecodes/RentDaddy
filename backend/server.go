@@ -100,6 +100,7 @@ func main() {
 					r.Post("/create", leaseHandler.CreateLease)
 					r.Post("/send/{leaseID}", leaseHandler.SendLease)
 					r.Post("/renew", leaseHandler.RenewLease)
+					r.Post("/amend", leaseHandler.AmendLease)
 					r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
 					r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
 					r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)

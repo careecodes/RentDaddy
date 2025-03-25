@@ -1,10 +1,12 @@
-// LeaseModalComponent.tsx
+// LeaseModalComponent.tsx with TanStack Query using fetch API - TypeScript fixed
 import { useState, useEffect } from "react";
 import { Form, Input, Modal, Select, Spin, DatePicker, message } from "antd";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-import axios from "axios";
 import dayjs from "dayjs";
 import { LeaseData } from "../types/types.ts";
+import { useQuery, useMutation, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
+
 
 const { Option } = Select;
 
@@ -27,7 +29,7 @@ interface Apartment {
 }
 
 // Define the different modal modes
-type ModalMode = "add" | "send" | "renew";
+type ModalMode = "add" | "send" | "renew" | "amend";
 
 interface LeaseModalProps {
     visible: boolean;
@@ -47,10 +49,9 @@ export const LeaseModalComponent = ({
     const [form] = Form.useForm();
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle');
     const [errorMessage, setErrorMessage] = useState<string>("");
-    const [tenants, setTenants] = useState<Tenant[]>([]);
-    const [apartments, setApartments] = useState<Apartment[]>([]);
-    const [loadingTenants, setLoadingTenants] = useState(false);
-    const [loadingApartments, setLoadingApartments] = useState(false);
+
+    const { getToken } = useAuth();
+    const queryClient = useQueryClient();
 
     // Function to validate end date is after start date
     const validateEndDate = (_: any, value: any) => {
@@ -65,17 +66,6 @@ export const LeaseModalComponent = ({
         return Promise.resolve();
     };
 
-    // When apartment is selected, update the rent amount if available
-    const handleApartmentChange = (apartmentId: number) => {
-        const selectedApartment = apartments.find(a => a.id === apartmentId);
-        if (selectedApartment) {
-            form.setFieldsValue({
-                rent_amount: selectedApartment.price,
-                property_address: String(selectedApartment.unit_number) // Convert to string
-            });
-        }
-    };
-
     // Function to reset the modal state
     const handleReset = () => {
         setStatus('idle');
@@ -88,46 +78,350 @@ export const LeaseModalComponent = ({
             case "add": return "Add New Lease";
             case "send": return "Send Lease for Signing";
             case "renew": return "Renew Lease";
+            case "amend": return "Amend Lease";
         }
     };
 
-    const fetchTenantsWithoutLease = async () => {
-        try {
-            setLoadingTenants(true);
-            const response = await axios.get(`${API_URL}/admin/tenants/leases/without-lease`);
+    // Query for tenants without lease
+    const {
+        data: tenants = [],
+        isLoading: loadingTenants,
+    } = useQuery<Tenant[]>({
+        queryKey: ['tenants', 'without-lease'],
+        queryFn: async () => {
+            const token = await getToken();
+            if (!token) throw new Error("Authentication token required");
+
+            const response = await fetch(`${API_URL}/admin/tenants/leases/without-lease`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch tenants: ${response.statusText}`);
+            }
+
+            const data = await response.json();
 
             // Transform the data to match our interface
-            const formattedTenants = response.data.map((tenant: any) => ({
+            return data.map((tenant: any) => ({
                 id: tenant.id,
                 firstName: tenant.first_name,
                 lastName: tenant.last_name,
                 email: tenant.email,
                 unitNumber: tenant.unit_number?.value
             }));
+        },
+        enabled: visible && mode === "add",
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: 1
+    });
 
-            setTenants(formattedTenants);
-        } catch (err) {
-            console.error("Error fetching tenants without lease:", err);
-            message.error("Failed to fetch tenants without lease");
-            setTenants([]); // Initialize with empty array on error
-        } finally {
-            setLoadingTenants(false);
+    // Query for available apartments
+    const {
+        data: apartments = [],
+        isLoading: loadingApartments,
+    } = useQuery<Apartment[]>({
+        queryKey: ['apartments', 'available'],
+        queryFn: async () => {
+            const token = await getToken();
+            if (!token) throw new Error("Authentication token required");
+
+            const response = await fetch(`${API_URL}/admin/tenants/leases/apartments-available`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                throw new Error(`Failed to fetch apartments: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            return data || [];
+        },
+        enabled: visible && (mode === "add" || mode === "amend"), // Enable for both modes
+        staleTime: 5 * 60 * 1000, // 5 minutes
+        retry: 1
+    });
+
+    // When apartment is selected, update the rent amount if available
+    const handleApartmentChange = (apartmentId: number) => {
+        const selectedApartment = apartments.find(a => a.id === apartmentId);
+        if (selectedApartment) {
+            form.setFieldsValue({
+                rent_amount: selectedApartment.price,
+                property_address: String(selectedApartment.unit_number) // Convert to string
+            });
         }
     };
 
-    const fetchAvailableApartments = async () => {
-        try {
-            setLoadingApartments(true);
-            const response = await axios.get(`${API_URL}/admin/tenants/leases/apartments-available`);
-            setApartments(response.data || []);
-        } catch (err) {
-            console.error("Error fetching available apartments:", err);
-            message.error("Failed to fetch available apartments");
-            setApartments([]); // Initialize with empty array on error
-        } finally {
-            setLoadingApartments(false);
+    // Add Lease Mutation
+    const addLeaseMutation = useMutation({
+        mutationFn: async (values: any) => {
+            const token = await getToken();
+            if (!token) throw new Error("Authentication token required");
+
+            // Find the selected tenant
+            const selectedTenant = tenants.find(t => t.id === values.tenant_id);
+            if (!selectedTenant) throw new Error("Selected tenant not found");
+
+            // Find selected apartment
+            const selectedApartment = apartments.find(a => a.id === values.apartment_id);
+            let propertyAddress = values.property_address;
+
+            // If an apartment is selected, use its unit number as the property address
+            if (selectedApartment) {
+                propertyAddress = String(selectedApartment.unit_number);
+            }
+
+            // Format dates
+            const startDateStr = values.start_date.format('YYYY-MM-DD');
+            const endDateStr = values.end_date.format('YYYY-MM-DD');
+
+            // Prepare payload for add mode
+            const addPayload = {
+                tenant_id: values.tenant_id,
+                apartment_id: values.apartment_id,
+                tenant_name: `${selectedTenant.firstName} ${selectedTenant.lastName}`,
+                tenant_email: selectedTenant.email,
+                property_address: String(propertyAddress),
+                rent_amount: values.rent_amount || (selectedApartment ? selectedApartment.price : 0),
+                start_date: startDateStr,
+                end_date: endDateStr,
+                document_title: `Lease Agreement for ${propertyAddress}`,
+                status: "draft",
+                check_existing: true
+            };
+
+            const response = await fetch(
+                `${API_URL}/admin/tenants/leases/create`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(addPayload)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(errorData || response.statusText);
+            }
+
+            return await response.json();
+        },
+        onSuccess: () => {
+            setStatus('success');
+            message.success("New lease has been created in draft status!");
+            // Invalidate and refetch relevant queries
+            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+            // Wait 2 seconds before closing for user to see success message
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        },
+        onError: (error: Error) => {
+            setStatus('error');
+            const errMsg = error.message || "Failed to create lease";
+            setErrorMessage(`Server error: ${errMsg}`);
+            message.error(`Error: ${errMsg}`);
+            console.error("Error in add operation:", error);
         }
-    };
+    });
+
+    // Send Lease Mutation
+    const sendLeaseMutation = useMutation({
+        mutationFn: async () => {
+            if (!selectedLease?.id) {
+                throw new Error("Missing lease ID");
+            }
+
+            const token = await getToken();
+            if (!token) throw new Error("Authentication token required");
+
+            const response = await fetch(
+                `${API_URL}/admin/tenants/leases/send/${selectedLease.id}`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({})
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(errorData || response.statusText);
+            }
+
+            return await response.json();
+        },
+        onSuccess: () => {
+            setStatus("success");
+            message.success("Lease successfully sent for signing!");
+            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        },
+        onError: (error: Error) => {
+            setStatus('error');
+            const errMsg = error.message || "Failed to send lease";
+            setErrorMessage(`Server error: ${errMsg}`);
+            message.error(`Error: ${errMsg}`);
+            console.error("Error in send operation:", error);
+        }
+    });
+
+    // Renew Lease Mutation
+    const renewLeaseMutation = useMutation({
+        mutationFn: async (values: any) => {
+            const token = await getToken();
+            if (!token) throw new Error("Authentication token required");
+
+            // Format dates
+            const renewStartDateStr = values.start_date.format('YYYY-MM-DD');
+            const renewEndDateStr = values.end_date.format('YYYY-MM-DD');
+
+            const renewPayload = {
+                tenant_id: selectedLease?.tenantId || selectedLease?.id,
+                apartment_id: selectedLease?.apartmentId || selectedLease?.id,
+                tenant_name: values.tenant_name,
+                tenant_email: selectedLease?.tenantEmail || `${values.tenant_name.replace(/\s+/g, '.')}@example.com`,
+                property_address: String(values.property_address),
+                rent_amount: parseFloat(values.rent_amount),
+                start_date: renewStartDateStr,
+                end_date: renewEndDateStr,
+                document_title: `Lease Agreement Renewal for ${values.property_address}`,
+                previous_lease_id: selectedLease?.id,
+                status: "pending_approval",
+                check_existing: true
+            };
+
+            const response = await fetch(
+                `${API_URL}/admin/tenants/leases/renew`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(renewPayload)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(errorData || response.statusText);
+            }
+
+            return await response.json();
+        },
+        onSuccess: () => {
+            setStatus('success');
+            message.success("Lease renewed successfully!");
+            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        },
+        onError: (error: Error) => {
+            setStatus('error');
+            const errMsg = error.message || "Failed to renew lease";
+            setErrorMessage(`Server error: ${errMsg}`);
+            message.error(`Error: ${errMsg}`);
+            console.error("Error in renew operation:", error);
+        }
+    });
+
+    const amendLeaseMutation = useMutation({
+        mutationFn: async (values: any) => {
+            const token = await getToken();
+            if (!token) throw new Error("Authentication token required");
+
+            // Format dates
+            const amendStartDateStr = values.start_date.format('YYYY-MM-DD');
+            const amendEndDateStr = values.end_date.format('YYYY-MM-DD');
+
+            // Determine apartment ID and property address
+            // If new apartment is selected, use that; otherwise use the existing one
+            const apartmentId = values.new_apartment_id || selectedLease?.apartmentId;
+            const propertyAddress = values.new_apartment_id ?
+                values.new_property_address :
+                values.property_address;
+
+            // Build a reason that includes apartment change if applicable
+            let amendmentReason = values.amendment_reason;
+            if (values.new_apartment_id) {
+                amendmentReason = `Apartment change to ${values.new_property_address}. ${values.amendment_reason}`;
+            }
+
+            const amendPayload = {
+                tenant_id: selectedLease?.tenantId || selectedLease?.id,
+                apartment_id: apartmentId,
+                tenant_name: values.tenant_name,
+                tenant_email: selectedLease?.tenantEmail || `${values.tenant_name.replace(/\s+/g, '.')}@example.com`,
+                property_address: String(propertyAddress),
+                rent_amount: parseFloat(values.rent_amount),
+                start_date: amendStartDateStr,
+                end_date: amendEndDateStr,
+                document_title: `Lease Agreement Amendment for ${propertyAddress}`,
+                previous_lease_id: selectedLease?.id,
+                amendment_reason: amendmentReason,
+                status: "pending_approval",
+                check_existing: false, // Don't check for existing as this is an amendment
+                is_amendment: true
+            };
+
+            console.log("Sending amend payload:", amendPayload);
+
+            const response = await fetch(
+                `${API_URL}/admin/tenants/leases/amend`,
+                {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `Bearer ${token}`,
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify(amendPayload)
+                }
+            );
+
+            if (!response.ok) {
+                const errorData = await response.text();
+                throw new Error(errorData || response.statusText);
+            }
+
+            return await response.json();
+        },
+        onSuccess: () => {
+            setStatus('success');
+            message.success("Lease amendment created successfully!");
+            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+            setTimeout(() => {
+                onClose();
+            }, 2000);
+        },
+        onError: (error: Error) => {
+            setStatus('error');
+            const errMsg = error.message || "Failed to amend lease";
+            setErrorMessage(`Server error: ${errMsg}`);
+            message.error(`Error: ${errMsg}`);
+            console.error("Error in amend operation:", error);
+        }
+    });
 
     // Initialize form values based on mode and selected lease
     useEffect(() => {
@@ -138,15 +432,13 @@ export const LeaseModalComponent = ({
 
             // Mode-specific initializations
             if (mode === "add") {
-                fetchTenantsWithoutLease();
-                fetchAvailableApartments();
                 form.resetFields();
                 // Set default values
                 form.setFieldsValue({
                     start_date: dayjs(),
                     end_date: dayjs().add(1, 'year')
                 });
-            } else if (mode === "send" || mode === "renew") {
+            } else if (mode === "send") {
                 // Set form values from selectedLease
                 if (selectedLease) {
                     form.setFieldsValue({
@@ -155,6 +447,32 @@ export const LeaseModalComponent = ({
                         rent_amount: selectedLease.rentAmount,
                         start_date: selectedLease.formattedStartDate,
                         end_date: selectedLease.formattedEndDate
+                    });
+                }
+            } else if (mode === "renew") {
+                // Set form values from selectedLease
+                if (selectedLease) {
+                    form.setFieldsValue({
+                        tenant_name: selectedLease.tenantName,
+                        property_address: selectedLease.apartment,
+                        rent_amount: selectedLease.rentAmount,
+                        start_date: selectedLease.formattedStartDate,
+                        end_date: selectedLease.formattedEndDate
+                    });
+                }
+            } else if (mode === "amend") {
+                // Set form values from selectedLease for amendment
+                if (selectedLease) {
+                    console.log("Setting form values for amend mode with selectedLease:", selectedLease);
+                    form.setFieldsValue({
+                        tenant_name: selectedLease.tenantName,
+                        property_address: selectedLease.apartment,
+                        rent_amount: selectedLease.rentAmount,
+                        start_date: selectedLease.formattedStartDate,
+                        end_date: selectedLease.formattedEndDate,
+                        amendment_reason: '',
+                        new_apartment_id: undefined,
+                        new_property_address: undefined
                     });
                 }
             }
@@ -177,7 +495,7 @@ export const LeaseModalComponent = ({
                                 loading={loadingTenants}
                                 notFoundContent={loadingTenants ? <Spin size="small" /> : "No tenants available"}
                             >
-                                {tenants && tenants.length > 0 ? tenants.map(tenant => (
+                                {tenants && tenants.length > 0 ? tenants.map((tenant: Tenant) => (
                                     <Option key={tenant.id} value={tenant.id}>
                                         {`${tenant.firstName} ${tenant.lastName}`}
                                         {tenant.unitNumber ? ` (Unit: ${tenant.unitNumber})` : ''}
@@ -197,7 +515,7 @@ export const LeaseModalComponent = ({
                                 notFoundContent={loadingApartments ? <Spin size="small" /> : "No apartments available"}
                                 onChange={handleApartmentChange}
                             >
-                                {apartments && apartments.length > 0 ? apartments.map(apartment => (
+                                {apartments && apartments.length > 0 ? apartments.map((apartment: Apartment) => (
                                     <Option key={apartment.id} value={apartment.id}>
                                         {`Unit ${apartment.unit_number} - $${apartment.price}/month`}
                                         {apartment.size ? ` (${apartment.size} sq ft)` : ''}
@@ -277,7 +595,7 @@ export const LeaseModalComponent = ({
                             name="start_date"
                             rules={[{ required: true, message: "Please select lease start date" }]}
                         >
-                            <DatePicker style={{ width: "100%" }} />
+                            <DatePicker style={{ width: "100%" }} disabled />
                         </Form.Item>
 
                         <Form.Item
@@ -288,11 +606,11 @@ export const LeaseModalComponent = ({
                                 { validator: validateEndDate }
                             ]}
                         >
-                            <DatePicker style={{ width: "100%" }} />
+                            <DatePicker style={{ width: "100%" }} disabled />
                         </Form.Item>
 
                         <div className="text-gray-500 text-sm mb-2">
-                            <p>Note: If a lease already exists for this tenant and apartment, it will be updated.</p>
+                            <p>Note: The lease will be sent with the original start and end dates. These dates cannot be modified.</p>
                         </div>
                     </Form>
                 );
@@ -340,6 +658,105 @@ export const LeaseModalComponent = ({
                         </div>
                     </Form>
                 );
+
+            case "amend":
+                return (
+                    <Form form={form} layout="vertical">
+                        <Form.Item label="Tenant Name" name="tenant_name">
+                            <Input disabled />
+                        </Form.Item>
+
+                        {/* Current Apartment (read-only) */}
+                        <Form.Item label="Current Property/Apartment" name="property_address">
+                            <Input disabled />
+                        </Form.Item>
+
+                        {/* New Apartment Selection */}
+                        <Form.Item
+                            label="New Apartment (Optional)"
+                            name="new_apartment_id"
+                            help="Select only if changing apartments. Leave blank to keep current apartment."
+                        >
+                            <Select
+                                placeholder="Select a new apartment"
+                                loading={loadingApartments}
+                                allowClear
+                                notFoundContent={loadingApartments ? <Spin size="small" /> : "No apartments available"}
+                                onChange={(value) => {
+                                    if (value) {
+                                        const selectedApt = apartments.find((a: Apartment) => a.id === value);
+                                        if (selectedApt) {
+                                            form.setFieldsValue({
+                                                new_property_address: `Unit ${selectedApt.unit_number}`,
+                                                // Optionally update rent if needed
+                                                // rent_amount: selectedApt.price
+                                            });
+                                        }
+                                    } else {
+                                        form.setFieldsValue({
+                                            new_property_address: undefined
+                                        });
+                                    }
+                                }}
+                            >
+                                {apartments && apartments.length > 0 ? apartments.map((apartment: Apartment) => (
+                                    <Option key={apartment.id} value={apartment.id}>
+                                        {`Unit ${apartment.unit_number} - $${apartment.price}/month`}
+                                        {apartment.size ? ` (${apartment.size} sq ft)` : ''}
+                                    </Option>
+                                )) : null}
+                            </Select>
+                        </Form.Item>
+
+                        {/* New Property Address (auto-populated) */}
+                        <Form.Item
+                            label="New Property Address"
+                            name="new_property_address"
+                            hidden={!form.getFieldValue('new_apartment_id')}
+                        >
+                            <Input disabled />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Monthly Rent ($)"
+                            name="rent_amount"
+                            rules={[{ required: true, message: "Please enter rent amount" }]}
+                        >
+                            <Input type="number" />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Lease Start Date"
+                            name="start_date"
+                            rules={[{ required: true, message: "Please select lease start date" }]}
+                        >
+                            <DatePicker style={{ width: "100%" }} />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Lease End Date"
+                            name="end_date"
+                            rules={[
+                                { required: true, message: "Please select lease end date" },
+                                { validator: validateEndDate }
+                            ]}
+                        >
+                            <DatePicker style={{ width: "100%" }} />
+                        </Form.Item>
+
+                        <Form.Item
+                            label="Reason for Amendment"
+                            name="amendment_reason"
+                            rules={[{ required: true, message: "Please provide a reason for the amendment" }]}
+                        >
+                            <Input.TextArea rows={4} placeholder="Describe the changes being made to the lease agreement" />
+                        </Form.Item>
+
+                        <div className="text-gray-500 text-sm mb-2">
+                            <p>Note: Amending this lease will create a new version that requires tenant approval. The original lease remains active until the amendment is approved.</p>
+                        </div>
+                    </Form>
+                );
         }
     };
 
@@ -351,137 +768,28 @@ export const LeaseModalComponent = ({
             setStatus('loading');
 
             const values = form.getFieldsValue();
-            let response;
 
+            // Call the appropriate mutation based on mode
             switch (mode) {
                 case "add":
-                    // Find the selected tenant
-                    const selectedTenant = tenants.find(t => t.id === values.tenant_id);
-                    if (!selectedTenant) {
-                        throw new Error("Selected tenant not found");
-                    }
-
-                    // Find selected apartment
-                    const selectedApartment = apartments.find(a => a.id === values.apartment_id);
-                    let propertyAddress = values.property_address;
-
-                    // If an apartment is selected, use its unit number as the property address
-                    if (selectedApartment) {
-                        propertyAddress = String(selectedApartment.unit_number);
-                    }
-
-                    // Format dates
-                    const startDateStr = values.start_date.format('YYYY-MM-DD');
-                    const endDateStr = values.end_date.format('YYYY-MM-DD');
-
-                    // Prepare payload for add mode
-                    const addPayload = {
-                        tenant_id: values.tenant_id,
-                        apartment_id: values.apartment_id,
-                        tenant_name: `${selectedTenant.firstName} ${selectedTenant.lastName}`,
-                        tenant_email: selectedTenant.email,
-                        property_address: String(propertyAddress),
-                        rent_amount: values.rent_amount || (selectedApartment ? selectedApartment.price : 0),
-                        start_date: startDateStr,
-                        end_date: endDateStr,
-                        document_title: `Lease Agreement for ${propertyAddress}`,
-                        status: "draft",
-                        check_existing: true
-                    };
-
-                    console.log("Sending add lease payload:", addPayload);
-
-                    response = await axios.post(
-                        `${API_URL}/admin/tenants/leases/create`,
-                        addPayload,
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            }
-                        }
-                    );
-
-                    setStatus('success');
-                    message.success("New lease has been created in draft status!");
+                    addLeaseMutation.mutate(values);
                     break;
 
                 case "send":
-                    if (!selectedLease?.id) {
-                        throw new Error("Missing lease ID");
-                    }
-
-                    response = await axios.post(
-                        `${API_URL}/admin/tenants/leases/send/${selectedLease.id}`,
-                        {}, // No payload required
-                        {
-                            headers: { 'Content-Type': 'application/json' }
-                        }
-                    );
-
-                    setStatus("success");
-                    message.success("Lease successfully sent for signing!");
+                    sendLeaseMutation.mutate();
                     break;
-
 
                 case "renew":
-                    // Handle renew logic
-                    // Format dates
-                    const renewStartDateStr = values.start_date.format('YYYY-MM-DD');
-                    const renewEndDateStr = values.end_date.format('YYYY-MM-DD');
+                    renewLeaseMutation.mutate(values);
+                    break;
 
-                    const renewPayload = {
-                        tenant_id: selectedLease?.tenantId || selectedLease?.id,
-                        apartment_id: selectedLease?.apartmentId || selectedLease?.id,
-                        tenant_name: values.tenant_name,
-                        tenant_email: selectedLease?.tenantEmail || `${values.tenant_name.replace(/\s+/g, '.')}@example.com`,
-                        property_address: String(values.property_address),
-                        rent_amount: parseFloat(values.rent_amount),
-                        start_date: renewStartDateStr,
-                        end_date: renewEndDateStr,
-                        document_title: `Lease Agreement Renewal for ${values.property_address}`,
-                        previous_lease_id: selectedLease?.id,
-                        status: "pending_tenant_approval",
-                        check_existing: true
-                    };
-
-                    response = await axios.post(
-                        `${API_URL}/admin/tenants/leases/renew`,
-                        renewPayload,
-                        {
-                            headers: {
-                                'Content-Type': 'application/json',
-                            }
-                        }
-                    );
-
-                    setStatus('success');
-                    message.success("Lease renewed successfully!");
+                case "amend":
+                    amendLeaseMutation.mutate(values);
                     break;
             }
-
-            console.log(`${mode} operation result:`, response?.data);
-
-            // Wait 2 seconds before closing for user to see success message
-            setTimeout(() => {
-                onClose();
-            }, 2000);
-
         } catch (error: any) {
-            setStatus('error');
-
-            if (error.response) {
-                const errMsg = error.response.data || `Failed to ${mode} lease`;
-                setErrorMessage(`Server error: ${errMsg}`);
-                message.error(`Error: ${errMsg}`);
-            } else if (error.request) {
-                setErrorMessage("No response from server. Please try again.");
-                message.error("No response from server. Please try again.");
-            } else {
-                setErrorMessage(error.message || "Please check the form fields and try again.");
-                message.error("Please check the form fields and try again.");
-            }
-
-            console.error(`Error in ${mode} operation:`, error);
+            console.error(`Form validation error:`, error);
+            message.error("Please check the form fields and try again.");
         }
     };
 
@@ -495,7 +803,8 @@ export const LeaseModalComponent = ({
                         <p style={{ marginTop: '10px' }}>
                             {mode === "add" ? "Creating lease..." :
                                 mode === "send" ? "Sending lease for signing..." :
-                                    "Renewing lease..."}
+                                    mode === "renew" ? "Renewing lease..." :
+                                        "Creating lease amendment..."}
                         </p>
                     </div>
                 );
@@ -511,12 +820,14 @@ export const LeaseModalComponent = ({
                         <h3 className="text-lg font-semibold mb-2">
                             {mode === "add" ? "Lease Successfully Created!" :
                                 mode === "send" ? "Lease Successfully Sent!" :
-                                    "Lease Successfully Renewed!"}
+                                    mode === "renew" ? "Lease Successfully Renewed!" :
+                                        "Lease Amendment Successfully Created!"}
                         </h3>
                         <p className="text-gray-500 mb-4">
                             {mode === "add" ? "The lease has been created in draft status." :
                                 mode === "send" ? "The lease has been sent for signing." :
-                                    "The lease has been renewed and sent for signing."}
+                                    mode === "renew" ? "The lease has been renewed and sent for signing." :
+                                        "The lease amendment has been created and sent for tenant approval."}
                         </p>
                         <ButtonComponent
                             type="primary"
@@ -537,7 +848,8 @@ export const LeaseModalComponent = ({
                         <h3 className="text-lg font-semibold mb-2">
                             {mode === "add" ? "Failed to Create Lease" :
                                 mode === "send" ? "Failed to Send Lease" :
-                                    "Failed to Renew Lease"}
+                                    mode === "renew" ? "Failed to Renew Lease" :
+                                        "Failed to Create Amendment"}
                         </h3>
                         <p className="text-gray-500 mb-4">{errorMessage || "There was an error processing your request."}</p>
                         <div className="flex justify-center gap-2">
@@ -567,23 +879,30 @@ export const LeaseModalComponent = ({
             return null; // No footer for success/error states as actions are in the content
         }
 
+        const isLoading =
+            addLeaseMutation.isPending ||
+            sendLeaseMutation.isPending ||
+            renewLeaseMutation.isPending ||
+            amendLeaseMutation.isPending;
+
         return [
             <ButtonComponent
                 key="cancel"
                 type="default"
                 title="Cancel"
                 onClick={onClose}
-                disabled={status === 'loading'}
+                disabled={isLoading}
             />,
             <ButtonComponent
                 key="submit"
                 type="primary"
                 title={mode === "add" ? "Create Draft Lease" :
                     mode === "send" ? "Send for Signing" :
-                        "Renew Lease"}
+                        mode === "renew" ? "Renew Lease" :
+                            "Create Amendment"}
                 onClick={handleSubmit}
-                loading={status === 'loading'}
-                disabled={status === 'loading'}
+                loading={isLoading}
+                disabled={isLoading}
             />
         ];
     };
