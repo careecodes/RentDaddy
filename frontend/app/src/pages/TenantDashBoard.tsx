@@ -8,7 +8,7 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
-import { useAuth } from "@clerk/react-router";
+import { useUser } from "@clerk/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
@@ -23,12 +23,14 @@ export const TenantDashBoard = () => {
     };
 
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
-    const { userId } = useAuth();
+    const { user } = useUser();
+    const userId = user?.publicMetadata["db_id"];
 
     // Fetch lease status using TanStack Query
     const { data: leaseData, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
+            if (!userId) { throw new Error("UserID is not available for tenant.") }
             const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
             console.log(response)
             if (!response.ok) {
