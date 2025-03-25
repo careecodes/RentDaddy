@@ -50,8 +50,8 @@ CREATE TABLE IF NOT EXISTS "parking_permits"
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "permit_number" BIGINT                         NOT NULL,
     "created_by"    BIGINT                         NOT NULL,
-    "updated_at"    TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "expires_at"    TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL
+    "updated_at"    TIMESTAMP(0) DEFAULT now(),
+    "expires_at"    TIMESTAMP(0) NOT NULL
 );
 
 COMMENT ON COLUMN "parking_permits"."expires_at" IS '5 days long';
@@ -59,14 +59,14 @@ CREATE TABLE IF NOT EXISTS "complaints"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "complaint_number" BIGINT               NOT NULL,
-    "created_by"       BIGINT               NOT NULL,
+    "created_by"       BIGINT                 NOT NULL,
     "category"         "Complaint_Category" NOT NULL  DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
     "unit_number"      SMALLINT             NOT NULL,
     "status"           "Status"             NOT NULL  DEFAULT "Status" 'open',
-    "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
+    "updated_at"       TIMESTAMP(0)         DEFAULT now(),
+    "created_at"       TIMESTAMP(0)         DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "work_orders"
@@ -79,8 +79,8 @@ CREATE TABLE IF NOT EXISTS "work_orders"
     "description"  TEXT            NOT NULL,
     "unit_number"  SMALLINT        NOT NULL,
     "status"       "Status"        NOT NULL       DEFAULT "Status" 'open',
-    "updated_at"   TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "created_at"   TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
+    "updated_at"   TIMESTAMP(0) DEFAULT now(),
+    "created_at"   TIMESTAMP(0) DEFAULT now()
 );
 
 CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
@@ -96,9 +96,9 @@ CREATE TABLE IF NOT EXISTS "users"
     "unit_number" SMALLINT                       NULL,
     "role"        "Role"                         NOT NULL DEFAULT "Role" 'tenant',
     "status"      "Account_Status"               NOT NULL DEFAULT "Account_Status" 'active',
-    "last_login"  TIMESTAMP(0) WITHOUT TIME ZONE NOT NULL,
-    "updated_at"  TIMESTAMP(0) WITHOUT TIME ZONE          DEFAULT now(),
-    "created_at"  TIMESTAMP(0) WITHOUT TIME ZONE          DEFAULT now()
+    "last_login"  TIMESTAMP(0) NOT NULL,
+    "updated_at"  TIMESTAMP(0)          DEFAULT now(),
+    "created_at"  TIMESTAMP(0)          DEFAULT now()
 );
 CREATE INDEX "user_clerk_id_index" ON "users" ("clerk_id");
 CREATE INDEX "user_unit_number_index" ON "users" ("unit_number");
@@ -115,8 +115,8 @@ CREATE TABLE IF NOT EXISTS "apartments"
     "lease_id"         BIGINT         NOT NULL,
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
-    "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
+    "updated_at"       TIMESTAMP(0) DEFAULT now(),
+    "created_at"       TIMESTAMP(0) DEFAULT now()
 );
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
@@ -135,8 +135,8 @@ CREATE TABLE IF NOT EXISTS "leases"
     "lease_status"     "Lease_Status" NOT NULL        DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
-    "created_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now(),
-    "updated_at"       TIMESTAMP(0) WITHOUT TIME ZONE DEFAULT now()
+    "created_at"       TIMESTAMP(0) DEFAULT now(),
+    "updated_at"       TIMESTAMP(0) DEFAULT now()
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
@@ -184,4 +184,3 @@ ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
-

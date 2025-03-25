@@ -48,8 +48,8 @@ CREATE TYPE "Work_Category" AS ENUM (
 CREATE TABLE IF NOT EXISTS "parking_permits"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "permit_number" BIGINT       NOT NULL,
-    "created_by"    BIGINT       NOT NULL,
+    "permit_number" BIGINT                         NOT NULL,
+    "created_by"    BIGINT                         NOT NULL,
     "updated_at"    TIMESTAMP(0) DEFAULT now(),
     "expires_at"    TIMESTAMP(0) NOT NULL
 );
@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS "complaints"
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "complaint_number" BIGINT               NOT NULL,
     "created_by"       BIGINT               NOT NULL,
-    "category"         "Complaint_Category" NOT NULL DEFAULT "Complaint_Category" 'other',
+    "category"         "Complaint_Category" NOT NULL  DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
     "unit_number"      SMALLINT             NULL,
@@ -78,9 +78,9 @@ CREATE TABLE IF NOT EXISTS "work_orders"
     "title"        VARCHAR         NOT NULL,
     "description"  TEXT            NOT NULL,
     "unit_number"  SMALLINT        NOT NULL,
-    "status"       "Status"        NOT NULL DEFAULT "Status" 'open',
-    "updated_at"   TIMESTAMP(0)             DEFAULT now(),
-    "created_at"   TIMESTAMP(0)             DEFAULT now()
+    "status"       "Status"        NOT NULL       DEFAULT "Status" 'open',
+    "updated_at"   TIMESTAMP(0) DEFAULT now(),
+    "created_at"   TIMESTAMP(0) DEFAULT now()
 );
 
 CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
@@ -119,23 +119,20 @@ CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
 CREATE TABLE IF NOT EXISTS "leases"
 (
-    "id"                 BIGSERIAL PRIMARY KEY,
-    "lease_number"       BIGINT         NOT NULL,
-    "external_doc_id"    TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId ... "9"
-    "lease_pdf_s3"       TEXT,
-    "tenant_id"          BIGINT         NOT NULL REFERENCES users (id),
-    "landlord_id"        BIGINT         NOT NULL REFERENCES users (id),
-    "apartment_id"       BIGINT         NOT NULL,
-    "lease_start_date"   DATE           NOT NULL,
-    "lease_end_date"     DATE           NOT NULL,
-    "rent_amount"        DECIMAL(10, 2) NOT NULL,
-    "status"             "Lease_Status" NOT NULL DEFAULT 'active',
-    "created_by"         BIGINT         NOT NULL,
-    "updated_by"         BIGINT         NOT NULL,
-    "created_at"         TIMESTAMP(0)            DEFAULT now(),
-    "updated_at"         TIMESTAMP(0)            DEFAULT now(),
-    "previous_lease_id"  BIGINT REFERENCES leases (id),
-    "tenant_signing_url" TEXT
+    "id"               BIGSERIAL PRIMARY KEY,
+    "lease_number"     BIGINT UNIQUE  NOT NULL,
+    "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
+    "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
+    "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
+    "apartment_id"     BIGINT,
+    "lease_start_date" DATE           NOT NULL,
+    "lease_end_date"   DATE           NOT NULL,
+    "rent_amount"      DECIMAL(10, 2) NOT NULL,
+    "status"     "Lease_Status" NOT NULL        DEFAULT 'active',
+    "created_by"       BIGINT         NOT NULL,
+    "updated_by"       BIGINT         NOT NULL,
+    "created_at"       TIMESTAMP(0) DEFAULT now(),
+    "updated_at"       TIMESTAMP(0) DEFAULT now()
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");

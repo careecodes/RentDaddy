@@ -33,6 +33,11 @@ SELECT COUNT(*)
 FROM work_orders
 WHERE created_by = $1;
 
+-- name: ListTenantWorkOrders :many
+SELECT *
+FROM work_orders
+WHERE created_by = $1;
+
 -- name: UpdateWorkOrder :exec
 UPDATE work_orders
 SET

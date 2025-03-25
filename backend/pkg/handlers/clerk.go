@@ -228,6 +228,7 @@ func deleteUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 	}
 
-	log.Printf("[CLERK_WEBHOOK] User deleted: %s", userData.ID)
+	// TODO: DELETE tenat's lease, parking_permits, lockers, ect
+
 	w.WriteHeader(http.StatusOK)
 }

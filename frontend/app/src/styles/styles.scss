@@ -247,6 +247,17 @@ body {
     background-color: #00674f;
 }
 
+.hoverable-row {
+    &:hover {
+        background-color: #1890ff20 !important; // Light blue with opacity
+        transition: background-color 0.3s;
+    }
+}
+
+.ant-table-tbody > tr.hoverable-row:hover > td {
+    background-color: #1890ff20 !important;
+}
+
 // Text Sizes
 // H1 Page Titles
 // H2 Section Titles
@@ -285,4 +296,19 @@ body {
 
 .hover-lift:hover {
     transform: translateY(-5px);
+}
+
+// Admin tenant table action menu
+.custom-dropdown .ant-dropdown-menu-item,
+.custom-dropdown .ant-dropdown-menu-submenu-title {
+    background-color: white !important;
+    color: inherit !important;
+}
+
+.custom-dropdown .ant-dropdown-menu-item:hover,
+.custom-dropdown .ant-dropdown-menu-submenu-title:hover,
+.custom-dropdown .ant-dropdown-menu-item:active,
+.custom-dropdown .ant-dropdown-menu-submenu-title:active {
+    background-color: #eeeeee !important;
+    color: inherit !important;
 }

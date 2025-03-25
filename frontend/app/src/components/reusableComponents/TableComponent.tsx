@@ -10,6 +10,7 @@ interface TableComponentProps<T> {
     icon?: React.ReactNode;
     style?: string;
     pagination?: TablePaginationConfig;
+    onRow?: (record: T) => { onClick: () => void };
 }
 const useStyle = createStyles(({ css, token }) => {
     const { antCls } = token; //ignore the warning
@@ -32,7 +33,7 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style, pagination }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style }: TableComponentProps<T>) => {
     const { styles } = useStyle();
 
     return (
@@ -44,6 +45,7 @@ const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, style, p
                 dataSource={dataSource}
                 pagination={pagination}
                 onChange={onChange}
+                onRow={onRow}
                 scroll={{ x: "max-content" }}
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}
             />

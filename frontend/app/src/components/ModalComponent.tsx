@@ -1,9 +1,10 @@
 // Comment to git add .
 // TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
-import { Button, Divider, Form, Input, Modal, Select } from "antd";
+import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
 import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
+import { useMutation } from "@tanstack/react-query";
 
 type InviteTenant = {
     email: string;
@@ -27,30 +28,50 @@ interface ModalComponentProps {
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
     type: "default" | "Smart Locker" | "Guest Parking" | "Invite Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
-    handleOkay: () => void;
+    handleOkay: (data?: any) => void;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
     apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
-    setInviteTenantObjProps?: React.Dispatch<React.SetStateAction<InviteTenant>>;
     leases?: Lease[];
+    isModalOpen?: boolean;
+    onCancel?: () => void;
 }
+
+const onFinish: FormProps<any>["onFinish"] = (values: any) => {
+    console.log("Success:", values);
+    props;
+};
 
 // In code we are sending management_id
 
 const ModalComponent = (props: ModalComponentProps) => {
-    const [isModalOpen, setIsModalOpen] = useState(false);
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+
+    const isModalOpen = props.isModalOpen !== undefined ? props.isModalOpen : internalModalOpen;
+
+    const onFinish: FormProps<any>["onFinish"] = (values: any) => {
+        console.log("Success:", values);
+        props;
+    };
 
     if (props.userRole === "") {
         props.userRole = "admin";
     }
 
     const showModal = () => {
-        setIsModalOpen(true);
+        if (props.isModalOpen === undefined) {
+            setInternalModalOpen(true);
+        }
     };
 
     const handleCancel = () => {
-        setIsModalOpen(false);
+        if (props.onCancel) {
+            props.onCancel();
+        }
+        if (props.isModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
     };
 
     const titles = {
@@ -98,7 +119,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 <Button
                                     type="default"
                                     onClick={() => {
-                                        setIsModalOpen(false);
+                                        handleCancel();
                                     }}>
                                     Cancel
                                 </Button>
@@ -141,7 +162,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                             type="primary"
                             onClick={() => {
                                 props.handleOkay;
-                                setIsModalOpen(false);
+                                handleCancel();
                             }}>
                             Okay
                         </Button>
@@ -197,12 +218,12 @@ const ModalComponent = (props: ModalComponentProps) => {
                         className="p-3 flex-wrap-row"
                         title={<h3>{titles[props.type]}</h3>}
                         open={isModalOpen}
-                        onOk={props.handleOkay}
+                        onOk={() => props.handleOkay()}
                         onCancel={handleCancel}
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}>
                         <Divider />
-                        <Form>
+                        <Form onFinish={onFinish}>
                             <Form.Item name="tenant-name">
                                 <Input placeholder="Tenant Name" />
                             </Form.Item>
@@ -210,20 +231,12 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 <Input placeholder="License Plate Number" />
                             </Form.Item>
                             <Form.Item name="car-color">
-                                <Input
-                                    placeholder="Car Color"
-                                    type="number"
-                                />
+                                <Input placeholder="Car Color" />
                             </Form.Item>
                             <Form.Item name="car-make">
                                 <Input placeholder="Car Make" />
                             </Form.Item>
-                            <Form.Item name="duration-of-stay">
-                                <Input
-                                    placeholder="Duration of Stay"
-                                    type="number"
-                                />
-                            </Form.Item>
+
                             <Divider />
                             <div className="flex justify-content-end gap-2">
                                 {/* Cancel button */}
@@ -231,7 +244,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     <Button
                                         type="default"
                                         onClick={() => {
-                                            setIsModalOpen(false);
+                                            handleCancel();
                                         }}>
                                         Cancel
                                     </Button>
@@ -314,58 +327,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Modal>
                 </>
             )}
-            {props.type === "Invite Tenant" && (
-                <>
-                    <Button
-                        type="primary"
-                        onClick={showModal}>
-                        <PlusOutlined />
 
-                        {props.buttonTitle}
-                    </Button>
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{titles[props.type]}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
-                    >
-                        <Divider />
-                        <Form>
-                            <Form.Item name="tenant-email">
-                                <Input
-                                    placeholder="Tenant Email"
-                                    onChange={(e) => {
-                                        const updatedValue = e.target.value;
-
-                                        props.setInviteTenantObjProps!((prev) => ({
-                                            ...prev,
-                                            email: updatedValue,
-                                        }));
-                                    }}
-                                />
-                            </Form.Item>
-                            <Form.Item name="unit-number">
-                                <Input
-                                    placeholder="Unit Number"
-                                    type="number"
-                                    onChange={(e) => {
-                                        const updatedValue = Number(e.target.value);
-
-                                        props.setInviteTenantObjProps!((prev) => ({
-                                            ...prev,
-                                            unitNumber: updatedValue,
-                                        }));
-                                    }}
-                                />
-                            </Form.Item>
-                            <Divider />
-                        </Form>
-                    </Modal>
-                </>
-            )}
             {props.type === "Edit Tenant" && (
                 <>
                     <Button
@@ -416,7 +378,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                                     <Button
                                         type="default"
                                         onClick={() => {
-                                            setIsModalOpen(false);
+                                            handleCancel();
                                         }}>
                                         Cancel
                                     </Button>
