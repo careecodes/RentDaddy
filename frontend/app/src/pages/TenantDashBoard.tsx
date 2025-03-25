@@ -98,7 +98,7 @@ export const TenantDashBoard = () => {
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
                     button={
-                        <Link to="/tenant/tenant-view-and-edit-work-orders-and-complaints">
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
                             <ButtonComponent
                                 title="View All"
                                 type="primary"
@@ -164,13 +164,13 @@ export const TenantDashBoard = () => {
                     description={<Tag color="orange">Current In Progress</Tag>}
                     hoverable={true}
                     button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all work orders"
-                            content="Work orders should go here"
-                            buttonType="primary"
-                            handleOkay={() => {}}
-                        />
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
+                            <ButtonComponent
+                                title="View all workorders"
+                                type="primary"
+                                onClick={() => {}}
+                            />
+                        </Link>
                     }
                 />
                 <CardComponent
@@ -221,4 +221,3 @@ export const TenantDashBoard = () => {
         </div>
     );
 };
-
