@@ -6,7 +6,7 @@ echo "Simulating midnight cron job for lease status updates..."
 echo "$(date) - Running lease status update" >> cron-simulation.log
 
 # Call the API endpoint to update lease statuses
-curl -s -X POST "http://localhost:8080/admin/tenants/leases/update-statuses" \
+curl -s -X POST "http://localhost:8080/admin/leases/update-statuses" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdWIiOiJ1c2VyXzEyMyIsImlhdCI6MTc0MjUzNDA2OCwiZXhwIjoxNzQyNTM3NjY4LCJyb2xlIjoiYWRtaW4ifQ.5w2Z4VtN6LW9AkmK6JIRvNVdWSnH8d5pCT1eW-GHbzk" \
   -o /dev/null

@@ -335,7 +335,7 @@ From the Documenso web UI running locally:
 - Go to **User Settings → Webhooks**
 ![alt text](<CleanShot 2025-03-23 at 00.01.01@2x.png>)
 - Generate a `DOCUMENSO_WEBHOOK_SECRET`
-The Webhook URL `http://rentdaddy-backend:8080/admin/tenants/leases/webhooks/documenso`
+The Webhook URL `http://rentdaddy-backend:8080/admin/leases/webhooks/documenso`
 Triggers: `document.signed`
 You'll need to run: `openssl rand -hex 32` and paste the result in the `Secret` field.
 ![alt text](<CleanShot 2025-03-23 at 00.01.36@2x.png>)

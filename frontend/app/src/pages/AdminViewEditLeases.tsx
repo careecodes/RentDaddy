@@ -120,10 +120,10 @@ export default function AdminViewEditLeases() {
                 throw new Error('Authentication token is required');
             }
 
-            console.log(`Fetching leases from: ${API_URL}/admin/tenants/leases/`);
+            console.log(`Fetching leases from: ${API_URL}/admin/leases/`);
             console.log('Using auth token:', token ? 'Token available' : 'No token');
 
-            const response = await fetch(`${API_URL}/admin/tenants/leases/`, {
+            const response = await fetch(`${API_URL}/admin/leases/`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -327,7 +327,7 @@ export default function AdminViewEditLeases() {
                 updated_by: 100, // You might want to use the actual user ID here
             };
 
-            const response = await fetch(`${API_URL}/admin/tenants/leases/terminate/${leaseId}`, {
+            const response = await fetch(`${API_URL}/admin/leases/terminate/${leaseId}`, {
                 method: 'POST',
                 headers: {
                     "Content-Type": "application/json",

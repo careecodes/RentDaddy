@@ -92,7 +92,7 @@ export const LeaseModalComponent = ({
             const token = await getToken();
             if (!token) throw new Error("Authentication token required");
 
-            const response = await fetch(`${API_URL}/admin/tenants/leases/without-lease`, {
+            const response = await fetch(`${API_URL}/admin/leases/without-lease`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -129,7 +129,7 @@ export const LeaseModalComponent = ({
             const token = await getToken();
             if (!token) throw new Error("Authentication token required");
 
-            const response = await fetch(`${API_URL}/admin/tenants/leases/apartments-available`, {
+            const response = await fetch(`${API_URL}/admin/leases/apartments-available`, {
                 headers: {
                     'Authorization': `Bearer ${token}`,
                     'Content-Type': 'application/json'
@@ -198,7 +198,7 @@ export const LeaseModalComponent = ({
             };
 
             const response = await fetch(
-                `${API_URL}/admin/tenants/leases/create`,
+                `${API_URL}/admin/leases/create`,
                 {
                     method: 'POST',
                     headers: {
@@ -247,7 +247,7 @@ export const LeaseModalComponent = ({
             if (!token) throw new Error("Authentication token required");
 
             const response = await fetch(
-                `${API_URL}/admin/tenants/leases/send/${selectedLease.id}`,
+                `${API_URL}/admin/leases/send/${selectedLease.id}`,
                 {
                     method: 'POST',
                     headers: {
@@ -309,7 +309,7 @@ export const LeaseModalComponent = ({
             };
 
             const response = await fetch(
-                `${API_URL}/admin/tenants/leases/renew`,
+                `${API_URL}/admin/leases/renew`,
                 {
                     method: 'POST',
                     headers: {
@@ -387,7 +387,7 @@ export const LeaseModalComponent = ({
             console.log("Sending amend payload:", amendPayload);
 
             const response = await fetch(
-                `${API_URL}/admin/tenants/leases/amend`,
+                `${API_URL}/admin/leases/amend`,
                 {
                     method: 'POST',
                     headers: {

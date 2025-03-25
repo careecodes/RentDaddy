@@ -22,19 +22,19 @@ echo "Using AUTH_TOKEN: ${AUTH_TOKEN:0:10}..." # Show first 10 chars for verific
 
 echo "==================== LEASE STATUS UPDATE TEST ===================="
 echo "1. Getting current lease statuses..."
-curl -s -X GET "${API_BASE}/admin/tenants/leases/" | jq '.' > before_update.json
+curl -s -X GET "${API_BASE}/admin/leases/" | jq '.' > before_update.json
 echo "Current lease statuses saved to before_update.json"
 
 echo ""
 echo "2. Running lease status update..."
-curl -s -X POST "${API_BASE}/admin/tenants/leases/update-statuses" \
+curl -s -X POST "${API_BASE}/admin/leases/update-statuses" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${AUTH_TOKEN}"
 echo ""
 
 echo "3. Getting updated lease statuses..."
 sleep 1  # Brief pause to ensure updates are processed
-curl -s -X GET "${API_BASE}/admin/tenants/leases/" | jq '.' > ./after_update.json
+curl -s -X GET "${API_BASE}/admin/leases/" | jq '.' > ./after_update.json
 echo "Updated lease statuses saved to after_update.json"
 
 echo ""

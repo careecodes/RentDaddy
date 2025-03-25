@@ -1372,6 +1372,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		}
 		log.Printf("[WEBHOOK] Signature validation successful")
 	}
+	log.Printf("[WEBHOOK] Extracting webhook data...")
 	// Extract the event type
 	eventType, ok := webhookData["event"].(string)
 	if !ok {

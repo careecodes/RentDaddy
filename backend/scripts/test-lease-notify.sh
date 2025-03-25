@@ -19,7 +19,7 @@ fi
 echo "==================== LEASE EXPIRATION NOTIFICATION TEST ===================="
 echo "Checking for leases expiring soon and sending notifications..."
 
-curl -s -X POST "${API_BASE}/admin/tenants/leases/notify-expiring" \
+curl -s -X POST "${API_BASE}/admin/leases/notify-expiring" \
   -H "Content-Type: application/json" \
   -H "Authorization: Bearer ${AUTH_TOKEN}" | jq '.'
 

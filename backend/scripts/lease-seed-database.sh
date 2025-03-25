@@ -176,7 +176,7 @@ for i in $(seq 1 $NUM_RECORDS); do
   echo "Sending API request to create lease..."
   LEASE_RESPONSE=$(curl -s -X POST \
     -H "Content-Type: application/json" \
-    $API_URL/admin/tenants/leases/create \
+    $API_URL/admin/leases/create \
     -d "$LEASE_PAYLOAD")
   
   # Extract lease ID and document ID from the response
@@ -212,7 +212,7 @@ for i in $(seq 1 $NUM_RECORDS); do
     echo "Testing Documenso URL retrieval for lease #$i (ID: $LEASE_ID)"
     
     DOC_URL_RESPONSE=$(curl -s -X GET \
-      $API_URL/admin/tenants/leases/$LEASE_ID/url)
+      $API_URL/admin/leases/$LEASE_ID/url)
     
     if echo "$DOC_URL_RESPONSE" | grep -q '"download_url":'; then
       echo "  ✅ Successfully retrieved Documenso URL"
@@ -240,7 +240,7 @@ for i in $(seq 1 $NUM_RECORDS); do
     echo "Testing URL retrieval for lease #$i (ID: $LEASE_ID)"
     
     URL_RESPONSE=$(curl -s -X GET \
-      $API_URL/admin/tenants/leases/$LEASE_ID/url)
+      $API_URL/admin/leases/$LEASE_ID/url)
     
     if echo "$URL_RESPONSE" | grep -q '"download_url":'; then
       echo "  ✅ Successfully retrieved S3 URL"
