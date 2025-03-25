@@ -101,6 +101,7 @@ func main() {
 				r.Route("/{clerk_id}", func(r chi.Router) {
 					r.Get("/", userHandler.GetUserByClerkId)
 					r.Patch("/", userHandler.UpdateTenantProfile)
+					r.Delete("/", userHandler.DeleteTenant)
 					r.Get("/work_orders", userHandler.GetTenantWorkOrders)
 					r.Get("/complaints", userHandler.GetTenantComplaints)
 				})
