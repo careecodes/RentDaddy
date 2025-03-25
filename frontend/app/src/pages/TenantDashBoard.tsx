@@ -25,7 +25,7 @@ export const TenantDashBoard = () => {
 
     const { mutate: getComplaints } = useMutation({
         mutationFn: async () => {
-            const res = await fetch(`http://localhost:8080/${userId}/complaints`, {
+            const res = await fetch(`http://localhost:8080/tenants/complaints`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
@@ -41,7 +41,7 @@ export const TenantDashBoard = () => {
 
     const { mutate: getWorkOrders } = useMutation({
         mutationFn: async () => {
-            const res = await fetch(`http://localhost:8080/${userId}/work_orders`, {
+            const res = await fetch(`http://localhost:8080/tenants/work_orders`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json" },
             });
