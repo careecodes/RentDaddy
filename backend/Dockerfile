@@ -24,7 +24,7 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
     && rm migrate.tar.gz
 
 # Vendor dependencies to avoid downloading on rebuild
-RUN go mod tidy && go mod vendor
+RUN go mod tidy && go mod download
 
 # Install Air for development mode
 RUN go install github.com/air-verse/air@latest \
