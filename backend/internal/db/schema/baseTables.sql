@@ -59,7 +59,7 @@ CREATE TABLE IF NOT EXISTS "complaints"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "complaint_number" BIGINT               NOT NULL,
-    "created_by"       TEXT                 NOT NULL,
+    "created_by"       BIGINT                 NOT NULL,
     "category"         "Complaint_Category" NOT NULL  DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
