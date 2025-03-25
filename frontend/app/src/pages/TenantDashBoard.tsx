@@ -9,7 +9,7 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 
 export const TenantDashBoard = () => {
     const handleOpenLocker = () => {
@@ -19,6 +19,53 @@ export const TenantDashBoard = () => {
 
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
     const { userId } = useAuth();
+
+    const [latestComplaint, setLatestComplaint] = useState<any[]>([]);
+    const [latestWorkOrder, setLatestWorkOrder] = useState<any[]>([]);
+
+    const { mutate: getComplaints } = useMutation({
+        mutationFn: async () => {
+            const res = await fetch(`http://localhost:8080/${userId}/complaints`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            const data = await res.json();
+            setLatestComplaint([data?.[0]]);
+            return res;
+        },
+        onSuccess: () => {},
+        onError: (e: any) => {
+            console.log("error ", e);
+        },
+    });
+
+    const { mutate: getWorkOrders } = useMutation({
+        mutationFn: async () => {
+            const res = await fetch(`http://localhost:8080/${userId}/work_orders`, {
+                method: "GET",
+                headers: { "Content-Type": "application/json" },
+            });
+            const data = await res.json();
+            setLatestWorkOrder([data?.[0]]);
+            return res;
+        },
+        onSuccess: () => {},
+        onError: (e: any) => {
+            console.log("error ", e);
+        },
+    });
+
+    const { mutate: postParking } = useMutation({
+        mutationFn: async (parking) => {
+            console.log(parking);
+            const res = await fetch(`http://localhost:8080/parking`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(parking),
+            });
+            return res;
+        },
+    });
 
     // Simulate fetching lease status using TanStack Query
     const {
@@ -61,7 +108,9 @@ export const TenantDashBoard = () => {
                 setSigningModalVisible(true);
             }
         }
-    }, [leaseStatus]);
+        getComplaints();
+        getWorkOrders();
+    }, [leaseStatus, latestComplaint]);
 
     const handleOk = () => {
         // Redirect to the lease signing page (THIS ISNT IT AT ALL, NEEDS documenso uri. TMP for now)
@@ -136,7 +185,7 @@ export const TenantDashBoard = () => {
                             buttonTitle="Add Guest"
                             content="Add guest to be able to park in the complex"
                             buttonType="primary"
-                            handleOkay={() => {}}
+                            handleOkay={(data: any) => postParking(data)}
                         />
                     }
                 />
@@ -159,34 +208,39 @@ export const TenantDashBoard = () => {
                         />
                     }
                 />
-                <CardComponent
-                    title="Work Order"
-                    description={<Tag color="orange">Current In Progress</Tag>}
-                    hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all work orders"
-                            content="Work orders should go here"
-                            buttonType="primary"
-                            handleOkay={() => {}}
-                        />
-                    }
-                />
-                <CardComponent
-                    title="Complaint Received"
-                    description={`Our office received your complaint and will investigate immediately. "From: onegreatuser@hotmail.com: there are loud techo raves every night, even m..."`}
-                    hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all complaints"
-                            content="Complaint should go here"
-                            buttonType="primary"
-                            handleOkay={() => {}}
-                        />
-                    }
-                />
+                {latestWorkOrder.length ? (
+                    <CardComponent
+                        title="Work Order"
+                        description={<Tag color="orange">Current In Progress</Tag>}
+                        hoverable={true}
+                        button={
+                            <ModalComponent
+                                type="default"
+                                buttonTitle="View all work orders"
+                                content="Work orders should go here"
+                                buttonType="primary"
+                                handleOkay={() => {}}
+                            />
+                        }
+                    />
+                ) : undefined}
+
+                {latestComplaint.length ? (
+                    <CardComponent
+                        title="Complaint Received"
+                        description={`Our office received your complaint and will investigate immediately. "${latestComplaint}"`}
+                        hoverable={true}
+                        button={
+                            <Link to="/tenant/tenant-work-orders-and-complaints">
+                                <ButtonComponent
+                                    title="View all complaints"
+                                    type="primary"
+                                    onClick={() => {}}
+                                />
+                            </Link>
+                        }
+                    />
+                ) : undefined}
 
                 <MyChatBot />
             </div>
@@ -221,4 +275,3 @@ export const TenantDashBoard = () => {
         </div>
     );
 };
-
