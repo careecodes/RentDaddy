@@ -100,7 +100,7 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 		PermitNumber: int64(parkingPermitReq.ParkingPermitNumber),
 		CreatedBy:    int64(userMetadata.DbId),
 		ExpiresAt: pgtype.Timestamp{
-			Time:  time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
+			Time:  time.Now().UTC().Add(time.Duration(2) * 24 * time.Hour),
 			Valid: true,
 		},
 	})

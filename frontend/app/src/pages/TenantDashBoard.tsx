@@ -1,6 +1,6 @@
-import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
+import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Tag, Modal, Button } from "antd";
-import React, { useState, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import ModalComponent from "../components/ModalComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
@@ -9,9 +9,56 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQuery } from "@tanstack/react-query";
+import { useQueries, useQuery } from "@tanstack/react-query";
+import { ComplaintsData, Parking } from "../types/types";
 
 export const TenantDashBoard = () => {
+    const { getToken } = useAuth();
+
+    async function getParkingPermit() {
+        const authToken = await getToken();
+        if (!authToken) {
+            throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+        }
+        const res = await fetch("http://localhost:8080/tenant/parking", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authToken}`,
+            },
+        });
+
+        if (!res.ok) {
+            throw new Error("[TENANT_DASHBOARD] Error parking_permits request failed");
+        }
+        return (await res.json()) as Parking[];
+    }
+
+    async function getComplaints() {
+        const authToken = await getToken();
+        if (!authToken) {
+            throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+        }
+        const res = await fetch("http://localhost:8080/tenant/complaints", {
+            method: "GET",
+            headers: {
+                "Content-Type": "application/json",
+                Authorization: `Bearer ${authToken}`,
+            },
+        });
+
+        if (!res.ok) {
+            throw new Error("[TENANT_DASHBOARD] Error complaints request failed");
+        }
+        return (await res.json()) as ComplaintsData[];
+    }
+
+    const { data } = useQueries({
+        queries: [
+            { queryKey: ["parking"], queryFn: getParkingPermit },
+            { queryKey: ["complaints"], queryFn: getComplaints },
+        ],
+    });
     const handleOpenLocker = () => {
         console.log("handle open locker");
         // Add your logic for getting a package here
@@ -82,6 +129,7 @@ export const TenantDashBoard = () => {
             <PageTitleComponent title="Tenant Dashboard" />
             {/* <div className="alert-container"> */}
             <AlertComponent
+                title=""
                 message="Welcome to the Tenant Dashboard"
                 description="Sign Yo Lease. Pay Daddy Rent"
                 type="warning"
@@ -221,4 +269,3 @@ export const TenantDashBoard = () => {
         </div>
     );
 };
-

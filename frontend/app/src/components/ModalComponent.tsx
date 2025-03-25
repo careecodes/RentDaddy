@@ -57,7 +57,7 @@ const ModalComponent = (props: ModalComponentProps) => {
     const titles = {
         default: "Default Modal",
         "Smart Locker": "Smart Locker Modal",
-        "Guest Parking": "Register someone in Guest Parking",
+        "Guest Parking": "Create a parking pass",
         "Invite Tenant": "Invite Tenant",
         "Edit Tenant": "Edit Tenant",
         "Send Tenant Lease": "Send Tenant Lease",
@@ -204,28 +204,30 @@ const ModalComponent = (props: ModalComponentProps) => {
                         cancelButtonProps={{ hidden: true, disabled: true }}>
                         <Divider />
                         <Form>
-                            <Form.Item name="tenant-name">
-                                <Input placeholder="Tenant Name" />
+                            <p className="fs-6">Guest Name</p>
+                            <Form.Item
+                                name="tenant-name"
+                                required={true}>
+                                <Input placeholder="John Doe" />
                             </Form.Item>
-                            <Form.Item name="license-plate-number">
-                                <Input placeholder="License Plate Number" />
+                            <p className="fs-6">Car Color</p>
+                            <Form.Item
+                                name="car-color"
+                                required={true}>
+                                <Input placeholder="Blue" />
                             </Form.Item>
-                            <Form.Item name="car-color">
-                                <Input
-                                    placeholder="Car Color"
-                                    type="number"
-                                />
-                            </Form.Item>
-                            <Form.Item name="car-make">
+                            <p className="fs-6">Car Model</p>
+                            <Form.Item
+                                name="car-make"
+                                required={true}>
                                 <Input placeholder="Car Make" />
                             </Form.Item>
-                            <Form.Item name="duration-of-stay">
-                                <Input
-                                    placeholder="Duration of Stay"
-                                    type="number"
-                                />
+                            <p className="fs-6">License Plate</p>
+                            <Form.Item
+                                name="license-plate-number"
+                                required={true}>
+                                <Input placeholder="3ha3-3213" />
                             </Form.Item>
-                            <Divider />
                             <div className="flex justify-content-end gap-2">
                                 {/* Cancel button */}
                                 <Form.Item name="cancel">

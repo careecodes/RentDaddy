@@ -10,17 +10,37 @@ export interface LeaseData {
     status: string;
 }
 
+type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
+
+type WorkStatus = "open" | "in_progress" | "resolved" | "closed";
+
 export interface WorkOrderData {
     key: number;
     workOrderNumber: number;
     creatingBy: number; // this is the user from tenant table that created ticket
-    category: "plumbing" | "electrical" | "carpentry" | "hvac" | "other";
+    category: WorkCategory;
     title: string;
     description: string;
     apartmentNumber: string;
-    status: "open" | "in_progress" | "awaiting_parts" | "completed";
+    status: WorkStatus;
     createdAt: Date;
     updatedAt: Date;
+}
+
+type ComplaintCategory = "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
+type CompliantStatus = "pending_review" | "compliant" | "non_compliant" | "exempted";
+
+export interface ComplaintData {
+    id: number;
+    complaintNumber: number;
+    createdBy: number;
+    category: ComplaintCategory;
+    title: string;
+    description: string;
+    unitNumber: number;
+    status: CompliantStatus;
+    updatedAt: string;
+    createdAt: string;
 }
 
 export interface ComplaintsData {
@@ -80,4 +100,13 @@ export interface DataType {
     name: string;
     age: number;
     address: string;
+}
+
+export interface Parking {
+    id: number;
+    permit_number: number;
+    created_by: number;
+    updated_at: string;
+    // 2 days long
+    expires_at: string;
 }
