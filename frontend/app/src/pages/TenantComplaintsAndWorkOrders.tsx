@@ -1,135 +1,171 @@
 //TODO: Connect Backend whenever that is ready (Get Recent Complaints or Work Orders, and Submit the Form)
-import { Badge, Button, Form, Input, Radio, Space, Switch } from "antd";
+import { Button, Divider, Form, Input, Modal, Select, Tabs } from "antd";
+import type { TabsProps } from "antd";
 import { useState } from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import { useMutation, useQueries } from "@tanstack/react-query";
+import { useAuth } from "@clerk/react-router";
+import { ComplaintsData, WorkOrderData } from "../types/types";
+import { ColumnsType } from "antd/es/table";
 
 const TenantComplaintsAndWorkOrders = () => {
-    const [requestType, setRequestType] = useState("complaint");
-    const [form] = Form.useForm();
+    const { getToken, userId } = useAuth();
+    const [activeKey, setActiveKey] = useState("1");
 
-    const complaintColumns = [
-        {
-            title: "ID",
-            dataIndex: "id",
-            key: "id",
-        },
-        {
-            title: "Title",
-            dataIndex: "title",
-            key: "title",
-        },
-        {
-            title: "Description",
-            dataIndex: "description",
-            key: "description",
-        },
-        {
-            title: "Type",
-            dataIndex: "type",
-            key: "type",
-        },
-        {
-            title: "Votes",
-            dataIndex: "votes",
-            key: "votes",
-        },
-    ];
+    const [complaints, workOrders] = useQueries({
+        queries: [
+            {
+                queryKey: [`${userId}-complaints`],
+                queryFn: async () => {
+                    const authToken = await getToken();
+                    if (!authToken) {
+                        throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+                    }
+                    const res = await fetch("http://localhost:8080/tenant/complaints", {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${authToken}`,
+                        },
+                    });
 
-    const workOrderColumns = [
-        {
-            title: "ID",
-            dataIndex: "id",
-            key: "id",
-        },
-        {
-            title: "Title",
-            dataIndex: "title",
-            key: "title",
-        },
-        {
-            title: "Description",
-            dataIndex: "description",
-            key: "description",
-        },
-        {
-            title: "Type",
-            dataIndex: "type",
-            key: "type",
-        },
-        {
-            title: "Votes",
-            dataIndex: "votes",
-            key: "votes",
-        },
-        {
-            title: "Importance",
-            dataIndex: "importance",
-            key: "importance",
-            render: (importance: string) => {
-                const statusMap: Record<string, "error" | "warning" | "default"> = {
-                    High: "error",
-                    Medium: "warning",
-                    Low: "default",
-                };
-                return (
-                    <Badge
-                        status={statusMap[importance]}
-                        text={importance}
-                    />
-                );
+                    if (!res.ok) {
+                        throw new Error("[TENANT_DASHBOARD] Error complaints request failed");
+                    }
+                    return (await res.json()) as ComplaintsData[];
+                },
             },
+            {
+                queryKey: [`${userId}-work-orders`],
+                queryFn: async () => {
+                    const authToken = await getToken();
+                    if (!authToken) {
+                        throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+                    }
+                    const res = await fetch("http://localhost:8080/tenant/work_orders", {
+                        method: "GET",
+                        headers: {
+                            "Content-Type": "application/json",
+                            Authorization: `Bearer ${authToken}`,
+                        },
+                    });
+
+                    if (!res.ok) {
+                        throw new Error("[TENANT_DASHBOARD] Error tenant Work_orders request failed");
+                    }
+                    return (await res.json()) as WorkOrderData[];
+                },
+            },
+        ],
+    });
+
+    const complaintColumns: ColumnsType<ComplaintsData> = [
+        {
+            title: "Id",
+            dataIndex: "id",
+            key: "id",
+        },
+        {
+            title: "Title",
+            dataIndex: "title",
+            key: "title",
+        },
+        {
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
+        },
+        {
+            title: "Category",
+            dataIndex: "category",
+            key: "category",
+        },
+        {
+            title: "Status",
+            dataIndex: "status",
+            key: "status",
+        },
+        {
+            title: "Created At",
+            dataIndex: "createdAt",
+            key: "createdAt",
+            render: (createdAt: string) =>
+                new Date(createdAt).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "2-digit",
+                }),
         },
     ];
 
-    const complaints = [
+    const workOrderColumns: ColumnsType<WorkOrderData> = [
         {
-            id: 1,
-            type: "Complaint",
-            title: "Complaint 1 Title",
-            description: "Complaint 1 Description",
-            votes: 10,
+            title: "Id",
+            dataIndex: "id",
+            key: "id",
         },
         {
-            id: 2,
-            type: "Complaint",
-            title: "Complaint 2 Title",
-            description: "Complaint 2 Description",
-            votes: 5,
-        },
-    ];
-
-    const workOrders = [
-        {
-            id: 1,
-            type: "Work Order",
-            title: "Work Order 1 Title",
-            description: "Work Order 1 Description",
-            votes: 10,
-            importance: "High",
+            title: "Title",
+            dataIndex: "title",
+            key: "title",
         },
         {
-            id: 2,
-            type: "Work Order",
-            title: "Work Order 2 Title",
-            description: "Work Order 2 Description",
-            votes: 5,
-            importance: "Medium",
+            title: "Description",
+            dataIndex: "description",
+            key: "description",
         },
         {
-            id: 3,
-            type: "Work Order",
-            title: "Work Order 3 Title",
-            description: "Work Order 3 Description",
-            votes: 3,
-            importance: "Low",
+            title: "Category",
+            dataIndex: "category",
+            key: "category",
+        },
+        {
+            title: "Status",
+            dataIndex: "status",
+            key: "status",
+        },
+        {
+            title: "Created At",
+            dataIndex: "createdAt",
+            key: "createdAt",
+            render: (createdAt: string) =>
+                new Date(createdAt).toLocaleDateString("en-GB", {
+                    day: "2-digit",
+                    month: "2-digit",
+                    year: "2-digit",
+                }),
         },
     ];
 
-    const onSubmit = (values: any) => {
-        console.log("Form values:", values);
-        //need to post these to the db
-    };
+    const [items, setItems] = useState<TabsProps["items"]>([
+        {
+            label: "Complaints",
+            key: "1",
+            children: (
+                <div className="bg-gray-50 p-4 rounded border">
+                    <TenantCreateComplaintsModal />
+                    <TableComponent
+                        columns={complaintColumns}
+                        dataSource={complaints.data}
+                    />
+                </div>
+            ),
+        },
+        {
+            label: "Work Orders",
+            key: "2",
+            children: (
+                <div className="bg-gray-50 p-4 rounded border">
+                    <TenantCreateWorkOrderModal />
+                    <TableComponent
+                        columns={workOrderColumns}
+                        dataSource={workOrders.data}
+                    />
+                </div>
+            ),
+        },
+    ]);
 
     return (
         <div className="container">
@@ -137,109 +173,227 @@ const TenantComplaintsAndWorkOrders = () => {
             {/* <h1 className="mb-4">Complaints and Work Orders</h1> */}
             <PageTitleComponent title="Complaints and Work Orders" />
 
-            {/* Start of Form */}
-            <Form
-                form={form}
-                layout="vertical"
-                onFinish={onSubmit}>
-                {/* Request Type (Complaint or Work Order) with radio buttons */}
-                <Form.Item
-                    name="requestType"
-                    label="Type of Request"
-                    rules={[{ required: true, message: "Please select a request type" }]}>
-                    <Switch
-                        checkedChildren="Work Orders"
-                        unCheckedChildren="Complaints"
-                        onChange={(checked) => setRequestType(checked ? "workOrder" : "complaint")}
-                        className="flex"
-                    />
-                </Form.Item>
-
-                {/* Recent Complaints & Work Orders */}
-                <div className="grid grid-cols-2 gap-6">
-                    {/* Recent Complaints */}
-                    {requestType === "complaint" && (
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                            <h3 className="text-lg font-medium mb-4">Recent Complaints</h3>
-                            <TableComponent
-                                columns={complaintColumns}
-                                dataSource={complaints}
-                            />
-                        </div>
-                    )}
-
-                    {/* Recent Work Orders */}
-                    {requestType === "workOrder" && (
-                        <div className="bg-gray-50 p-4 rounded-lg">
-                            <h3 className="text-lg font-medium mb-4">Recent Work Orders</h3>
-                            <TableComponent
-                                columns={workOrderColumns}
-                                dataSource={workOrders}
-                            />
-                        </div>
-                    )}
-                </div>
-
-                {/* Only shows if it's a work order */}
-                {/* Importance (High, Medium, Low) with radio buttons */}
-                {requestType === "workOrder" && (
-                    <Form.Item
-                        name="importance"
-                        label="Importance"
-                        rules={[{ required: true, message: "Please select importance level" }]}>
-                        <Radio.Group className="w-full flex gap-4">
-                            <Space
-                                direction="horizontal"
-                                className="w-full justify-between">
-                                <Radio.Button
-                                    value="high"
-                                    className="w-1/3 text-center"
-                                    style={{ color: "#d86364" }}>
-                                    High Priority
-                                </Radio.Button>
-                                <Radio.Button
-                                    value="medium"
-                                    className="w-1/3 text-center"
-                                    style={{ color: "#f0a500" }}>
-                                    Medium Priority
-                                </Radio.Button>
-                                <Radio.Button
-                                    value="low"
-                                    className="w-1/3 text-center"
-                                    style={{ color: "#00674f" }}>
-                                    Low Priority
-                                </Radio.Button>
-                            </Space>
-                        </Radio.Group>
-                    </Form.Item>
-                )}
-
-                {/* Image Upload */}
-                <Form.Item
-                    name="image"
-                    label="Upload an Image">
-                    <Input type="file" />
-                </Form.Item>
-
-                {/* Description with text area */}
-                <Form.Item
-                    name="description"
-                    label="Description"
-                    rules={[{ required: true, message: "Please enter a description" }]}>
-                    <Input.TextArea rows={4} />
-                </Form.Item>
-
-                {/* Submit button */}
-                <Form.Item>
-                    <Button
-                        type="primary"
-                        htmlType="submit">
-                        Submit
-                    </Button>
-                </Form.Item>
-            </Form>
+            {/* Recent Complaints & Work Orders */}
+            <div className="grid grid-cols-2 gap-6">
+                <Tabs
+                    defaultActiveKey="1"
+                    type="card"
+                    activeKey={activeKey}
+                    onChange={setActiveKey}
+                    items={items}
+                />
+            </div>
         </div>
     );
 };
 
 export default TenantComplaintsAndWorkOrders;
+
+function TenantCreateComplaintsModal() {
+    const { getToken, userId } = useAuth();
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+
+    const { mutate: createComplaint, isPending: isPendingComplaint } = useMutation({
+        mutationKey: [`${userId}-create-complaint`],
+        mutationFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+            }
+            const res = await fetch("http://localhost:8080/tenant/complaint", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+
+            if (!res.ok) {
+                throw new Error("[TENANT_DASHBOARD] Error creating parking_permit");
+            }
+            return;
+        },
+    });
+    return (
+        <>
+            <Button
+                type="primary"
+                className="mb-3"
+                onClick={showModal}>
+                Create Complaint
+            </Button>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Complaints</h3>}
+                open={internalModalOpen}
+                onOk={() => {
+                    createComplaint();
+                }}
+                okText={"Create"}
+                onCancel={handleCancel}
+                okButtonProps={{ disabled: isPendingComplaint ? true : false }}
+                cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
+                <p>Enter information about a complaint that you're having here.</p>
+                <Divider />
+                <Form>
+                    <p className="fs-7">Title</p>
+                    <Form.Item
+                        name="title"
+                        required={true}>
+                        <Input
+                            placeholder="Enter a title"
+                            type="text"
+                            minLength={3}
+                            maxLength={50}
+                        />
+                    </Form.Item>
+                    <p className="fs-7">Description</p>
+                    <Form.Item
+                        name="description"
+                        required={true}>
+                        <Input.TextArea
+                            placeholder="Enter a breif description for complaint"
+                            rows={4}
+                        />
+                    </Form.Item>
+                    <p className="fs-7">Category</p>
+                    <Form.Item
+                        name="category"
+                        required={true}>
+                        <Select placeholder={"Select a category"}>
+                            {Object.values({
+                                maintenance: "maintenance",
+                                noise: "noise",
+                                security: "security",
+                                parking: "parking",
+                                neighbor: "neighbor",
+                                trash: "trash",
+                                internet: "internet",
+                                lease: "lease",
+                                natural_disaster: "natural_disaster",
+                                other: "other",
+                            }).map((c) => (
+                                <Select.Option>{c}</Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </>
+    );
+}
+
+function TenantCreateWorkOrderModal() {
+    const { getToken, userId } = useAuth();
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+
+    const { mutate: createWorkOrder, isPending: isPendingWorkOrder } = useMutation({
+        mutationKey: [`${userId}-create-work-order`],
+        mutationFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+            }
+            const res = await fetch("http://localhost:8080/tenant/work_orders", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+
+            if (!res.ok) {
+                throw new Error("[TENANT_DASHBOARD] Error creating work_order");
+            }
+            return;
+        },
+    });
+    return (
+        <>
+            <Button
+                type="primary"
+                className="mb-3"
+                onClick={showModal}>
+                Create Work Order
+            </Button>
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Work Order</h3>}
+                open={internalModalOpen}
+                onOk={() => {
+                    createWorkOrder();
+                }}
+                okText={"Create"}
+                onCancel={handleCancel}
+                okButtonProps={{ disabled: isPendingWorkOrder ? true : false }}
+                cancelButtonProps={{ disabled: isPendingWorkOrder ? true : false }}>
+                <p>Fill out your request for a work order here.</p>
+                <Divider />
+                <Form>
+                    <p className="fs-7">Title</p>
+                    <Form.Item
+                        name="title"
+                        required={true}>
+                        <Input
+                            placeholder="Enter a title"
+                            type="text"
+                            minLength={3}
+                            maxLength={50}
+                        />
+                    </Form.Item>
+                    <p className="fs-7">Description</p>
+                    <Form.Item
+                        name="description"
+                        required={true}>
+                        <Input.TextArea
+                            placeholder="Enter a breif description for complaint"
+                            rows={4}
+                        />
+                    </Form.Item>
+                    <p className="fs-7">Category</p>
+                    <Form.Item
+                        name="category"
+                        required={true}>
+                        <Select placeholder={"Select a category"}>
+                            {Object.values({
+                                plumbing: "plumbing",
+                                electric: "electric",
+                                carpentry: "carpentry",
+                                hvac: "hvac",
+                                other: "other",
+                            }).map((c) => (
+                                <Select.Option
+                                    key={c}
+                                    value={c}>
+                                    {c}
+                                </Select.Option>
+                            ))}
+                        </Select>
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </>
+    );
+}

@@ -27,7 +27,7 @@ export interface WorkOrderData {
     updatedAt: Date;
 }
 
-type ComplaintCategory = "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
+export type ComplaintCategory = "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
 type CompliantStatus = "pending_review" | "compliant" | "non_compliant" | "exempted";
 
 export interface ComplaintData {
@@ -110,3 +110,8 @@ export interface Parking {
     // 2 days long
     expires_at: string;
 }
+
+export type ClerkPublicMetadata = {
+    Db_id: number;
+    role: Role;
+};

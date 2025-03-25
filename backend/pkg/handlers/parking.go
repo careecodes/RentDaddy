@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"io"
 	"log"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -261,14 +262,7 @@ func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *
 }
 
 func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r *http.Request) {
-	permitNumberStr := chi.URLParam(r, "permit_number")
-
-	permitNumber, err := strconv.Atoi(permitNumberStr)
-	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
-		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
-		return
-	}
+	permitNumber := rand.Intn(500) + 1
 
 	userCtx := middleware.GetUserCtx(r)
 	if userCtx == nil {
@@ -278,7 +272,7 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 	}
 
 	var userMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(userCtx.PublicMetadata, &userMetadata)
+	err := json.Unmarshal(userCtx.PublicMetadata, &userMetadata)
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed parsing user Clerk metadata: %v", err)
 		http.Error(w, "Error parsing user clerk metadata", http.StatusBadRequest)

@@ -1,5 +1,5 @@
 import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
-import { Tag, Modal, Button } from "antd";
+import { Tag, Modal, Button, Divider, Form, Input } from "antd";
 import { useState, useEffect } from "react";
 import { Link } from "react-router";
 import ModalComponent from "../components/ModalComponent";
@@ -9,11 +9,12 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { ComplaintsData, Parking } from "../types/types";
 
 export const TenantDashBoard = () => {
-    const { getToken } = useAuth();
+    const [isSigningModalVisible, setSigningModalVisible] = useState(false);
+    const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
         const authToken = await getToken();
@@ -53,19 +54,12 @@ export const TenantDashBoard = () => {
         return (await res.json()) as ComplaintsData[];
     }
 
-    const { data } = useQueries({
+    const [parking, complaints] = useQueries({
         queries: [
             { queryKey: ["parking"], queryFn: getParkingPermit },
             { queryKey: ["complaints"], queryFn: getComplaints },
         ],
     });
-    const handleOpenLocker = () => {
-        console.log("handle open locker");
-        // Add your logic for getting a package here
-    };
-
-    const [isSigningModalVisible, setSigningModalVisible] = useState(false);
-    const { userId } = useAuth();
 
     // Simulate fetching lease status using TanStack Query
     const {
@@ -140,15 +134,14 @@ export const TenantDashBoard = () => {
             <h2 className="my-3 p-3 text-center">Quick Actions</h2>
             <div className="flex-container my-3">
                 <CardComponent
-                    title="Open Complaint form"
-                    value={10}
+                    title="Complaints"
                     description="Something not working right or disturbing you? Let us know."
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
                     button={
-                        <Link to="/tenant/tenant-view-and-edit-work-orders-and-complaints">
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
                             <ButtonComponent
-                                title="View All"
+                                title="Create Complaint"
                                 type="primary"
                                 onClick={() => {}}
                             />
@@ -174,19 +167,11 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Guest Parking"
-                    value={10}
+                    value={parking.data?.length}
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={
-                        <ModalComponent
-                            type="Guest Parking"
-                            buttonTitle="Add Guest"
-                            content="Add guest to be able to park in the complex"
-                            buttonType="primary"
-                            handleOkay={() => {}}
-                        />
-                    }
+                    button={<TenantParkingPeritModal />}
                 />
             </div>
 
@@ -225,15 +210,8 @@ export const TenantDashBoard = () => {
                     title="Complaint Received"
                     description={`Our office received your complaint and will investigate immediately. "From: onegreatuser@hotmail.com: there are loud techo raves every night, even m..."`}
                     hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all complaints"
-                            content="Complaint should go here"
-                            buttonType="primary"
-                            handleOkay={() => {}}
-                        />
-                    }
+                    value={complaints.data?.length}
+                    button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
 
                 <MyChatBot />
@@ -269,3 +247,148 @@ export const TenantDashBoard = () => {
         </div>
     );
 };
+
+function TenantParkingPeritModal() {
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const { userId, getToken } = useAuth();
+    const { mutate: createParkingPermit, isPending: isParkingPending } = useMutation({
+        mutationKey: [`${userId}-create-parking`],
+        mutationFn: async () => {
+            const authToken = await getToken();
+            if (!authToken) {
+                throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+            }
+            const res = await fetch("http://localhost:8080/tenant/parking", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${authToken}`,
+                },
+            });
+
+            if (!res.ok) {
+                throw new Error("[TENANT_DASHBOARD] Error creating parking_permit");
+            }
+            return;
+        },
+    });
+
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+    return (
+        <>
+            <ButtonComponent
+                title="Add Guest Parking"
+                type="primary"
+                onClick={showModal}
+            />
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Guest Parking Permit</h3>}
+                open={internalModalOpen}
+                onOk={() => {
+                    createParkingPermit();
+                }}
+                okText={"Create"}
+                onCancel={handleCancel}
+                okButtonProps={{ disabled: isParkingPending ? true : false }}
+                cancelButtonProps={{ disabled: isParkingPending ? true : false }}>
+                <Divider />
+                <Form>
+                    <p className="fs-6">Guest Name</p>
+                    <Form.Item
+                        name="tenant-name"
+                        required={true}>
+                        <Input placeholder="John Doe" />
+                    </Form.Item>
+                    <p className="fs-6">Car Color</p>
+                    <Form.Item
+                        name="car-color"
+                        required={true}>
+                        <Input placeholder="Blue" />
+                    </Form.Item>
+                    <p className="fs-6">Car Model</p>
+                    <Form.Item
+                        name="car-make"
+                        required={true}>
+                        <Input placeholder="Car Make" />
+                    </Form.Item>
+                    <p className="fs-6">License Plate</p>
+                    <Form.Item
+                        name="license-plate-number"
+                        required={true}>
+                        <Input placeholder="3ha3-3213" />
+                    </Form.Item>
+                </Form>
+            </Modal>
+        </>
+    );
+}
+
+interface ComplaintModalProps {
+    data: ComplaintsData[] | undefined;
+}
+
+function TenantViewComplaintsModal(props: ComplaintModalProps) {
+    const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const showModal = () => {
+        setInternalModalOpen(true);
+    };
+    const handleCancel = () => {
+        if (internalModalOpen) {
+            setInternalModalOpen(false);
+        }
+        if (internalModalOpen === undefined) {
+            setInternalModalOpen(false);
+        }
+    };
+    return (
+        <>
+            <ButtonComponent
+                title="View Complaints"
+                type="primary"
+                onClick={showModal}
+            />
+            <Modal
+                className="p-3 flex-wrap-row"
+                title={<h3>Complaints</h3>}
+                open={internalModalOpen}
+                onOk={() => {}}
+                onCancel={handleCancel}
+                okButtonProps={{ hidden: true, disabled: true }}
+                cancelButtonProps={{ hidden: true, disabled: true }}>
+                <Divider />
+                <div style={{ overflowY: "auto", height: "200px" }}>
+                    {props.data ? (
+                        <>
+                            {props.data.map((order, idx) => (
+                                <div
+                                    key={idx}
+                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                                    <p>{order.title}</p>
+                                    <p>
+                                        Category: <span style={{ color: "green" }}>{order.category}</span>
+                                    </p>
+                                    <p>
+                                        Status: <span style={{ color: "green" }}>{order.status}</span>
+                                    </p>
+                                </div>
+                            ))}
+                        </>
+                    ) : (
+                        <p>No complaints....</p>
+                    )}
+                </div>
+            </Modal>
+        </>
+    );
+}
