@@ -3,9 +3,9 @@ import { Link } from "react-router";
 
 const HeroBanner: React.FC = () => {
     const heroContent = {
-        title: "Welcome to RENT DADDY ",
-        subtitle: "Win by getting your own appartment!",
-        buttonText: "Make Dad Proud",
+        title: "Welcome to EZRA Apartments",
+        subtitle: "Get ahead in life with your own place!",
+        buttonText: "Contact us for a tour!",
         buttonLink: "/get-started",
         imageSrc: "https://felixwong.com/gallery/images/a/amsterdam0813-017.jpg",
     };
@@ -17,8 +17,8 @@ const HeroBanner: React.FC = () => {
                 backgroundImage: `url(${heroContent.imageSrc})`,
                 minHeight: "50vh",
             }}>
-            <h1 className="bg-dark p-3 my-5">{heroContent.title}</h1>
-            <p className="bg-dark p-3 my-5">{heroContent.subtitle}</p>
+            <h1 className="bg-dark p-3 my-2">{heroContent.title}</h1>
+            <p className="bg-dark p-3 my-3">{heroContent.subtitle}</p>
             <Link
                 to={heroContent.buttonLink}
                 className="btn btn-primary">
