@@ -115,10 +115,10 @@ const AuthenticatedLayout: React.FC = () => {
                     <Link
                         to="/"
                         className="text-decoration-none">
-                        <h1 className="logo-title text-white mb-3 text-center">Rent Daddy</h1>
+                        <h1 className="logo-title text-white mb-3 text-center">EZRA</h1>
                         <img
                             src="/logo.png"
-                            alt="Rent Daddy Logo"
+                            alt="EZRA Logo"
                             className="logo-image mx-auto d-block bg-white rounded-5"
                             width={64}
                             height={64}
@@ -199,7 +199,7 @@ const AuthenticatedLayout: React.FC = () => {
                     <p
                         className="footer-text"
                         style={{ margin: 0, color: "#8c8c8c", fontSize: "14px" }}>
-                        Rent Daddy Â© {new Date().getFullYear()} | All Rights Reserved
+                        EZRA © {new Date().getFullYear()} | All Rights Reserved
                     </p>
                 </Footer>
             </Layout>

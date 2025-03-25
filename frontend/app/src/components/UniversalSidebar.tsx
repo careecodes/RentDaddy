@@ -42,10 +42,10 @@ const UniversalSidebar: React.FC = () => {
                 <div className="demo-logo-vertical d-flex flex-column align-items-center justify-content-center my-5">
                     <Divider className="divider-text border-white" />
                     <Link to="/">
-                        <p className="fs-2 logo-text text-white">Rent Daddy</p>
+                        <p className="fs-2 logo-text text-white">EZRA</p>
                         <img
                             src="/logo.png"
-                            alt="Rent Daddy Logo"
+                            alt="EZRA Logo"
                             className="logo-image"
                             width={64}
                             height={64}
@@ -103,7 +103,7 @@ const UniversalSidebar: React.FC = () => {
                 {/* Footer Container */}
                 <Footer style={{ textAlign: "center" }}>
                     <Divider className="divider-text border-black" />
-                    <p>Rent Daddy ©{new Date().getFullYear()} Created by Rent Daddy</p>
+                    <p>EZRA ©{new Date().getFullYear()} Created by EZRA</p>
                 </Footer>
             </Layout>
         </Layout>

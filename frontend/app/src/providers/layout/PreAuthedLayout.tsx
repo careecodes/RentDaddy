@@ -67,7 +67,7 @@ const PreAuthedLayout: React.FC = () => {
                     <Link
                         to="/"
                         style={{ color: "white", fontSize: "24px", textDecoration: "none" }}>
-                        RentDaddy
+                        EZRA
                     </Link>
                 </div>
 
@@ -96,8 +96,8 @@ const PreAuthedLayout: React.FC = () => {
             </Content>
             {/* Footer Container */}
             <Footer className="footer">
-                {/* Rent Daddy */}
-                <h3 className="footer-title">Rent Daddy</h3>
+                {/*  EZRA */}
+                <h3 className="footer-title">EZRA</h3>
                 {/* Logo */}
                 <img
                     src="/logo.png"
@@ -132,7 +132,7 @@ const PreAuthedLayout: React.FC = () => {
                         Terms of Service
                     </Link>
                 </div>
-                <p className="footer-text">Rent Daddy © {new Date().getFullYear()} | All Rights Reserved</p>
+                <p className="footer-text">EZRA © {new Date().getFullYear()} | All Rights Reserved</p>
             </Footer>
         </Layout>
     );
