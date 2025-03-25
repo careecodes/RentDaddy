@@ -67,31 +67,31 @@ func main() {
 	}
 	if count > 90 {
 		log.Printf("[SEED_USERS] Users already seeded: %d", count)
-	} else {
-		log.Printf("[SEED_USERS] Starting %d users", userCount)
+		return
+	}
+	log.Printf("[SEED_USERS] Starting %d users", userCount)
 
-		adminUser, err = createAdmin(ctx)
-		if err != nil {
-			log.Printf("[SEED_USERS] Error seeding admin: %v", err)
-			return
+	adminUser, err = createAdmin(ctx)
+	if err != nil {
+		log.Printf("[SEED_USERS] Error seeding admin: %v", err)
+		return
 
-		}
-
-		for i := 0; i < userCount; i++ {
-			if err := createTenant(ctx); err != nil {
-				log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
-			}
-
-			if userCount+1 > rateLimitThreshold {
-				time.Sleep(2 * time.Second)
-			}
-		}
-
-		log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
 	}
 
+	for i := 0; i < userCount; i++ {
+		if err := createTenant(ctx); err != nil {
+			log.Printf("[SEED_USERS] Error seeding user %d: %v", i+1, err)
+		}
+
+		if userCount+1 > rateLimitThreshold {
+			time.Sleep(2 * time.Second)
+		}
+	}
+
+	log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
+
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
-	time.Sleep(5 * time.Second)
+	time.Sleep(3 * time.Second)
 
 	qString := fmt.Sprintf(`SELECT id FROM users WHERE clerk_id = '%s' AND role = 'admin'`, adminUser.ID)
 
