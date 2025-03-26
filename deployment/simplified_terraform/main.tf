@@ -196,8 +196,8 @@ resource "aws_ecs_cluster" "main" {
 resource "aws_launch_template" "ecs_lt" {
   name_prefix   = "rentdaddy-ecs-"
   image_id      = "ami-059601b8419c53014" # Amazon ECS-optimized Amazon Linux 2 AMI for us-east-2
-  instance_type = "t3.small"              # For Documenso as mentioned in your requirements
-  key_name      = "rentdaddy_key"         # Make sure this key pair exists
+  instance_type = "t3.small"
+  key_name      = "rentdaddy_key"
 
   iam_instance_profile {
     name = aws_iam_instance_profile.ecs_instance_profile.name
@@ -274,11 +274,53 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
 
   container_definitions = jsonencode([
     {
-      name         = "backend"
-      image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/backend:latest"
-      essential    = true
+      name      = "backend"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/backend:latest"
+      essential = true
+      environment = [
+        { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" }
+      ]
       portMappings = [{ containerPort = 8080, protocol = "tcp" }]
-      secrets      = [/* use your existing secrets block */]
+      secrets = [
+        { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
+        { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
+        { name = "CLERK_WEBHOOK", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_WEBHOOK::" },
+        { name = "CLERK_LANDLORD_USER_ID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_LANDLORD_USER_ID::" },
+        { name = "VITE_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_PORT::" },
+        { name = "VITE_DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_DOMAIN_URL::" },
+        { name = "PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PORT::" },
+        { name = "DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOMAIN_URL::" },
+        { name = "TEMP_DIR", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:TEMP_DIR::" },
+        { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_USER::" },
+        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
+        { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::" },
+        { name = "POSTGRES_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PORT::" },
+        { name = "ADMIN_FIRST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_FIRST_NAME::" },
+        { name = "ADMIN_LAST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_LAST_NAME::" },
+        { name = "ADMIN_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_EMAIL::" },
+        { name = "FRONTEND_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:FRONTEND_PORT::" },
+        { name = "SMTP_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PORT::" },
+        { name = "SMTP_ENDPOINT_ADDRESS", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_ENDPOINT_ADDRESS::" },
+        { name = "SMTP_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_USER::" },
+        { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
+        { name = "SMTP_TLS_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TLS_MODE::" },
+        { name = "SMTP_FROM", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_FROM::" },
+        { name = "SMTP_TEST_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TEST_EMAIL::" },
+        { name = "s3Region", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Region::" },
+        { name = "s3Bucket", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Bucket::" },
+        { name = "s3BaseURL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3BaseURL::" },
+        { name = "awsAccessID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsAccessID::" },
+        { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
+        { name = "DOCUMENSO_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_HOST::" },
+        { name = "DOCUMENSO_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PORT::" },
+        { name = "DOCUMENSO_API_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_URL::" },
+        { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
+        { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" },
+        { name = "DOCUMENSO_PUBLIC_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PUBLIC_URL::" },
+        { name = "ENV", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ENV::" },
+        { name = "DEBUG_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DEBUG_MODE::" }
+      ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
@@ -308,7 +350,6 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
         { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::" },
         { name = "POSTGRES_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PORT::" },
-        { name = "POSTGRES_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_HOST::" },
         { name = "ADMIN_FIRST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_FIRST_NAME::" },
         { name = "ADMIN_LAST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_LAST_NAME::" },
         { name = "ADMIN_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_EMAIL::" },
@@ -375,13 +416,12 @@ resource "aws_ecs_task_definition" "documenso" {
       environment = [
         { name = "NODE_ENV", value = "production" },
         # { name = "PORT", value = "3000" },
-        # { name = "POSTGRES_HOST", value = "10.0.0.107" } # Docker bridge network gateway IP
+        { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" },
       ]
       secrets = [
         { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_USER::" },
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
         { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_DB::" },
-        { name = "POSTGRES_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_HOST::" },
         { name = "NEXTAUTH_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXTAUTH_SECRET::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_KEY::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY::" },
@@ -423,8 +463,9 @@ resource "aws_ecs_task_definition" "documenso" {
 
 # PostgreSQL containers for both apps
 resource "aws_ecs_task_definition" "main_postgres" {
-  family                   = "rentdaddy-main-postgres"
-  network_mode             = "bridge" # Switch to bridge mode
+  family       = "rentdaddy-main-postgres"
+  network_mode = "awsvpc"
+
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
@@ -437,6 +478,7 @@ resource "aws_ecs_task_definition" "main_postgres" {
       name      = "main-postgres"
       image     = "postgres:15"
       essential = true
+
       portMappings = [
         {
           containerPort = 5432,
@@ -444,11 +486,9 @@ resource "aws_ecs_task_definition" "main_postgres" {
           protocol      = "tcp"
         }
       ]
-      #   environment = [
-      #     { name = "POSTGRES_USER", value = "#{AWS_SECRETS:POSTGRES_USER}" },
-      #     { name = "POSTGRES_PASSWORD", value = "#{AWS_SECRETS:POSTGRES_PASSWORD}" },
-      #     { name = "POSTGRES_DB", value = "#{AWS_SECRETS:POSTGRES_DB}" }
-      #   ]
+      environment = [
+        { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" },
+      ]
       secrets = [
         {
           name      = "POSTGRES_USER"
@@ -461,10 +501,6 @@ resource "aws_ecs_task_definition" "main_postgres" {
         {
           name      = "POSTGRES_DB"
           valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::"
-        },
-        {
-          name      = "POSTGRES_HOST"
-          valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_HOST::"
         }
       ]
 
@@ -492,8 +528,9 @@ resource "aws_ecs_task_definition" "main_postgres" {
   }
 }
 resource "aws_ecs_task_definition" "documenso_postgres" {
-  family                   = "rentdaddy-documenso-postgres"
-  network_mode             = "bridge" # Switch to bridge mode
+  family       = "rentdaddy-documenso-postgres"
+  network_mode = "awsvpc"
+
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
@@ -513,16 +550,13 @@ resource "aws_ecs_task_definition" "documenso_postgres" {
           protocol      = "tcp"
         }
       ]
-      #   environment = [
-      #     { name = "POSTGRES_USER", value = "#{AWS_SECRETS:DOCUMENSO_POSTGRES_USER}" },
-      #     { name = "POSTGRES_PASSWORD", value = "#{AWS_SECRETS:DOCUMENSO_POSTGRES_PASSWORD}" },
-      #     { name = "POSTGRES_DB", value = "#{AWS_SECRETS:DOCUMENSO_POSTGRES_DB}" }
-      #   ]
+      environment = [
+        { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" },
+      ]
       secrets = [
         { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_USER::" },
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
         { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_DB::" },
-        { name = "POSTGRES_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_HOST::" },
         { name = "NEXTAUTH_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXTAUTH_SECRET::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_KEY::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY::" },
@@ -631,7 +665,17 @@ resource "aws_ecs_service" "main_postgres" {
   desired_count   = 1
 
   enable_execute_command = true
+  network_configuration {
+    subnets         = aws_subnet.public[*].id
+    security_groups = [aws_security_group.ec2_sg.id]
+  }
 
+  service_registries {
+    registry_arn   = aws_service_discovery_service.main_postgres.arn
+    container_name = "main-postgres"
+  }
+
+  depends_on = [aws_lb_listener.https]
   ordered_placement_strategy {
     type  = "binpack"
     field = "memory"
@@ -650,6 +694,11 @@ resource "aws_ecs_service" "documenso_postgres" {
   enable_execute_command = true
 
 
+  network_configuration {
+    subnets          = aws_subnet.public[*].id
+    security_groups  = [aws_security_group.ec2_sg.id]
+    assign_public_ip = false
+  }
 
   ordered_placement_strategy {
     type  = "binpack"
@@ -761,7 +810,7 @@ resource "aws_lb_target_group" "backend" {
   target_type = "ip"
 
   health_check {
-    path                = "/" # Adjust if your backend has a different health check path
+    path                = "/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
@@ -916,3 +965,28 @@ resource "aws_route53_record" "validate_app_cert" {
 }
 
 
+resource "aws_service_discovery_private_dns_namespace" "rentdaddy" {
+  name        = "rentdaddy.local"
+  description = "Private namespace for service discovery"
+  vpc         = aws_vpc.main.id
+}
+
+
+resource "aws_service_discovery_service" "main_postgres" {
+  name = "main-postgres"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.rentdaddy.id
+
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+}
