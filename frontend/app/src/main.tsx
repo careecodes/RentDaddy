@@ -153,7 +153,7 @@ createRoot(document.getElementById("root")!).render(
                                             element={<AdminApartmentSetupAndDetailsManagement />}
                                         />
                                         <Route
-                                            path="add-tenant"
+                                            path="manage-tenants"
                                             element={<AddTenant />}
                                         />
                                         <Route
