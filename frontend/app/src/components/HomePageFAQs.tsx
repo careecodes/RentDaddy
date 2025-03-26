@@ -40,11 +40,6 @@ const HomePageFAQs: React.FC = () => {
                     </Panel>
                 ))}
             </Collapse>
-            <Link
-                to="/more-faqs"
-                className="my-2 btn btn-primary">
-                More FAQs
-            </Link>
         </div>
     );
 };
