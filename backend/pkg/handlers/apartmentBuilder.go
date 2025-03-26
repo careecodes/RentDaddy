@@ -16,7 +16,7 @@ import (
 
 type Building struct {
 	BuildingNumber string `json:"buildingNumber"`
-	FloorNumbers   int    `json:"floorNumbers"`
+	FloorNumber    int    `json:"floorNumber"`
 	NumberOfRooms  int    `json:"numberOfRooms"`
 }
 
@@ -25,9 +25,6 @@ type BuildingRequest struct {
 	ParkingTotal   int        `json:"parking_total"`
 	PerUserParking int        `json:"per_user_parking"`
 	LockerCount    int        `json:"locker_count"`
-	ManagementID   int        `json:"management_id"`
-	ManagePhone    string     `json:"manager_phone"`
-	ManageEmail    string     `json:"manager_email"`
 }
 
 func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Request) error {
@@ -64,14 +61,6 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 			ParkingTotal:   pgtype.Int8{Int64: int64(params.ParkingTotal), Valid: true},
 			PerUserParking: pgtype.Int8{Int64: int64(params.PerUserParking), Valid: true},
 			ManagementID:   adminUser.ID,
-			ManagerPhone: pgtype.Text{
-				String: params.ManagePhone,
-				Valid:  true,
-			},
-			ManagerEmail: pgtype.Text{
-				String: params.ManageEmail,
-				Valid:  true,
-			},
 		}
 		_, err = queries.CreateBuilding(r.Context(), buildingParams)
 		if err != nil {
@@ -83,7 +72,7 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 			return errors.New("[Construct] error creating lockers: " + err.Error())
 		}
 
-		for i := 0; i < building.FloorNumbers; i++ {
+		for i := 0; i < building.FloorNumber; i++ {
 			for j := 0; j < building.NumberOfRooms; j++ {
 				sqft, err := faker.RandomInt(500, 2000)
 				if err != nil {

@@ -24,13 +24,15 @@ type AdminSetup = {
     parkingTotal: number;
     perUserParking: number;
     lockerCount: number;
-    buildingsInfo: Building[];
+    buildings: Building[];
 };
 
 const AdminApartmentSetupAndDetailsManagement = () => {
     // State that holds the locations (building #, floor #s in that building, room numbers in that building)
     // TODO: When no longer needed for development, delete the clear locations button and mock data
-    const [locations, setLocations] = React.useState<{ building: number; floors: number[]; rooms: number[] }[]>([]);
+    const [locations, setLocations] = React.useState<{ building: number; floors: number; rooms: number }[]>([]);
+
+    console.log( "locations on load", locations);
 
     // State the holds the location that is currently being located
     const [editBuildingObj, setEditBuildingObj] = useState<Building>({
@@ -43,7 +45,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         parkingTotal: 0,
         perUserParking: 0,
         lockerCount: 0,
-        buildingsInfo: [],
+        buildings: [],
     });
 
     console.log(editBuildingObj);
@@ -84,7 +86,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             parkingTotal: 0,
             perUserParking: 0,
             lockerCount: 0,
-            buildingsInfo: [],
+            buildings: [],
         });
 
         console.log("adminSetupObject", adminSetupObject);
@@ -131,18 +133,18 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             title: "Floors",
             dataIndex: "floors",
             key: "floors",
-            render: (floors: number[]) => floors.join(", "),
+            render: (floors: number) => floors,
         },
         {
             title: "Rooms",
             dataIndex: "rooms",
             key: "rooms",
-            render: (rooms: number[]) => rooms.join(", "),
+            render: (rooms: number) => rooms,
         },
         {
             title: "Action",
             key: "action",
-            render: (text: string, record: { building: number; floors: number[]; rooms: number[] }) => (
+            render: (text: string, record: { building: number; floors: number; rooms: number }) => (
                 <div className="flex gap-2">
                     <ButtonComponent
                         title="Delete"
@@ -226,7 +228,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             const building = parseInt(buildingInput?.value || "0");
                             const floors = document.querySelector('input[placeholder="# of Floors"]') as HTMLInputElement;
                             const rooms = document.querySelector('input[placeholder="# of Room"]') as HTMLInputElement;
-                            setLocations([...locations, { building, floors: [parseInt(floors?.value || "0")], rooms: [parseInt(rooms?.value || "0")] }]);
+                            setLocations([...locations, { building, floors: parseInt(floors?.value || "0"), rooms: parseInt(rooms?.value || "0") }]);
                         }}
                     />
                 </div>
