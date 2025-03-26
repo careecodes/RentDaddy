@@ -262,15 +262,15 @@ resource "aws_autoscaling_group" "ecs_asg" {
 }
 
 # ECS Task Definitions
-resource "aws_ecs_task_definition" "backend" {
-  family                   = "rentdaddy-backend"
+
+resource "aws_ecs_task_definition" "backend_with_frontend" {
+  family                   = "rentdaddy-app"
   network_mode             = "awsvpc"
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
-  cpu                      = "256"
-  memory                   = "512"
-
+  cpu                      = "512"
+  memory                   = "1024"
 
   container_definitions = jsonencode([
     {
@@ -278,11 +278,21 @@ resource "aws_ecs_task_definition" "backend" {
       image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/backend:latest"
       essential    = true
       portMappings = [{ containerPort = 8080, protocol = "tcp" }]
-      # environment = [
-      #   { name = "PORT", value = "8080" },
-      #   { name = "ENV", value = "production" },
-      #   { name = "POSTGRES_HOST", value = "10.0.0.107" } # Docker bridge network gateway IP
-      # ]
+      secrets      = [/* use your existing secrets block */]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.backend_logs.name
+          awslogs-region        = "us-east-2"
+          awslogs-stream-prefix = "backend"
+        }
+      }
+    },
+    {
+      name         = "frontend"
+      image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:latest"
+      essential    = true
+      portMappings = [{ containerPort = 5173, protocol = "tcp" }]
       secrets = [
         { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
         { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
@@ -324,35 +334,12 @@ resource "aws_ecs_task_definition" "backend" {
         { name = "ENV", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ENV::" },
         { name = "DEBUG_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DEBUG_MODE::" }
       ]
-      dependsOn = [{ containerName = "postgres", condition = "START" }]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
           awslogs-group         = aws_cloudwatch_log_group.backend_logs.name
           awslogs-region        = "us-east-2"
           awslogs-stream-prefix = "backend"
-        }
-      }
-
-      mountPoints = [{ sourceVolume = "app-temp", containerPath = "/app/temp", readOnly = false }]
-    },
-    {
-      name         = "postgres"
-      image        = "postgres:15"
-      essential    = true
-      portMappings = [{ containerPort = 5432, protocol = "tcp" }]
-      secrets = [
-        { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_USER::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
-        { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::" }
-      ]
-      mountPoints = [{ sourceVolume = "postgres-data", containerPath = "/var/lib/postgresql/data", readOnly = false }]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          awslogs-group         = aws_cloudwatch_log_group.backend_logs.name
-          awslogs-region        = "us-east-2"
-          awslogs-stream-prefix = "postgres"
         }
       }
     }
@@ -362,90 +349,6 @@ resource "aws_ecs_task_definition" "backend" {
     name      = "app-temp"
     host_path = "/home/ec2-user/app/temp"
   }
-
-  volume {
-    name      = "postgres-data"
-    host_path = "/home/ec2-user/app/postgres-data"
-  }
-}
-
-
-resource "aws_ecs_task_definition" "frontend" {
-  family                   = "rentdaddy-frontend"
-  network_mode             = "awsvpc"
-  requires_compatibilities = ["EC2"]
-  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
-  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
-
-
-  cpu    = "256"
-  memory = "512"
-
-  container_definitions = jsonencode([
-    {
-      name      = "frontend"
-      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:latest"
-      essential = true
-      portMappings = [
-        {
-          containerPort = 5173
-          protocol      = "tcp"
-        }
-      ]
-      # environment = [
-      #   { name = "VITE_PORT", value = "5173" }
-      # ]
-      secrets = [
-        { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
-        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
-        { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
-        { name = "CLERK_WEBHOOK", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_WEBHOOK::" },
-        { name = "CLERK_LANDLORD_USER_ID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_LANDLORD_USER_ID::" },
-        { name = "VITE_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_PORT::" },
-        { name = "VITE_DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_DOMAIN_URL::" },
-        { name = "PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PORT::" },
-        { name = "DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOMAIN_URL::" },
-        { name = "TEMP_DIR", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:TEMP_DIR::" },
-        { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_USER::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
-        { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::" },
-        { name = "POSTGRES_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PORT::" },
-        { name = "POSTGRES_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_HOST::" },
-        { name = "ADMIN_FIRST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_FIRST_NAME::" },
-        { name = "ADMIN_LAST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_LAST_NAME::" },
-        { name = "ADMIN_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_EMAIL::" },
-        { name = "FRONTEND_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:FRONTEND_PORT::" },
-        { name = "SMTP_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PORT::" },
-        { name = "SMTP_ENDPOINT_ADDRESS", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_ENDPOINT_ADDRESS::" },
-        { name = "SMTP_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_USER::" },
-        { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
-        { name = "SMTP_TLS_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TLS_MODE::" },
-        { name = "SMTP_FROM", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_FROM::" },
-        { name = "SMTP_TEST_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TEST_EMAIL::" },
-        { name = "s3Region", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Region::" },
-        { name = "s3Bucket", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Bucket::" },
-        { name = "s3BaseURL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3BaseURL::" },
-        { name = "awsAccessID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsAccessID::" },
-        { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
-        { name = "DOCUMENSO_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_HOST::" },
-        { name = "DOCUMENSO_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PORT::" },
-        { name = "DOCUMENSO_API_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_URL::" },
-        { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
-        { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" },
-        { name = "DOCUMENSO_PUBLIC_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PUBLIC_URL::" },
-        { name = "ENV", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ENV::" },
-        { name = "DEBUG_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DEBUG_MODE::" }
-      ]
-      logConfiguration = {
-        logDriver = "awslogs"
-        options = {
-          "awslogs-group"         = aws_cloudwatch_log_group.frontend_logs.name
-          "awslogs-region"        = "us-east-2"
-          "awslogs-stream-prefix" = "frontend"
-        }
-      }
-    }
-  ])
 }
 
 resource "aws_ecs_task_definition" "documenso" {
@@ -516,8 +419,6 @@ resource "aws_ecs_task_definition" "documenso" {
   ])
 }
 
-
-# PostgreSQL containers for both apps
 
 
 # PostgreSQL containers for both apps
@@ -673,10 +574,10 @@ resource "aws_ecs_task_definition" "documenso_postgres" {
 }
 
 # ECS Services
-resource "aws_ecs_service" "backend" {
-  name            = "rentdaddy-backend-service"
+resource "aws_ecs_service" "backend_with_frontend" {
+  name            = "rentdaddy-app-service"
   cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.backend.arn
+  task_definition = aws_ecs_task_definition.backend_with_frontend.arn
   desired_count   = 1
 
   enable_execute_command = true
@@ -690,34 +591,17 @@ resource "aws_ecs_service" "backend" {
     field = "memory"
   }
 
-  lifecycle {
-    ignore_changes = [desired_count]
-  }
-}
-
-
-resource "aws_ecs_service" "frontend" {
-  name            = "rentdaddy-frontend-service"
-  cluster         = aws_ecs_cluster.main.id
-  task_definition = aws_ecs_task_definition.frontend.arn
-  desired_count   = 1
-
-  enable_execute_command = true
-
-  network_configuration {
-    subnets          = aws_subnet.public[*].id
-    security_groups  = [aws_security_group.ec2_sg.id]
-    assign_public_ip = false
-  }
-  ordered_placement_strategy {
-    type  = "binpack"
-    field = "memory"
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8080
   }
 
   lifecycle {
     ignore_changes = [desired_count]
   }
 }
+
 
 resource "aws_ecs_service" "documenso" {
   name            = "rentdaddy-documenso-service"
@@ -935,6 +819,22 @@ resource "aws_lb_listener" "https" {
     target_group_arn = aws_lb_target_group.frontend.arn
   }
 }
+resource "aws_lb_listener_rule" "backend" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 110
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    host_header {
+      values = ["api.curiousdev.net"] # or change to whatever backend domain you want
+    }
+  }
+}
+
 
 
 resource "aws_lb_listener_rule" "frontend" {
