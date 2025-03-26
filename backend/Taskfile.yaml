@@ -8,6 +8,13 @@ vars:
   PG_URL: postgresql://{{.POSTGRES_USER}}@localhost:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
 
 tasks:
+  seed-users:
+    desc: "Seed users into the database and syncs with Clerk"
+    cmds:
+      - go run scripts/seed_users.go
+      # - docker compose exec backend go run scripts/seed_users.go
+    silent: false
+
   build:
     cmds:
       - go build -v -i server.go

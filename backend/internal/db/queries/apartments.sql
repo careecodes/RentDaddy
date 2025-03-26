@@ -5,10 +5,9 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id,
     created_at,
     updated_at
-  ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+  ) VALUES ($1, $2, $3, $4, $5, now(), now())
 RETURNING *;
 
 -- name: GetApartmentByUnitNumber :one
@@ -22,8 +21,7 @@ SELECT id,
   price,
   size,
   management_id,
-  availability,
-  lease_id
+  availability
 FROM apartments
 WHERE id = $1
 LIMIT 1;
@@ -34,8 +32,7 @@ SELECT id,
   price,
   size,
   management_id,
-  availability,
-  lease_id
+  availability
 FROM apartments
 ORDER BY unit_number DESC;
 
@@ -44,7 +41,6 @@ UPDATE apartments
 SET price = $2,
   management_id = $3,
   availability = $4,
-  lease_id = $5,
   updated_at = now()
 WHERE id = $1;
 

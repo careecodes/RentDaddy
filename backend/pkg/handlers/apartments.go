@@ -3,14 +3,15 @@ package handlers
 import (
 	"encoding/json"
 	"fmt"
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/go-chi/chi/v5"
-	"github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"io"
 	"log"
 	"net/http"
 	"strconv"
+
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-chi/chi/v5"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type ApartmentHandler struct {
@@ -27,9 +28,9 @@ func NewApartmentHandler(pool *pgxpool.Pool, queries *db.Queries) *ApartmentHand
 
 type UpdateApartmentParams struct {
 	Price        pgtype.Numeric `json:"price"`
-	ManagementID int64          `json:"management_id"`
+	ManagementID pgtype.Int8    `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      int64          `json:"lease_id"`
+	LeaseID      pgtype.Int8    `json:"lease_id"`
 }
 
 func (h ApartmentHandler) GetApartmentHandler(w http.ResponseWriter, r *http.Request) {
@@ -67,14 +68,13 @@ func (h ApartmentHandler) GetApartmentHandler(w http.ResponseWriter, r *http.Req
 }
 
 func (h ApartmentHandler) ListApartmentsHandler(w http.ResponseWriter, r *http.Request) {
-
 	apartments, err := h.queries.ListApartments(r.Context())
 	if err != nil {
 		log.Printf("Error fetching apartments: %v", err)
 		http.Error(w, "Failed to fetch apartments", http.StatusInternalServerError)
 		return
 	}
-	if apartments == nil || len(apartments) == 0 {
+	if len(apartments) == 0 {
 		log.Printf("No apartments found: %v", err)
 		http.Error(w, "No apartments found", http.StatusNotFound)
 		return
@@ -159,7 +159,6 @@ func (h ApartmentHandler) UpdateApartmentHandler(w http.ResponseWriter, r *http.
 		Price:        updateRequestParams.Price,
 		ManagementID: updateRequestParams.ManagementID,
 		Availability: updateRequestParams.Availability,
-		LeaseID:      updateRequestParams.LeaseID,
 	}
 
 	err = h.queries.UpdateApartment(r.Context(), updateParams)
