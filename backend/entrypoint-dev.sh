@@ -1,4 +1,5 @@
 #!/bin/sh
+set -e
 echo "[DEBUG] entrypoint reached"
 which task || echo "task not found"
 ls -alh /usr/local/bin
@@ -14,7 +15,7 @@ echo "[ENTRYPOINT] POSTGRES_USER: $POSTGRES_USER"
 echo "[ENTRYPOINT] PORT: $PORT"
 echo "[ENTRYPOINT] Running migrations and app..."
 
-set -e
+
 
 export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 

@@ -1,0 +1,38 @@
+# ---------- Builder Stage ----------
+FROM golang:1.23-alpine as builder
+
+WORKDIR /app
+
+# Install necessary build tools
+RUN apk add --no-cache curl git
+
+# Copy only module files to cache dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the rest of the application
+COPY . .
+
+# Build the binary
+RUN go build -o /tmp/server . || (echo "BUILD FAILED!" && exit 1)
+
+# ---------- Runtime Stage ----------
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# Install only runtime dependencies (no build tools)
+RUN apk add --no-cache postgresql-client curl
+
+# Copy binary from builder
+COPY --from=builder /tmp/server /tmp/server
+# Copy entrypoint
+COPY entrypoint-prod.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
+
+# Copy minimal files if needed (like config files or templates)
+COPY . .
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/entrypoint.sh"]

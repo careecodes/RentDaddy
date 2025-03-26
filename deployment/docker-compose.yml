@@ -93,7 +93,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
       - "2345:2345" 

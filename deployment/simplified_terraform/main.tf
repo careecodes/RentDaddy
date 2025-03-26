@@ -325,6 +325,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           awslogs-stream-prefix = "backend"
         }
       }
+      memoryReservation = 512
     },
     {
       name         = "frontend"
