@@ -13,9 +13,11 @@ import (
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
+	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 
+	"github.com/careecodes/RentDaddy/middleware"
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
@@ -52,8 +54,7 @@ func main() {
 	clerk.SetKey(clerkSecretKey)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-
+	r.Use(chiMiddleware.Logger)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
 		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
@@ -63,6 +64,9 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+	// Added to make this work for testing.
+	r.Use(clerkhttp.WithHeaderAuthorization())
+	r.Use(middleware.ClerkAuthMiddleware)
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
@@ -78,10 +82,11 @@ func main() {
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
-		//r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
+		r.Use(clerkhttp.WithHeaderAuthorization(), middleware.ClerkAuthMiddleware)
+
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
-			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			//a.Use(middleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
 
 			// Tenants
@@ -140,7 +145,6 @@ func main() {
 				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
 				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 				r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
-
 			})
 		})
 		// End Admin

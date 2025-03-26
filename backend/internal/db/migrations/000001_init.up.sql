@@ -141,7 +141,8 @@ CREATE TABLE IF NOT EXISTS "leases"
     "created_at"       TIMESTAMP(0)            DEFAULT now(),
     "updated_at"       TIMESTAMP(0)            DEFAULT now(),
     "previous_lease_id" BIGINT REFERENCES leases(id),
-    "tenant_signing_url" TEXT
+    "tenant_signing_url" TEXT,
+    "landlord_signing_url" TEXT
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");

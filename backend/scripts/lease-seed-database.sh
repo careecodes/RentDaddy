@@ -1,7 +1,6 @@
 #!/bin/sh
 
-# Database seeder script that uses OVERRIDING SYSTEM VALUE 
-# to force admin ID to be 100
+# Database seeder script that authenticates with Clerk and creates test data
 
 echo "🚀 Starting database seeder script..."
 
@@ -17,6 +16,78 @@ PG_DB="${POSTGRES_DB:-appdb}"
 
 echo "Using database connection: $PG_HOST / $PG_USER / $PG_DB"
 echo "Using API URL: $API_URL"
+
+# Check for required Clerk credentials
+if [ -z "$CLERK_SECRET_KEY" ]; then
+  echo "CLERK_SECRET_KEY must be set in environment variables."
+  exit 1
+fi
+
+# Use CLERK_LANDLORD_USER_ID from environment or fall back to a default
+CLERK_LANDLORD_USER_ID="${CLERK_LANDLORD_USER_ID:-user_2QANfT1DgWJy6F5GNuJ7rGQcLYR}"
+echo "Using Clerk landlord ID: $CLERK_LANDLORD_USER_ID"
+echo "Step 0: Creating a Clerk session token..."
+
+# Try creating a session token using a different endpoint
+session_response=$(curl -s -X POST \
+  -H "Authorization: Bearer $CLERK_SECRET_KEY" \
+  -H "Content-Type: application/json" \
+  "https://api.clerk.com/v1/sign_in_tokens" \
+  -d "{\"user_id\": \"$CLERK_LANDLORD_USER_ID\", \"expires_in_seconds\": 3600}")
+
+SESSION_TOKEN=$(echo "$session_response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
+
+
+if [ -z "$SESSION_TOKEN" ]; then
+  echo "❌ Failed to create sign-in token"
+  echo "$session_response"
+  exit 1
+else
+  echo "✅ Successfully created sign-in token: $SESSION_TOKEN"
+fi
+
+# Fetch landlord (admin) user from Clerk
+admin_json=$(curl -s -X GET \
+  -H "Authorization: Bearer $CLERK_SECRET_KEY" \
+  "https://api.clerk.com/v1/users/$CLERK_LANDLORD_USER_ID")
+
+echo "Admin metadata check:"
+curl -s -X GET \
+  -H "Authorization: Bearer $CLERK_SECRET_KEY" \
+  "https://api.clerk.com/v1/users/$CLERK_LANDLORD_USER_ID/metadata" | grep -o '"public":{[^}]*}'
+
+# Check if the API call succeeded
+if echo "$admin_json" | grep -q "error"; then
+  echo "❌ Failed to retrieve admin from Clerk API."
+  echo "$admin_json"
+  echo "Using default admin values..."
+  admin_db_id=100
+  admin_first_name="Default"
+  admin_last_name="Admin"
+  admin_email="admin@example.com"
+  admin_phone="+15551234000"
+else
+  # Parse landlord details (using grep for compatibility instead of jq)
+  admin_db_id=$(echo "$admin_json" | grep -o '"db_id":[0-9]*' | head -1 | cut -d':' -f2)
+  if [ -z "$admin_db_id" ]; then
+    echo "⚠️ Admin user does not have a db_id in Clerk metadata. Using default ID 100."
+    admin_db_id=100
+  fi
+
+  admin_first_name=$(echo "$admin_json" | grep -o '"first_name":"[^"]*"' | head -1 | cut -d'"' -f4)
+  admin_last_name=$(echo "$admin_json" | grep -o '"last_name":"[^"]*"' | head -1 | cut -d'"' -f4)
+  admin_email=$(echo "$admin_json" | grep -o '"email_address":"[^"]*"' | head -1 | cut -d'"' -f4)
+  if [ -z "$admin_email" ]; then
+    # Try another way to find email if the first method failed
+    admin_email=$(echo "$admin_json" | grep -o '"email_addresses":\[.*\]' | grep -o '"email_address":"[^"]*"' | head -1 | cut -d'"' -f4)
+  fi
+  admin_phone="+15551234000" # Default since phone might not be available
+
+  echo "Admin information from Clerk:"
+  echo "  DB ID: $admin_db_id"
+  echo "  Name: $admin_first_name $admin_last_name"
+  echo "  Email: $admin_email"
+fi
 
 # Number of records to create
 NUM_RECORDS=10
@@ -35,13 +106,11 @@ ONE_YEAR="${NEXT_YEAR}-${MONTH}-${DAY}"
 
 echo "Using date range: $TODAY to $ONE_YEAR"
 
-# Define user data
-ADMIN_NAME=$ADMIN_FIRST_NAME + " " + $ADMIN_LAST_NAME
-ADMIN_EMAIL="wrldconnect1@gmail.com"
+# Define tenant data
 TENANT_FIRST_NAMES="Sam Noah John Malik Rhyn JJ Yoon James Diego Carree"
 TENANT_LAST_NAMES="Ogg Lewis Wilson Soon Ogg SchraderBachar Soon Dude Mora Chrome"
-TENANT_CLERK_IDS="user_ogg user_lewis user_wilson user_soon user_scharderbachar"
-TENANT_PHONES="+15551234001 +15551234002 +15551234003 +15551234004 +15551234005"
+TENANT_CLERK_IDS="user_ogg user_lewis user_wilson user_soon user_ogg1 user_scharderbachar user_soon1 user_dude user_mora user_chrome"
+TENANT_PHONES="+15551234001 +15551234002 +15551234003 +15551234004 +15551234005 +15551234006 +15551234007 +15551234008 +15551234009 +15551234010"
 
 # Define apartment data
 APARTMENT_UNIT_NUMBERS="104 208 215 336 182 160 134 240 260 320"
@@ -57,33 +126,50 @@ get_item() {
 extract_id() {
   echo "$1" | grep -o '[0-9]\+' | head -1
 }
+make_api_call() {
+  method=$1
+  endpoint=$2
+  data=$3
+
+  echo "➡️ Calling $API_URL$endpoint"
+  echo "📦 Payload: $data"
+# AM I 100% on the endpoint path? And on the method that I hidding?
+  response=$(curl -s -w "\n🔁 HTTP Status: %{http_code}\n" -X $method \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer $SESSION_TOKEN" \
+    -d "$data" \
+    "$API_URL$endpoint")
+  echo $API_URL$endpoint
+  echo "$response"
+}
+
 
 # Arrays to store IDs (using temporary files for BusyBox compatibility)
 TENANT_IDS_FILE=$(mktemp)
 APARTMENT_IDS_FILE=$(mktemp)
 LEASE_IDS_FILE=$(mktemp)
 
-# Step 1: Create admin user with ID 100 (using OVERRIDING SYSTEM VALUE)
-echo "Step 1: Creating admin user with ID 100..."
+# Step 1: Create admin user with ID from Clerk (using OVERRIDING SYSTEM VALUE)
+echo "Step 1: Creating admin user with ID $admin_db_id..."
 
-# First check if user with ID 100 already exists
-USER_EXISTS=$(psql -h $PG_HOST -U $PG_USER -d $PG_DB -t -c "SELECT COUNT(*) FROM users WHERE id = 100;")
+# First check if user with the specified ID already exists
+USER_EXISTS=$(psql -h $PG_HOST -U $PG_USER -d $PG_DB -t -c "SELECT COUNT(*) FROM users WHERE id = $admin_db_id;")
 USER_EXISTS=$(extract_id "$USER_EXISTS")
 
 if [ "$USER_EXISTS" -eq "0" ]; then
-  # Create the admin user with ID 100 using the correct OVERRIDING SYSTEM VALUE syntax
+  # Create the admin user with specified ID using the correct OVERRIDING SYSTEM VALUE syntax
   psql -h $PG_HOST -U $PG_USER -d $PG_DB -c "
-  -- Delete existing ID with the same clerk_id if it exists
-  DELETE FROM users WHERE clerk_id = 'admin_user_100';
+  -- Delete existing user with the same clerk_id if it exists
+  DELETE FROM users WHERE clerk_id = '$CLERK_LANDLORD_USER_ID';
   
-  -- Create the admin user with ID 100
+  -- Create the admin user with the specified ID
   INSERT INTO users (id, clerk_id, first_name, last_name, email, phone, role, status) 
   OVERRIDING SYSTEM VALUE
-  VALUES (100, 'admin_user_100', '$ADMIN_NAME', 'Admin', '$ADMIN_EMAIL', '+15551234000', 'admin', 'active');
+  VALUES ($admin_db_id, '$CLERK_LANDLORD_USER_ID', '$admin_first_name', '$admin_last_name', '$admin_email', '$admin_phone', 'admin', 'active');
   "
-  echo "Created admin user with ID: 100"
+  echo "Created admin user with ID: $admin_db_id"
 else
-  echo "Admin user with ID 100 already exists"
+  echo "Admin user with ID $admin_db_id already exists"
 fi
 
 # Create tenant users
@@ -101,6 +187,12 @@ for i in $(seq 1 $NUM_RECORDS); do
     EMAIL=$EMAIL_TWO
   fi
   
+  # Skip if email matches admin email
+  if [ "$EMAIL" = "$admin_email" ]; then
+    echo "Skipping tenant with email $EMAIL because it matches admin email."
+    continue
+  fi
+  
   # First delete any existing user with the same clerk_id
   psql -h $PG_HOST -U $PG_USER -d $PG_DB -c "DELETE FROM users WHERE clerk_id = '$TENANT_CLERK_ID';"
   
@@ -111,12 +203,33 @@ for i in $(seq 1 $NUM_RECORDS); do
   
   TENANT_ID_RAW=$(psql -h $PG_HOST -U $PG_USER -d $PG_DB -t -c "$TENANT_SQL")
   TENANT_ID=$(extract_id "$TENANT_ID_RAW")
+  
+  # Verify that the tenant ID is not the same as the admin ID
+  if [ "$TENANT_ID" -eq "$admin_db_id" ]; then
+    echo "WARNING: Tenant ID conflicts with admin ID. This should not happen with SERIAL/IDENTITY columns."
+    echo "Attempting to reassign tenant ID..."
+    
+    # Delete the tenant and try again with explicit ID assignment
+    psql -h $PG_HOST -U $PG_USER -d $PG_DB -c "DELETE FROM users WHERE id = $TENANT_ID;"
+    
+    # Find a new ID that's not the admin ID (admin ID + 1000 to be safe)
+    NEW_ID=$((admin_db_id + 1000 + i))
+    
+    TENANT_SQL="INSERT INTO users (id, clerk_id, first_name, last_name, email, phone, role, status) 
+               OVERRIDING SYSTEM VALUE
+               VALUES ($NEW_ID, '$TENANT_CLERK_ID', '$TENANT_FIRST_NAME', '$TENANT_LAST_NAME', '$EMAIL', '$TENANT_PHONE', 'tenant', 'active') 
+               RETURNING id;"
+    
+    TENANT_ID_RAW=$(psql -h $PG_HOST -U $PG_USER -d $PG_DB -t -c "$TENANT_SQL")
+    TENANT_ID=$(extract_id "$TENANT_ID_RAW")
+  fi
+  
   echo "Created tenant #$i: $TENANT_FIRST_NAME $TENANT_LAST_NAME (ID: $TENANT_ID)"
   
   # Store ID for later use
   echo "$TENANT_ID" >> $TENANT_IDS_FILE
 done
-echo "✅ Created $NUM_RECORDS tenants"
+echo "✅ Created tenants"
 
 # Create apartments
 echo "Step 3: Creating apartments..."
@@ -129,7 +242,7 @@ for i in $(seq 1 $NUM_RECORDS); do
   psql -h $PG_HOST -U $PG_USER -d $PG_DB -c "DELETE FROM apartments WHERE unit_number = $APARTMENT_UNIT_NUMBER;"
   
   APT_SQL="INSERT INTO apartments (unit_number, price, size, management_id, availability) 
-          VALUES ($APARTMENT_UNIT_NUMBER, $APARTMENT_PRICE, $APARTMENT_SIZE, 100, true) 
+          VALUES ($APARTMENT_UNIT_NUMBER, $APARTMENT_PRICE, $APARTMENT_SIZE, $admin_db_id, true) 
           RETURNING id;"
   
   APT_ID_RAW=$(psql -h $PG_HOST -U $PG_USER -d $PG_DB -t -c "$APT_SQL")
@@ -168,17 +281,12 @@ for i in $(seq 1 $(($NUM_RECORDS - 5))); do
   echo "Creating lease #$i for tenant $TENANT_NAME (ID: $TENANT_ID) with email $EMAIL"
   echo "  Apartment: #$APARTMENT_NUMBER (ID: $APT_ID)"
   
-  # Create the lease with a draft status
-  # NOTE: Using hardcoded landlord_id=100 to match the value in leases.go
-  LEASE_PAYLOAD="{\"tenant_id\":$TENANT_ID,\"landlord_id\":100,\"apartment_id\":$APT_ID,\"start_date\":\"$TODAY\",\"end_date\":\"$ONE_YEAR\",\"rent_amount\":$APARTMENT_PRICE,\"lease_status\":\"draft\",\"document_title\":\"Residential Lease Agreement - Unit $APARTMENT_NUMBER\",\"lease_number\":1,\"created_by\":100,\"updated_by\":100,\"tenant_name\":\"$TENANT_NAME\",\"tenant_email\":\"$EMAIL\",\"property_address\":\"123 Main Street, Apartment $APARTMENT_NUMBER\",\"replace_existing\":true}"
+  LEASE_PAYLOAD="{\"tenant_id\":$TENANT_ID,\"landlord_id\":$admin_db_id,\"apartment_id\":$APT_ID,\"start_date\":\"$TODAY\",\"end_date\":\"$ONE_YEAR\",\"rent_amount\":$APARTMENT_PRICE,\"lease_status\":\"draft\",\"document_title\":\"Residential Lease Agreement - Unit $APARTMENT_NUMBER\",\"lease_number\":1,\"created_by\":$admin_db_id,\"updated_by\":$admin_db_id,\"tenant_name\":\"$TENANT_NAME\",\"tenant_email\":\"$EMAIL\",\"property_address\":\"123 Main Street, Apartment $APARTMENT_NUMBER\",\"replace_existing\":true}"
 
-  # Call API to create the lease
-  echo "Sending API request to create lease..."
-  LEASE_RESPONSE=$(curl -s -X POST \
-    -H "Content-Type: application/json" \
-    $API_URL/admin/leases/create \
-    -d "$LEASE_PAYLOAD")
-  
+# Call API to create the lease with authentication
+echo "Sending API request to create lease..."
+LEASE_RESPONSE=$(make_api_call "POST" "/admin/leases/create" "$LEASE_PAYLOAD")
+
   # Extract lease ID and document ID from the response
   LEASE_ID=""
   if echo "$LEASE_RESPONSE" | grep -q '"lease_id":'; then
@@ -196,6 +304,8 @@ for i in $(seq 1 $(($NUM_RECORDS - 5))); do
     echo "$LEASE_ID" >> $LEASE_IDS_FILE
   else
     echo "  ❌ Failed to create lease. Response: $LEASE_RESPONSE"
+    echo "    This could be due to authentication issues or API constraints."
+    echo "    You may need to manually create this lease through the UI."
   fi
   
   echo "----------------------------------------"
@@ -211,8 +321,7 @@ for i in $(seq 1 $NUM_RECORDS); do
   if [ ! -z "$LEASE_ID" ]; then
     echo "Testing Documenso URL retrieval for lease #$i (ID: $LEASE_ID)"
     
-    DOC_URL_RESPONSE=$(curl -s -X GET \
-      $API_URL/admin/leases/$LEASE_ID/url)
+    DOC_URL_RESPONSE=$(make_api_call "GET" "/admin/leases/$LEASE_ID/url")
     
     if echo "$DOC_URL_RESPONSE" | grep -q '"download_url":'; then
       echo "  ✅ Successfully retrieved Documenso URL"
@@ -239,8 +348,7 @@ for i in $(seq 1 $NUM_RECORDS); do
   if [ ! -z "$LEASE_ID" ]; then
     echo "Testing URL retrieval for lease #$i (ID: $LEASE_ID)"
     
-    URL_RESPONSE=$(curl -s -X GET \
-      $API_URL/admin/leases/$LEASE_ID/url)
+    URL_RESPONSE=$(make_api_call "GET" "/admin/leases/$LEASE_ID/url")
     
     if echo "$URL_RESPONSE" | grep -q '"download_url":'; then
       echo "  ✅ Successfully retrieved S3 URL"

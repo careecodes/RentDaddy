@@ -4,13 +4,13 @@ INSERT INTO leases (
   tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount,
   status, created_by, updated_by,
-  previous_lease_id, tenant_signing_url
+  previous_lease_id, tenant_signing_url, landlord_signing_url
 ) VALUES (
   $1, $2, $3,
   $4, $5, $6,
   $7, $8, $9,
   $10, $11, $12,
-  $13, $14
+  $13, $14, $15
 )
 RETURNING *;
 
@@ -19,15 +19,18 @@ RETURNING *;
 INSERT INTO leases (
   lease_number, external_doc_id, tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount, status, lease_pdf_s3,
-  created_by, updated_by, previous_lease_id, tenant_signing_url
+  created_by, updated_by, previous_lease_id, tenant_signing_url, landlord_signing_url
 )
 VALUES (
   $1, $2, $3, $4, $5,
   $6, $7, $8, $9, $10,
-  $11, $12, $13, $14
+  $11, $12, $13, $14, $15
 )
 RETURNING id, lease_number;
 
+-- name: GetMaxLeaseNumber :one
+SELECT COALESCE(MAX(lease_number), 0) FROM leases 
+where tenant_id = $1;
 
 -- name: GetDuplicateLease :one
 SELECT id,lease_number, external_doc_id, lease_pdf_s3,
@@ -202,9 +205,10 @@ RETURNING id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_i
     updated_by, updated_at, previous_lease_id;
 
 
--- name: UpdateTenantSigningURL :exec
+-- name: UpdateSigningURLs :exec
 UPDATE leases
 SET tenant_signing_url = $2,
+    landlord_signing_url = $3,
     updated_at = now()
 WHERE id = $1;
 
@@ -252,12 +256,18 @@ WHERE tenant_id = $1
 ORDER BY lease_number DESC
 LIMIT 1;
 
+
+-- name: GetLandlordSigningURLsByLandlordID :many
+SELECT status,landlord_signing_url
+FROM leases
+WHERE landlord_id = $1;
+
 -- name: GetLeaseForAmending :one
 SELECT id, lease_number, external_doc_id, lease_pdf_s3,
   tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount,
   status, created_by, updated_by,
-  previous_lease_id, tenant_signing_url FROM leases
+  previous_lease_id, tenant_signing_url, landlord_signing_url FROM leases
 WHERE tenant_id = $1
   AND apartment_id = $2
   AND (status = 'active' OR status = 'draft')

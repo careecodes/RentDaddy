@@ -469,23 +469,23 @@ func (c *DocumensoClient) withRetry(maxRetries int, operation func() error) erro
 	return fmt.Errorf("operation failed after %d attempts: %w", maxRetries, err)
 }
 
-func (c *DocumensoClient) GetTenantSigningURL(documentID string, tenantEmail string) (string, error) {
+func (c *DocumensoClient) GetSigningURLs(documentID string, tenantEmail string, landlordEmail string) (string, string, error) {
 	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
+		return "", "", fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Authorization", "Bearer "+c.ApiKey)
 
 	resp, err := c.Client.Do(req)
 	if err != nil {
-		return "", fmt.Errorf("API request failed: %w", err)
+		return "", "", fmt.Errorf("API request failed: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return "", fmt.Errorf("Documenso returned %d: %s", resp.StatusCode, string(body))
+		return "", "", fmt.Errorf("Documenso returned %d: %s", resp.StatusCode, string(body))
 	}
 
 	var result struct {
@@ -495,16 +495,26 @@ func (c *DocumensoClient) GetTenantSigningURL(documentID string, tenantEmail str
 		} `json:"recipients"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
-		return "", fmt.Errorf("failed to parse response: %w", err)
+		return "", "", fmt.Errorf("failed to parse response: %w", err)
 	}
-
+	var tenantSigningURL, landlordSigningURL string
 	for _, r := range result.Recipients {
 		if strings.EqualFold(r.Email, tenantEmail) {
-			return r.SigningURL, nil
+			tenantSigningURL = r.SigningURL
 		}
 	}
 
-	return "", fmt.Errorf("tenant %s not found in document %s", tenantEmail, documentID)
+	for _, r := range result.Recipients {
+		if strings.EqualFold(r.Email, landlordEmail) {
+			landlordSigningURL = r.SigningURL
+		}
+	}
+	if tenantSigningURL != "" && landlordSigningURL != "" {
+		return tenantSigningURL, landlordSigningURL, nil
+	} else if tenantSigningURL != "" {
+		return "", "", fmt.Errorf("landlord %s not found in document %s", landlordEmail, documentID)
+	}
+	return "", "", fmt.Errorf("tenant %s not found in document %s", tenantEmail, documentID)
 }
 
 // GetDocumentDownloadURL retrieves the URL to download a document from Documenso
