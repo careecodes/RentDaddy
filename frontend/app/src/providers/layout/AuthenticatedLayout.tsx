@@ -18,78 +18,6 @@ const siderStyle: React.CSSProperties = {
     backgroundColor: "#00674f",
 };
 
-const items: MenuProps["items"] = [
-    {
-        key: "home",
-        icon: React.createElement(HomeOutlined),
-        label: <Link to="/">Home</Link>,
-    },
-    {
-        key: "admin",
-        icon: React.createElement(TeamOutlined),
-        label: <Link to="/admin">Admin</Link>,
-        children: [
-            // Admin Dashboard
-            {
-                key: "admin-dashboard",
-                label: <Link to="/admin">Admin Dashboard</Link>,
-            },
-            // Apartment Setup and Details Management Page
-            {
-                key: "apartment",
-                label: <Link to="/admin/init-apartment-complex">Apartment Setup</Link>,
-            },
-            // Add a tenant
-            {
-                key: "tenant",
-                label: <Link to="/admin/add-tenant">Add Tenant</Link>,
-            },
-            // View Digital Leases
-            {
-                key: "admin-view-and-edit-leases",
-                label: <Link to="/admin/admin-view-and-edit-leases">View Digital Leases</Link>,
-            },
-            // Work Order / Complaint Management Page
-            {
-                key: "admin-view-and-edit-work-orders-and-complaints",
-                label: <Link to="/admin/admin-view-and-edit-work-orders-and-complaints">Work Orders & Complaints</Link>,
-            },
-        ],
-    },
-    {
-        key: "tenant",
-        icon: React.createElement(UserOutlined),
-        label: <Link to="/tenant">Tenant</Link>,
-        children: [
-            // Tenant Dashboard
-            {
-                key: "tenant-dashboard",
-                label: <Link to="/tenant">Tenant Dashboard</Link>,
-            },
-            // Guest Parking
-            {
-                key: "guest-parking",
-                label: <Link to="/tenant/guest-parking">Guest Parking</Link>,
-            },
-            // View Digital Leases
-            {
-                key: "tenant-view-and-edit-leases",
-                label: <Link to="/tenant/tenant-view-and-edit-leases">View Digital Leases</Link>,
-            },
-            // Work Order / Complaint Management Page
-            {
-                key: "tenant-work-orders-and-complaints",
-                label: <Link to="/tenant/tenant-work-orders-and-complaints">Work Orders & Complaints</Link>,
-            },
-        ],
-    },
-    {
-        key: "settings",
-        icon: React.createElement(SettingOutlined),
-        label: <Link to="/components/settings">Settings</Link>,
-    },
-];
-
 const AuthenticatedLayout: React.FC = () => {
     const { isSignedIn, user } = useUser();
 
@@ -127,12 +55,9 @@ const AuthenticatedLayout: React.FC = () => {
                 </div>
 
                 {/* Menu Container */}
-                {/* <Menu theme='dark' style={{ backgroundColor: '#7789f4', color: '#000000' }} mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} /> */}
-
                 <SidebarLinks />
-
                 {/* Avatar and Login Container */}
-                <div className="avatar-container mt-auto pb-3">
+                <div className="avatar-container position-absolute bottom-0 w-100 pb-3 flex flex-column align-items-center justify-content-center">
                     <Divider className="divider-text border-white" />
                     {isSignedIn ? (
                         <SignOutButton>
