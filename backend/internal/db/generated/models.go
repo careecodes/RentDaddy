@@ -386,12 +386,10 @@ type Apartment struct {
 
 type Building struct {
 	ID             int64            `json:"id"`
-	BuildingNumber int16            `json:"building_number"`
+	BuildingNumber int64            `json:"building_number"`
 	ParkingTotal   pgtype.Int8      `json:"parking_total"`
 	PerUserParking pgtype.Int8      `json:"per_user_parking"`
 	ManagementID   int64            `json:"management_id"`
-	ManagerPhone   pgtype.Text      `json:"manager_phone"`
-	ManagerEmail   pgtype.Text      `json:"manager_email"`
 	Apartments     int64            `json:"apartments"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`

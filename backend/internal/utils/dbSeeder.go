@@ -135,7 +135,8 @@ func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx 
 		err := queries.UpdateApartment(ctx, db.UpdateApartmentParams{
 			ID:           apartment.ID,
 			Price:        apartment.Price,
-			ManagementID: apartment.ManagementID, Availability: false,
+			ManagementID: apartment.ManagementID,
+			Availability: false,
 		})
 		if err != nil {
 			return errors.New("[SEEDER] error updating apartment availability: " + err.Error())

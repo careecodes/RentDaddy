@@ -6,9 +6,10 @@ import { DeleteOutlined, PlusOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import { useMutation } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import { useAuth } from "@clerk/clerk-react";
 
-const DOMAIN_URL = import.meta.env.DOMAIN_URL;
-const PORT = import.meta.env.PORT;
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
+const PORT = import.meta.env.VITE_PORT;
 const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
 
 // Make the Add Locations a Modal that adds a building, floor, and room number
@@ -31,6 +32,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     // State that holds the locations (building #, floor #s in that building, room numbers in that building)
     // TODO: When no longer needed for development, delete the clear locations button and mock data
     const [locations, setLocations] = React.useState<{ building: number; floors: number; rooms: number }[]>([]);
+    const { getToken, userId } = useAuth();
 
     console.log( "locations on load", locations);
 
@@ -42,10 +44,12 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     });
 
     const [adminSetupObject, setAdminSetupObject] = useState<AdminSetup>({
-        parkingTotal: 0,
-        perUserParking: 0,
-        lockerCount: 0,
-        buildings: [],
+        parkingTotal: 40,
+        perUserParking: 2,
+        lockerCount: 20,
+        buildings: [
+            { buildingNumber: 3, floorNumbers: 2, numberOfRooms: 23 },
+        ],
     });
 
     console.log(editBuildingObj);
@@ -53,12 +57,20 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     const { mutate: adminApartmentSetup } = useMutation({
         mutationFn: async (adminSetupObject: AdminSetup) => {
             console.log("Starting admin apartment setup admin");
+            const token = await getToken();
+
+            console.log("adminSetupObject", adminSetupObject);
 
             const res = await fetch(`${API_URL}/admin/setup`, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
+                headers: {
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${token}`
+                },
                 body: JSON.stringify(adminSetupObject),
             });
+
+            console.log(res)
 
             if (!res.ok) {
                 throw new Error("Failed to setup apartment");
@@ -75,7 +87,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         },
     });
 
-    console.log("Testing for Ryan, this is the adminApartmentSetup return from the Tanstack useMutation", adminApartmentSetup);
+    // console.log("Testing for Ryan, this is the adminApartmentSetup return from the Tanstack useMutation", adminApartmentSetup);
 
     const handleSendAdminSetup = () => {
         console.log("starting admin setup");
@@ -97,7 +109,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         mutationFn: async (buildingData: Building) => {
             console.log(editBuildingObj, "editBuildingObj in tanstack mutation");
             // TODO: James, when you finish the backend route, change the variable endpoint to the right one.
-            const res = await fetch(`${API_URL}/admins/apartment/edit/{id}`, {
+            const res = await fetch(`${API_URL}/admins/buildings/{id}`, {
                 method: "PUT",
                 headers: { "Content-Type": "application/json" },
                 body: JSON.stringify(buildingData),

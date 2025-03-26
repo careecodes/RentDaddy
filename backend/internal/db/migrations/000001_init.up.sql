@@ -105,7 +105,6 @@ CREATE TABLE IF NOT EXISTS "apartments"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "unit_number"   BIGINT       NULL,
-    "building_id"      BIGINT         NOT NULL,
     "price"         NUMERIC(10, 2) NULL,
     "size"          SMALLINT       NULL,
     "management_id" BIGINT         NOT NULL,
@@ -152,12 +151,9 @@ ALTER TABLE "lockers"
 CREATE TABLE IF NOT EXISTS "buildings"
 (
     "id"               BIGINT   NOT NULL,
-    "building_number"  SMALLINT NOT NULL,
     "parking_total"    BIGINT   NULL,
     "per_user_parking" BIGINT   NULL,
     "management_id"    BIGINT   NOT NULL,
-    "manager_phone"    TEXT     NULL,
-    "manager_email"    TEXT     NULL,
     "apartments"       BIGINT   NOT NULL,
     "created_at"       TIMESTAMP(0) DEFAULT now(),
     "updated_at"       TIMESTAMP(0) DEFAULT now()

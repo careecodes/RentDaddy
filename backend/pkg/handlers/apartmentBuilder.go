@@ -15,64 +15,67 @@ import (
 )
 
 type Building struct {
-	BuildingNumber string `json:"buildingNumber"`
-	FloorNumber    int    `json:"floorNumber"`
-	NumberOfRooms  int    `json:"numberOfRooms"`
+	BuildingNumber int `json:"buildingNumber"`
+	FloorNumbers   int `json:"floorNumbers"`
+	NumberOfRooms  int `json:"numberOfRooms"`
 }
 
 type BuildingRequest struct {
 	Buildings      []Building `json:"buildings"`
-	ParkingTotal   int        `json:"parking_total"`
-	PerUserParking int        `json:"per_user_parking"`
-	LockerCount    int        `json:"locker_count"`
+	ParkingTotal   int        `json:"parkingTotal"`
+	PerUserParking int        `json:"perUserParking"`
+	LockerCount    int        `json:"lockerCount"`
 }
 
 func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Request) error {
 	adminCtxt := middleware.GetUserCtx(r)
 	if adminCtxt == nil {
-		return errors.New("[Construct] no admin context found")
+		log.Println("[Construct-Admin] no admin context found")
+		http.Error(w, "no admin context found", http.StatusUnauthorized)
 	}
 
 	var params BuildingRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
+		log.Printf("[Construct-Body] error decoding request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return errors.New("[Construct] error decoding request body")
 	}
 
 	adminClerkID := adminCtxt.ID
 	adminUser, err := queries.GetUser(r.Context(), adminClerkID)
 	if err != nil {
-		return errors.New("[Construct] cannot retrieve admin: " + err.Error())
+		log.Printf("[Construct-Admin] cannot retrieve admin: %v", err)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return err
 	}
 	if adminUser.ClerkID != adminClerkID {
-		return errors.New("[Construct] clerk id mismatch")
+		log.Printf("[Construct] admin user does not belong to clerk")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 	}
 	if adminUser.Role != db.RoleAdmin {
+		log.Printf("[Construct] unauthorized user")
 		return errors.New("[Construct] unauthorized user")
 	}
 
+	_, err = queries.CreateManyLockers(r.Context(), int32(params.LockerCount))
+	if err != nil {
+		return errors.New("[Construct] error creating lockers: " + err.Error())
+	}
+	buildingApartments := make([]int64, 0)
 	for _, building := range params.Buildings {
-		buildingNumber, err := strconv.Atoi(building.BuildingNumber)
-		if err != nil {
-			return errors.New("[Construct] invalid building number: " + building.BuildingNumber)
-		}
+
 		buildingParams := db.CreateBuildingParams{
-			BuildingNumber: int16(buildingNumber),
+			BuildingNumber: int64(building.BuildingNumber),
 			ParkingTotal:   pgtype.Int8{Int64: int64(params.ParkingTotal), Valid: true},
 			PerUserParking: pgtype.Int8{Int64: int64(params.PerUserParking), Valid: true},
 			ManagementID:   adminUser.ID,
 		}
-		_, err = queries.CreateBuilding(r.Context(), buildingParams)
+		buildingResponse, err := queries.CreateBuilding(r.Context(), buildingParams)
 		if err != nil {
+			log.Printf("[Construct-Create-Building] error creating building: %v", buildingResponse)
 			return errors.New("[Construct] error creating building: " + err.Error())
 		}
 
-		_, err = queries.CreateManyLockers(r.Context(), int32(params.LockerCount))
-		if err != nil {
-			return errors.New("[Construct] error creating lockers: " + err.Error())
-		}
-
-		for i := 0; i < building.FloorNumber; i++ {
+		for i := 0; i < building.FloorNumbers; i++ {
 			for j := 0; j < building.NumberOfRooms; j++ {
 				sqft, err := faker.RandomInt(500, 2000)
 				if err != nil {
@@ -84,16 +87,17 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 					return errors.New("[Construct] error creating apartment: " + err.Error())
 				}
 
-				_, err = queries.CreateApartment(r.Context(), db.CreateApartmentParams{
+				apartment, err := queries.CreateApartment(r.Context(), db.CreateApartmentParams{
 					UnitNumber:   pgtype.Int8{Int64: int64(unitNum), Valid: true},
 					Price:        utils.ConvertToPgTypeNumeric(2 * sqft[0]),
 					Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
 					ManagementID: adminUser.ID,
-					BuildingID:   int64(buildingNumber),
+					BuildingID:   3,
 				})
 				if err != nil {
 					return errors.New(fmt.Sprintf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error()))
 				}
+				buildingApartments = append(buildingApartments, apartment.ID)
 			}
 		}
 	}
