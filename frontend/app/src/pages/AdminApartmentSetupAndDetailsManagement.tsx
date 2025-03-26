@@ -172,6 +172,8 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             {/* <h1 className="mb-3">Admin Apartment Setup And Details Management</h1> */}
             <PageTitleComponent title="Admin Apartment Setup and Details Management" />
             <Form
+                onFinish={handleSendAdminSetup}
+                // onValuesChange={}
                 className="admin-apartment-setup-form-container"
                 layout="vertical">
                 {/* Table */}
