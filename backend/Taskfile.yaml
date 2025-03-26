@@ -5,7 +5,7 @@ dotenv: ["../.env"]
 vars:
   MPATH: "internal/db/migrations/"
   # PG_URL: postgresql://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
-  PG_URL: postgresql://{{.POSTGRES_USER}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+  PG_URL: postgresql://{{.POSTGRES_USER}}@localhost:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
 
 tasks:
   seed-users:
