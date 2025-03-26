@@ -1,4 +1,10 @@
 #!/bin/sh
+echo "[DEBUG] entrypoint reached"
+which task || echo "task not found"
+ls -alh /usr/local/bin
+ls -alh .
+env | grep PG
+sleep 120
 
 
 echo "[ENTRYPOINT] Backend starting..."
