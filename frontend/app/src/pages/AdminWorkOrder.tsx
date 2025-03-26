@@ -16,9 +16,8 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { useQuery } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || "http://localhost";
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || "8080";
 const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
@@ -466,18 +465,6 @@ const AdminWorkOrder = () => {
         return item.unitNumber;
     };
 
-    workOrderDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
-        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) return priorityDiff;
-
-        if (a.status !== "completed" && b.status !== "completed") {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
     complaintsDataRaw.sort((a, b) => {
         const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
         const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
@@ -493,30 +480,44 @@ const AdminWorkOrder = () => {
     });
 
     const hoursUntilOverdue: number = 48;
-    const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
-        return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
-    }).length;
+    const overdueServiceCount: number = workOrderData
+        ? workOrderData.filter(({ createdAt, status }) => {
+            const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
+            return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
+        }).length
+        : 0;
+
     const hoursSinceRecentlyCreated: number = 24;
-    const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
-        return hoursSinceCreation <= hoursSinceRecentlyCreated;
-    }).length;
+    const recentlyCreatedServiceCount: number = workOrderData
+        ? workOrderData.filter(({ createdAt }) => {
+            const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
+            return hoursSinceCreation <= hoursSinceRecentlyCreated;
+        }).length
+        : 0;
 
     const hoursSinceRecentlyCompleted: number = 24;
-    const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
-        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
-        return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
-    }).length;
+    const recentlyCompletedServiceCount: number = workOrderData
+        ? workOrderData.filter(({ updatedAt, status }) => {
+            const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
+            return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
+        }).length
+        : 0;
 
     let alerts: string[] = [];
-    if (overdueServiceCount > 0) {
-        alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
-    } else if (recentlyCreatedServiceCount > 0) {
-        alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`);
-    } else if (recentlyCompletedServiceCount > 0) {
-        alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`);
+    if (isWorkOrdersLoading) {
+        alerts.push("Loading work orders...");
+    } else if (workOrdersError) {
+        alerts.push("Error loading work orders");
+    } else if (workOrderData) {
+        if (overdueServiceCount > 0) {
+            alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
+        } else if (recentlyCreatedServiceCount > 0) {
+            alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`);
+        } else if (recentlyCompletedServiceCount > 0) {
+            alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`);
+        }
     }
+
     const alertDescription: string = alerts.join(" ") ?? "";
 
     const modalContent = selectedItem && (

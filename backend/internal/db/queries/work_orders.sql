@@ -49,6 +49,13 @@ SET
     updated_at = now()
 WHERE id = $1;
 
+-- name: UpdateWorkOrderStatus :exec
+UPDATE work_orders
+SET
+    status = $2,
+    updated_at = now()
+WHERE id = $1;
+
 -- name: DeleteWorkOrder :exec
 DELETE FROM work_orders
 WHERE id = $1;
