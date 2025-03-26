@@ -179,57 +179,6 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
     },
 ];
 
-const complaintsDataRaw: ComplaintsData[] = [
-    {
-        key: 1,
-        complaintNumber: 20001,
-        createdBy: 4,
-        category: "noise",
-        title: "Loud Music at Night",
-        description: "Neighbor plays loud music past midnight.",
-        unitNumber: "312",
-        status: "open",
-        createdAt: new Date("2025-03-10T22:15:00"),
-        updatedAt: new Date("2025-03-11T08:00:00"),
-    },
-    {
-        key: 2,
-        complaintNumber: 20002,
-        createdBy: 7,
-        category: "parking",
-        title: "Unauthorized Vehicle in My Spot",
-        description: "A car is parked in my designated space.",
-        unitNumber: "210",
-        status: "in_progress",
-        createdAt: new Date("2025-02-28T18:30:00"),
-        updatedAt: new Date("2025-03-01T09:45:00"),
-    },
-    {
-        key: 3,
-        complaintNumber: 20003,
-        createdBy: 2,
-        category: "maintenance",
-        title: "Leaking Roof",
-        description: "Water leaking from ceiling during rainstorms.",
-        unitNumber: "405",
-        status: "resolved",
-        createdAt: new Date("2025-02-20T14:00:00"),
-        updatedAt: new Date("2025-02-22T16:00:00"),
-    },
-    {
-        key: 4,
-        complaintNumber: 20004,
-        createdBy: 10,
-        category: "security",
-        title: "Suspicious Person Near Entrance",
-        description: "Unfamiliar person lingering around entrance at night.",
-        unitNumber: "102",
-        status: "closed",
-        createdAt: new Date("2025-03-02T20:00:00"),
-        updatedAt: new Date("2025-03-03T12:00:00"),
-    },
-];
-
 const complaintsColumns: ColumnsType<ComplaintsData> = [
     {
         title: "Complaint #",
@@ -373,7 +322,7 @@ const paginationConfig: TablePaginationConfig = {
 
 const AdminWorkOrder = () => {
     // const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
-    const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
+    // const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
     const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
@@ -382,7 +331,6 @@ const AdminWorkOrder = () => {
     const { getToken } = useAuth();
     const queryClient = useQueryClient();
 
-    // Update your query to include the auth token
     const { data: workOrderData, isLoading: isWorkOrdersLoading, error: workOrdersError } = useQuery({
         queryKey: ['workOrders'],
         queryFn: async () => {
@@ -414,6 +362,37 @@ const AdminWorkOrder = () => {
         },
     });
 
+    const { data: complaintsData, isLoading: isComplaintsLoading, error: complaintsError } = useQuery({
+        queryKey: ['complaints'],
+        queryFn: async () => {
+            const token = await getToken();
+            const response = await fetch(`${API_URL}/admin/complaints`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch complaints');
+            }
+            const data = await response.json();
+
+            return data.map((item: any) => ({
+                key: item.id,
+                complaintNumber: item.complaint_number,
+                createdBy: item.created_by,
+                category: item.category,
+                title: item.title,
+                description: item.description,
+                unitNumber: String(item.unit_number),
+                status: item.status,
+                createdAt: new Date(item.created_at),
+                updatedAt: new Date(item.updated_at),
+            })) as ComplaintsData[];
+        },
+    });
+
     const handleStatusChange = (newStatus: string) => {
         setCurrentStatus(newStatus);
     };
@@ -421,8 +400,10 @@ const AdminWorkOrder = () => {
     const handleConfirm = async () => {
         if (selectedItem && currentStatus) {
             try {
+                const token = await getToken();
+
                 if (itemType === "workOrder") {
-                    const token = await getToken();
+                    // Work order update logic (existing)
                     const response = await fetch(`${API_URL}/admin/work_orders/${selectedItem.key}/status`, {
                         method: 'PATCH',
                         headers: {
@@ -447,18 +428,29 @@ const AdminWorkOrder = () => {
                         );
                     });
                 } else {
-                    // Handle complaint update (keep existing dummy data logic for now)
-                    const updatedComplaints = complaintsData.map((item) => {
-                        if (item.key === selectedItem.key) {
-                            return {
-                                ...item,
-                                status: currentStatus,
-                                updatedAt: new Date(),
-                            } as ComplaintsData;
-                        }
-                        return item;
+                    const response = await fetch(`${API_URL}/admin/complaints/${selectedItem.key}/status`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
+                            status: currentStatus,
+                        }),
                     });
-                    setComplaintsData(updatedComplaints);
+
+                    if (!response.ok) {
+                        throw new Error('Failed to update complaint');
+                    }
+
+                    queryClient.setQueryData(['complaints'], (oldData: ComplaintsData[] | undefined) => {
+                        if (!oldData) return oldData;
+                        return oldData.map(item =>
+                            item.key === selectedItem.key
+                                ? { ...item, status: currentStatus, updatedAt: new Date() }
+                                : item
+                        );
+                    });
                 }
                 setIsModalVisible(false);
             } catch (error) {
@@ -473,20 +465,6 @@ const AdminWorkOrder = () => {
         setCurrentStatus(record.status);
         setIsModalVisible(true);
     };
-
-    complaintsDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
-        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) {
-            return priorityDiff;
-        }
-
-        if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
 
     const hoursUntilOverdue: number = 48;
     const overdueServiceCount: number = workOrderData
@@ -604,23 +582,28 @@ const AdminWorkOrder = () => {
             {/* Complaints Table */}
             <div className="mb-5">
                 <h4 className="mb-3">Complaints</h4>
-
-                <TableComponent<ComplaintsData>
-                    columns={complaintsColumns}
-                    dataSource={complaintsData}
-                    style=".lease-table-container"
-                    pagination={paginationConfig}
-                    onChange={(pagination, filters, sorter, extra) => {
-                        console.log("Table changed:", pagination, filters, sorter, extra);
-                    }}
-                    onRow={(record: ComplaintsData) => ({
-                        onClick: () => handleRowClick(record, "complaint"),
-                        style: {
-                            cursor: "pointer",
-                        },
-                        className: "hoverable-row",
-                    })}
-                />
+                {isComplaintsLoading ? (
+                    <div>Loading complaints...</div>
+                ) : complaintsError ? (
+                    <div>Error loading complaints: {complaintsError.message}</div>
+                ) : (
+                    <TableComponent<ComplaintsData>
+                        columns={complaintsColumns}
+                        dataSource={complaintsData}
+                        style=".lease-table-container"
+                        pagination={paginationConfig}
+                        onChange={(pagination, filters, sorter, extra) => {
+                            console.log("Table changed:", pagination, filters, sorter, extra);
+                        }}
+                        onRow={(record: ComplaintsData) => ({
+                            onClick: () => handleRowClick(record, "complaint"),
+                            style: {
+                                cursor: "pointer",
+                            },
+                            className: "hoverable-row",
+                        })}
+                    />
+                )}
             </div>
 
             {selectedItem && (
