@@ -132,9 +132,9 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
     },
     {
         title: "Unit",
-        dataIndex: "apartmentNumber",
-        key: "apartmentNumber",
-        ...getWorkOrderColumnSearchProps("apartmentNumber", "Unit"),
+        dataIndex: "unitNumber",
+        key: "unitNumber",
+        ...getWorkOrderColumnSearchProps("unitNumber", "Unit"),
     },
     {
         title: "Status",
@@ -187,7 +187,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         category: "noise",
         title: "Loud Music at Night",
         description: "Neighbor plays loud music past midnight.",
-        unitNumber: "A312",
+        unitNumber: "312",
         status: "open",
         createdAt: new Date("2025-03-10T22:15:00"),
         updatedAt: new Date("2025-03-11T08:00:00"),
@@ -199,7 +199,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         category: "parking",
         title: "Unauthorized Vehicle in My Spot",
         description: "A car is parked in my designated space.",
-        unitNumber: "B210",
+        unitNumber: "210",
         status: "in_progress",
         createdAt: new Date("2025-02-28T18:30:00"),
         updatedAt: new Date("2025-03-01T09:45:00"),
@@ -211,7 +211,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         category: "maintenance",
         title: "Leaking Roof",
         description: "Water leaking from ceiling during rainstorms.",
-        unitNumber: "C405",
+        unitNumber: "405",
         status: "resolved",
         createdAt: new Date("2025-02-20T14:00:00"),
         updatedAt: new Date("2025-02-22T16:00:00"),
@@ -223,7 +223,7 @@ const complaintsDataRaw: ComplaintsData[] = [
         category: "security",
         title: "Suspicious Person Near Entrance",
         description: "Unfamiliar person lingering around entrance at night.",
-        unitNumber: "E102",
+        unitNumber: "102",
         status: "closed",
         createdAt: new Date("2025-03-02T20:00:00"),
         updatedAt: new Date("2025-03-03T12:00:00"),
@@ -406,7 +406,7 @@ const AdminWorkOrder = () => {
                 category: item.category,
                 title: item.title,
                 description: item.description,
-                apartmentNumber: item.unit_number,
+                unitNumber: String(item.unit_number),
                 status: item.status,
                 createdAt: new Date(item.created_at),
                 updatedAt: new Date(item.updated_at),
@@ -423,7 +423,6 @@ const AdminWorkOrder = () => {
             try {
                 if (itemType === "workOrder") {
                     const token = await getToken();
-                    // Make API call to update work order
                     const response = await fetch(`${API_URL}/admin/work_orders/${selectedItem.key}/status`, {
                         method: 'PATCH',
                         headers: {
@@ -473,15 +472,6 @@ const AdminWorkOrder = () => {
         setItemType(type);
         setCurrentStatus(record.status);
         setIsModalVisible(true);
-    };
-
-    const getUnitNumber = (item: WorkOrderData | ComplaintsData): string => {
-        // I HAVE NO CLUE WHAT THE NAMING CONVENTION IS NOW SO ADDING THIS SINCE I'VE SEEN BOTH
-        // FOR WORK ORDER AND COMPLAINTS
-        if ("apartmentNumber" in item) {
-            return item.apartmentNumber;
-        }
-        return item.unitNumber;
     };
 
     complaintsDataRaw.sort((a, b) => {
@@ -548,7 +538,7 @@ const AdminWorkOrder = () => {
                 <strong>Description:</strong> {selectedItem.description}
             </div>
             <div className="mb-4">
-                <strong>Unit Number:</strong> {getUnitNumber(selectedItem)}
+                <strong>Unit Number:</strong> {selectedItem.unitNumber}
             </div>
             <div>
                 <strong>Status:</strong>
