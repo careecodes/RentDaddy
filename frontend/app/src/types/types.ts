@@ -14,6 +14,12 @@ type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
 
 type WorkStatus = "open" | "in_progress" | "resolved" | "closed";
 
+export type WorkOrderEntry = {
+    title: string;
+    description: string;
+    category: WorkCategory;
+};
+
 export interface WorkOrderData {
     key: number;
     workOrderNumber: number;
@@ -42,6 +48,12 @@ export interface ComplaintData {
     updatedAt: string;
     createdAt: string;
 }
+
+export type ComplaintEntry = {
+    title: string;
+    description: string;
+    category: ComplaintCategory;
+};
 
 export interface ComplaintsData {
     key: number;

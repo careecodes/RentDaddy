@@ -4,7 +4,7 @@ import TableComponent from "../components/reusableComponents/TableComponent";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/react-router";
 import { Button, Divider, Dropdown, Form, Input, MenuProps, Modal } from "antd";
-import { CheckOutlined, CloseCircleOutlined, MailOutlined, NumberOutlined, PlusOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseCircleOutlined, MailOutlined, PlusOutlined } from "@ant-design/icons";
 import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 
@@ -19,7 +19,6 @@ const API_URL = `${SERVER_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark
 // };
 type InviteTenant = {
     email: string;
-    unitNumber: number; //TODO: this is no longer needed
 };
 
 interface InviteStatusNotification {
@@ -217,8 +216,8 @@ function InviteUserModal() {
                 throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
-            if (!tenantInviteForm.getFieldValue("email") || !tenantInviteForm.getFieldValue("unitNumber")) {
-                throw new Error("[TENANT_TABLE] Error ivnite schema invalid");
+            if (!tenantInviteForm.getFieldValue("email")) {
+                throw new Error("[TENANT_TABLE] Error tenant email invalid");
             }
 
             const res = await fetch(`http://localhost:8080/admin/tenants/invite`, {
@@ -307,18 +306,6 @@ function InviteUserModal() {
                             value={tenantInviteForm.getFieldValue("email")}
                             onChange={(e) => {
                                 tenantInviteForm.setFieldValue("email", e.target.value);
-                            }}
-                        />
-                    </Form.Item>
-                    <p>Tenant Unit Number</p>
-                    <Form.Item name="unitNumber">
-                        <Input
-                            prefix={<NumberOutlined />}
-                            placeholder="Unit Number"
-                            type="number"
-                            value={tenantInviteForm.getFieldValue("unitNumber")}
-                            onChange={(e) => {
-                                tenantInviteForm.setFieldValue("unitNumber", e.target.valueAsNumber);
                             }}
                         />
                     </Form.Item>

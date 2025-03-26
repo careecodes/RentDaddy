@@ -6,7 +6,7 @@ import TableComponent from "../components/reusableComponents/TableComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useMutation, useQueries } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react-router";
-import { ComplaintsData, WorkOrderData } from "../types/types";
+import { ComplaintEntry, ComplaintsData, WorkOrderData, WorkOrderEntry } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 
 const TenantComplaintsAndWorkOrders = () => {
@@ -138,6 +138,7 @@ const TenantComplaintsAndWorkOrders = () => {
         },
     ];
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const [items, setItems] = useState<TabsProps["items"]>([
         {
             label: "Complaints",
@@ -192,6 +193,7 @@ export default TenantComplaintsAndWorkOrders;
 function TenantCreateComplaintsModal() {
     const { getToken, userId } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const [complaintForm] = Form.useForm<ComplaintEntry>();
     const showModal = () => {
         setInternalModalOpen(true);
     };
@@ -211,12 +213,14 @@ function TenantCreateComplaintsModal() {
             if (!authToken) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
+            // console.log(`NEW COMPLAINT ENTRY FORM VALUES: ${JSON.stringify(complaintForm.getFieldsValue())}`);
             const res = await fetch("http://localhost:8080/tenant/complaint", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${authToken}`,
                 },
+                body: JSON.stringify(complaintForm.getFieldsValue()),
             });
 
             if (!res.ok) {
@@ -246,7 +250,7 @@ function TenantCreateComplaintsModal() {
                 cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
                 <p>Enter information about a complaint that you're having here.</p>
                 <Divider />
-                <Form>
+                <Form form={complaintForm}>
                     <p className="fs-7">Title</p>
                     <Form.Item
                         name="title"
@@ -297,6 +301,7 @@ function TenantCreateComplaintsModal() {
 function TenantCreateWorkOrderModal() {
     const { getToken, userId } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
+    const [workOrderForm] = Form.useForm<WorkOrderEntry>();
     const showModal = () => {
         setInternalModalOpen(true);
     };
@@ -316,12 +321,14 @@ function TenantCreateWorkOrderModal() {
             if (!authToken) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
+            // console.log(`NEW WORK_ORDER ENTRY FORM VALUES: ${JSON.stringify(workOrderForm.getFieldsValue())}`);
             const res = await fetch("http://localhost:8080/tenant/work_orders", {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${authToken}`,
                 },
+                body: JSON.stringify(workOrderForm.getFieldsValue()),
             });
 
             if (!res.ok) {

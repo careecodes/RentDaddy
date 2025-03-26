@@ -389,16 +389,15 @@ type ApartmentTenant struct {
 }
 
 type Complaint struct {
-	ID              int64             `json:"id"`
-	ComplaintNumber int64             `json:"complaint_number"`
-	CreatedBy       int64             `json:"created_by"`
-	Category        ComplaintCategory `json:"category"`
-	Title           string            `json:"title"`
-	Description     string            `json:"description"`
-	UnitNumber      int16             `json:"unit_number"`
-	Status          Status            `json:"status"`
-	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
-	CreatedAt       pgtype.Timestamp  `json:"created_at"`
+	ID          int64             `json:"id"`
+	CreatedBy   int64             `json:"created_by"`
+	Category    ComplaintCategory `json:"category"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	UnitNumber  int16             `json:"unit_number"`
+	Status      Status            `json:"status"`
+	UpdatedAt   pgtype.Timestamp  `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp  `json:"created_at"`
 }
 
 type Lease struct {
@@ -458,7 +457,6 @@ type User struct {
 type WorkOrder struct {
 	ID          int64            `json:"id"`
 	CreatedBy   int64            `json:"created_by"`
-	OrderNumber int64            `json:"order_number"`
 	Category    WorkCategory     `json:"category"`
 	Title       string           `json:"title"`
 	Description string           `json:"description"`

@@ -155,13 +155,14 @@ func main() {
 		// Tenant Endpoints
 		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", userHandler.GetUserByClerkId)
-			r.Get("/documents", userHandler.GetTenantDocuments)
-			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
-			r.Get("/complaints", userHandler.GetTenantComplaints)
+			r.Get("/documents", userHandler.TenantGetDocuments)
+			r.Get("/work_orders", userHandler.TenantGetWorkOrders)
+			r.Get("/complaints", userHandler.TenantGetComplaints)
+			r.Post("/complaints", userHandler.TenantCreateComplaint)
 
 			// Locker Endpoints
-			r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
-			r.Post("/lockers/{user_id}/unlock", lockerHandler.UnlockLocker)
+			r.Get("/lockers/", lockerHandler.GetLockerByUserId)
+			r.Post("/lockers/unlock", lockerHandler.UnlockLocker)
 
 			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {

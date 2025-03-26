@@ -1,6 +1,5 @@
 -- name: CreateComplaint :one
 INSERT INTO complaints (
-    complaint_number,
     created_by,
     category,
     title,
@@ -8,11 +7,11 @@ INSERT INTO complaints (
     unit_number,
     status
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING *;
 
 -- name: GetComplaint :one
-SELECT id, created_by, complaint_number, category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by, category, title, description, unit_number, status, updated_at, created_at
 FROM complaints
 WHERE id = $1
 LIMIT 1;
@@ -32,12 +31,11 @@ WHERE created_by = $1;
 UPDATE complaints
 SET
     created_by = $2,
-    complaint_number = $3,
-    category = $4,
-    title = $5,
-    description = $6,
-    unit_number = $7,
-    status = $8,
+    category = $3,
+    title = $4,
+    description = $5,
+    unit_number = $6,
+    status = $7,
     updated_at = now()
 WHERE id = $1;
 

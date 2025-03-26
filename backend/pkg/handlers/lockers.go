@@ -7,6 +7,7 @@ import (
 	"strconv"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/middleware"
 	"github.com/go-chi/chi/v5"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
@@ -19,9 +20,9 @@ type LockerHandler struct {
 
 // Need the pointers to handle the case where the field is not provided.
 type UpdateLockerRequest struct {
-	UserID     *string  `json:"user_id,omitempty"`
-	InUse      *bool    `json:"in_use,omitempty"`
-	AccessCode *string  `json:"access_code,omitempty"`
+	UserID     *string `json:"user_id,omitempty"`
+	InUse      *bool   `json:"in_use,omitempty"`
+	AccessCode *string `json:"access_code,omitempty"`
 }
 
 func NewLockerHandler(pool *pgxpool.Pool, queries *db.Queries) *LockerHandler {
@@ -106,16 +107,21 @@ func (l LockerHandler) GetLocker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request) {
-
-	userIdStr := chi.URLParam(r, "user_id")
-	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+	tenantCtx, err := middleware.GetClerkUser(r)
 	if err != nil {
-		log.Printf("Error parsing user ID: %v", err)
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		log.Printf("[LOCKER_HANDLER] Failed getting tenant context: %v", err)
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
 		return
 	}
 
-	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: userId, Valid: true})
+	var tenantMetadata ClerkUserPublicMetaData
+	if err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata); err != nil {
+		log.Printf("[LOCKER_HANDLER] Failed parsing metadata: %v", err)
+		http.Error(w, "Error parsing metadata", http.StatusInternalServerError)
+		return
+	}
+
+	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true})
 	if err != nil {
 		log.Printf("Error getting locker by user ID: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -127,14 +133,19 @@ func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request)
 }
 
 func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
-	userIdStr := chi.URLParam(r, "user_id")
-	userId, err := strconv.ParseInt(userIdStr, 10, 64)
+	tenantCtx, err := middleware.GetClerkUser(r)
 	if err != nil {
-		log.Printf("Error parsing user ID: %v", err)
-		http.Error(w, "Invalid user ID", http.StatusBadRequest)
+		log.Printf("[LOCKER_HANDLER] Failed getting tenant context: %v", err)
+		http.Error(w, "Error no user context", http.StatusUnauthorized)
 		return
 	}
 
+	var tenantMetadata ClerkUserPublicMetaData
+	if err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata); err != nil {
+		log.Printf("[LOCKER_HANDLER] Failed parsing metadata: %v", err)
+		http.Error(w, "Error parsing metadata", http.StatusInternalServerError)
+		return
+	}
 	// Get access code from request body
 	var req struct {
 		AccessCode string `json:"access_code"`
@@ -146,7 +157,7 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Get locker assigned to user
-	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: userId, Valid: true})
+	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true})
 	if err != nil {
 		log.Printf("Error getting locker: %v", err)
 		http.Error(w, "Could not find locker for user", http.StatusNotFound)
@@ -161,9 +172,9 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 
 	// Reset locker to default state for next Tenant
 	err = l.queries.UpdateLockerUser(r.Context(), db.UpdateLockerUserParams{
-		ID:         locker.ID,
-		UserID:     pgtype.Int8{Valid: false}, // Clear user ID
-		InUse:      false,                     // Set not in use
+		ID:     locker.ID,
+		UserID: pgtype.Int8{Valid: false}, // Clear user ID
+		InUse:  false,                     // Set not in use
 	})
 	if err != nil {
 		log.Printf("Error resetting locker: %v", err)
