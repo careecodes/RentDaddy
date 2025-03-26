@@ -12,6 +12,7 @@ import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import EmptyState from "../components/reusableComponents/EmptyState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
@@ -346,8 +347,15 @@ const AdminWorkOrder = () => {
                 throw new Error('Failed to fetch work orders');
             }
             const data = await response.json();
+            if (!Array.isArray(data)) {
+                throw new Error("No work orders");
+            }
 
-            return data.map((item: any) => ({
+            if (!data || data.length === 0) {
+                return [];
+            }
+
+            return (data || []).map((item: any) => ({
                 key: item.id,
                 workOrderNumber: item.order_number,
                 creatingBy: item.created_by,
@@ -374,11 +382,18 @@ const AdminWorkOrder = () => {
                 }
             });
             if (!response.ok) {
-                throw new Error('Failed to fetch complaints');
+                throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
+            if (!Array.isArray(data)) {
+                throw new Error('No complaints');
+            }
 
-            return data.map((item: any) => ({
+            if (!data || data.length === 0) {
+                return [];
+            }
+
+            return (data || []).map((item: any) => ({
                 key: item.id,
                 complaintNumber: item.complaint_number,
                 createdBy: item.created_by,
@@ -491,17 +506,24 @@ const AdminWorkOrder = () => {
         : 0;
 
     let alerts: string[] = [];
-    if (isWorkOrdersLoading) {
-        alerts.push("Loading work orders...");
-    } else if (workOrdersError) {
-        alerts.push("Error loading work orders");
-    } else if (workOrderData) {
-        if (overdueServiceCount > 0) {
-            alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
-        } else if (recentlyCreatedServiceCount > 0) {
-            alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`);
-        } else if (recentlyCompletedServiceCount > 0) {
-            alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`);
+    if (isWorkOrdersLoading || isComplaintsLoading) {
+        alerts.push("Loading data...");
+    } else if (workOrdersError || complaintsError) {
+        alerts.push("Error loading data");
+    } else {
+        if (workOrderData?.length === 0) {
+            alerts.push("No work orders found");
+        }
+        if (complaintsData?.length === 0) {
+            alerts.push("No complaints found");
+        }
+
+        if (workOrderData && workOrderData.length > 0) {
+            if (overdueServiceCount > 0) {
+                alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
+            } else if (recentlyCreatedServiceCount > 0) {
+                alerts.push(`${recentlyCreatedServiceCount} services created recently.`);
+            }
         }
     }
 
@@ -559,6 +581,8 @@ const AdminWorkOrder = () => {
                     <div>Loading work orders...</div>
                 ) : workOrdersError ? (
                     <div>Error loading work orders: {workOrdersError.message}</div>
+                ) : workOrderData?.length === 0 ? (
+                    <EmptyState description="No work orders found" />
                 ) : (
                     <TableComponent<WorkOrderData>
                         columns={workOrderColumns}
@@ -586,10 +610,12 @@ const AdminWorkOrder = () => {
                     <div>Loading complaints...</div>
                 ) : complaintsError ? (
                     <div>Error loading complaints: {complaintsError.message}</div>
+                ) : complaintsData?.length === 0 ? (
+                    <EmptyState description="No complaints found" />
                 ) : (
                     <TableComponent<ComplaintsData>
                         columns={complaintsColumns}
-                        dataSource={complaintsData}
+                        dataSource={sortedComplaintsData}
                         style=".lease-table-container"
                         pagination={paginationConfig}
                         onChange={(pagination, filters, sorter, extra) => {
