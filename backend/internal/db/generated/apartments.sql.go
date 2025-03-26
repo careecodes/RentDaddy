@@ -16,8 +16,8 @@ INSERT INTO apartments (
     unit_number,
     price,
     size,
-    building_id,
     management_id,
+    building_id,
     availability,
     created_at,
     updated_at
@@ -30,8 +30,8 @@ type CreateApartmentParams struct {
 	UnitNumber   pgtype.Int8    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	BuildingID   int64          `json:"building_id"`
 	ManagementID int64          `json:"management_id"`
+	BuildingID   int64          `json:"building_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -40,8 +40,8 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 		arg.UnitNumber,
 		arg.Price,
 		arg.Size,
-		arg.BuildingID,
 		arg.ManagementID,
+		arg.BuildingID,
 		arg.Availability,
 	)
 	var i Apartment

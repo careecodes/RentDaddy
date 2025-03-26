@@ -13,41 +13,29 @@ import (
 
 const createBuilding = `-- name: CreateBuilding :one
 INSERT INTO buildings (
-    building_number,
-    apartments,
     parking_total,
     per_user_parking,
     management_id,
     created_at,
     updated_at
-  ) VALUES ($1, $2, $3, $4, $5, now(), now())
-RETURNING id, building_number, parking_total, per_user_parking, management_id, apartments, created_at, updated_at
+  ) VALUES ($1, $2, $3, now(), now())
+RETURNING id, parking_total, per_user_parking, management_id, created_at, updated_at
 `
 
 type CreateBuildingParams struct {
-	BuildingNumber int64       `json:"building_number"`
-	Apartments     int64       `json:"apartments"`
 	ParkingTotal   pgtype.Int8 `json:"parking_total"`
 	PerUserParking pgtype.Int8 `json:"per_user_parking"`
 	ManagementID   int64       `json:"management_id"`
 }
 
 func (q *Queries) CreateBuilding(ctx context.Context, arg CreateBuildingParams) (Building, error) {
-	row := q.db.QueryRow(ctx, createBuilding,
-		arg.BuildingNumber,
-		arg.Apartments,
-		arg.ParkingTotal,
-		arg.PerUserParking,
-		arg.ManagementID,
-	)
+	row := q.db.QueryRow(ctx, createBuilding, arg.ParkingTotal, arg.PerUserParking, arg.ManagementID)
 	var i Building
 	err := row.Scan(
 		&i.ID,
-		&i.BuildingNumber,
 		&i.ParkingTotal,
 		&i.PerUserParking,
 		&i.ManagementID,
-		&i.Apartments,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)
@@ -55,7 +43,7 @@ func (q *Queries) CreateBuilding(ctx context.Context, arg CreateBuildingParams) 
 }
 
 const getBuilding = `-- name: GetBuilding :one
-SELECT id, building_number, parking_total, per_user_parking, management_id, apartments, created_at, updated_at
+SELECT id, parking_total, per_user_parking, management_id, created_at, updated_at
 FROM buildings
 WHERE id = $1
 LIMIT 1
@@ -66,11 +54,9 @@ func (q *Queries) GetBuilding(ctx context.Context, id int64) (Building, error) {
 	var i Building
 	err := row.Scan(
 		&i.ID,
-		&i.BuildingNumber,
 		&i.ParkingTotal,
 		&i.PerUserParking,
 		&i.ManagementID,
-		&i.Apartments,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 	)

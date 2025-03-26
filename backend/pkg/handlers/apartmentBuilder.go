@@ -32,12 +32,14 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 	if adminCtxt == nil {
 		log.Println("[Construct-Admin] no admin context found")
 		http.Error(w, "no admin context found", http.StatusUnauthorized)
+		return errors.New("no admin context found")
 	}
 
 	var params BuildingRequest
 	if err := json.NewDecoder(r.Body).Decode(&params); err != nil {
 		log.Printf("[Construct-Body] error decoding request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return errors.New("invalid request body")
 	}
 
 	adminClerkID := adminCtxt.ID
@@ -58,13 +60,14 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 
 	_, err = queries.CreateManyLockers(r.Context(), int32(params.LockerCount))
 	if err != nil {
+		log.Printf("[Construct-CreateManyLockers] error creating lockers: %v", err)
 		return errors.New("[Construct] error creating lockers: " + err.Error())
 	}
+
 	buildingApartments := make([]int64, 0)
 	for _, building := range params.Buildings {
 
 		buildingParams := db.CreateBuildingParams{
-			BuildingNumber: int64(building.BuildingNumber),
 			ParkingTotal:   pgtype.Int8{Int64: int64(params.ParkingTotal), Valid: true},
 			PerUserParking: pgtype.Int8{Int64: int64(params.PerUserParking), Valid: true},
 			ManagementID:   adminUser.ID,
@@ -79,11 +82,13 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 			for j := 0; j < building.NumberOfRooms; j++ {
 				sqft, err := faker.RandomInt(500, 2000)
 				if err != nil {
+					log.Printf("[Construct-RandomInt] error generating random integer: %v", err)
 					return errors.New("[Construct] error creating apartment: " + err.Error())
 				}
 
-				unitNum, err := strconv.Atoi(fmt.Sprintf("%s%d%02d", building.BuildingNumber, i+1, j+1))
+				unitNum, err := strconv.Atoi(fmt.Sprintf("%d%d%02d", building.BuildingNumber, i+1, j+1))
 				if err != nil {
+					log.Printf("[Construct-UnitNum] error generating unit number: %v", err)
 					return errors.New("[Construct] error creating apartment: " + err.Error())
 				}
 
@@ -92,9 +97,9 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 					Price:        utils.ConvertToPgTypeNumeric(2 * sqft[0]),
 					Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
 					ManagementID: adminUser.ID,
-					BuildingID:   3,
 				})
 				if err != nil {
+					log.Printf("[Construct-Create-Apartment] error creating apartment: %v", err)
 					return errors.New(fmt.Sprintf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error()))
 				}
 				buildingApartments = append(buildingApartments, apartment.ID)

@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS "complaints"
     "category"         "Complaint_Category" NOT NULL DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
-    "unit_number"      BIGINT             NULL,
+    "unit_number"      BIGINT               NULL,
     "status"           "Status"             NOT NULL DEFAULT "Status" 'open',
     "updated_at"       TIMESTAMP(0)                  DEFAULT now(),
     "created_at"       TIMESTAMP(0)                  DEFAULT now()
@@ -77,10 +77,10 @@ CREATE TABLE IF NOT EXISTS "work_orders"
     "category"     "Work_Category" NOT NULL,
     "title"        VARCHAR         NOT NULL,
     "description"  TEXT            NOT NULL,
-    "unit_number"  BIGINT        NOT NULL,
-    "status"       "Status"        NOT NULL       DEFAULT "Status" 'open',
-    "updated_at"   TIMESTAMP(0) DEFAULT now(),
-    "created_at"   TIMESTAMP(0) DEFAULT now()
+    "unit_number"  BIGINT          NOT NULL,
+    "status"       "Status"        NOT NULL DEFAULT "Status" 'open',
+    "updated_at"   TIMESTAMP(0)             DEFAULT now(),
+    "created_at"   TIMESTAMP(0)             DEFAULT now()
 );
 
 CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
@@ -104,7 +104,8 @@ COMMENT ON COLUMN "users"."clerk_id" IS 'provided by Clerk';
 CREATE TABLE IF NOT EXISTS "apartments"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "unit_number"   BIGINT       NULL,
+    "unit_number"   BIGINT         NULL,
+    "building_id"   BIGINT         NOT NULL,
     "price"         NUMERIC(10, 2) NULL,
     "size"          SMALLINT       NULL,
     "management_id" BIGINT         NOT NULL,
@@ -127,7 +128,7 @@ CREATE TABLE IF NOT EXISTS "leases"
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
     "rent_amount"      DECIMAL(10, 2) NOT NULL,
-    "status"     "Lease_Status" NOT NULL        DEFAULT 'active',
+    "status"           "Lease_Status" NOT NULL DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
     "created_at"       TIMESTAMP(0)            DEFAULT now(),
@@ -150,17 +151,14 @@ ALTER TABLE "lockers"
 
 CREATE TABLE IF NOT EXISTS "buildings"
 (
-    "id"               BIGINT   NOT NULL,
-    "parking_total"    BIGINT   NULL,
-    "per_user_parking" BIGINT   NULL,
-    "management_id"    BIGINT   NOT NULL,
-    "apartments"       BIGINT   NOT NULL,
+    "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "parking_total"    BIGINT NULL,
+    "per_user_parking" BIGINT NULL,
+    "management_id"    BIGINT NOT NULL,
     "created_at"       TIMESTAMP(0) DEFAULT now(),
     "updated_at"       TIMESTAMP(0) DEFAULT now()
 );
-ALTER TABLE
-    "buildings"
-    ADD PRIMARY KEY ("id");
+
 ALTER TABLE "parking_permits"
     ADD CONSTRAINT "parking_permit_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "apartments"
@@ -169,10 +167,9 @@ ALTER TABLE "leases"
     ADD CONSTRAINT "lease_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "complaints"
     ADD CONSTRAINT "complaint_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
-ALTER TABLE "buildings"
-    ADD CONSTRAINT "buildings_apartments_foreign" FOREIGN KEY ("apartments") REFERENCES "apartments" ("id");
-ALTER TABLE "buildings"
-    ADD CONSTRAINT "buildings_management_id_foreign" FOREIGN KEY ("management_id") REFERENCES "users" ("id");
+ALTER TABLE
+    "apartments"
+    ADD CONSTRAINT "apartments_building_id_foreign" FOREIGN KEY ("building_id") REFERENCES "buildings" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_apartment_id_foreign" FOREIGN KEY ("apartment_id") REFERENCES "apartments" ("id");
 ALTER TABLE "leases"

@@ -146,47 +146,8 @@ func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx 
 	return nil
 }
 
-func createLockers(queries *db.Queries, tenants []db.User, ctx context.Context) error {
-	//for tenant := range tenants {
-	//	// create 2 lockers for each tenant
-	//	for i := 0; i < 2; i++ {
-	//		_, err := queries.CreateLocker(ctx, db.CreateLockerParams{
-	//			CreatedBy: tenants[tenant].ID,
-	//			Code:      tenants[tenant].ID + int64(i),
-	//		})
-	//		if err != nil {
-	//			return errors.New(fmt.Sprintf("[SEEDER] error creating locker: %d %v", tenants[tenant].ID, err.Error()))
-	//		}
-	//	}
-	//}
-
-	return nil
-}
-
 func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 	ctx := context.Background()
-
-	log.Println("[SEEDER] seeding work orders")
-	//
-	//apartments, err := pool.Query(ctx, "SELECT COUNT(*) FROM apartments")
-	//if err != nil {
-	//	return errors.New("[SEEDER] error counting apartments: " + err.Error())
-	//}
-	//defer apartments.Close()
-	//if apartments.Next() {
-	//	var aCount int
-	//	if err := apartments.Scan(&aCount); err != nil {
-	//		return errors.New("[SEEDER] error scanning apartments: " + err.Error())
-	//	}
-	//	if aCount < 100 {
-	//		err := createApartments(queries, int64(adminID), ctx)
-	//		if err != nil {
-	//			return errors.New("[SEEDER] error creating apartments: " + err.Error())
-	//		}
-	//	} else {
-	//		log.Println("[SEEDER] no apartments created")
-	//	}
-	//}
 
 	// count users
 	users, err := queries.ListUsersByRole(ctx, db.RoleTenant)

@@ -169,7 +169,7 @@ func main() {
 		// End Admin
 
 		// Tenant Endpoints
-		r.Route("/", func(r chi.Router) {
+		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", userHandler.GetUserByClerkId)
 			r.Get("/documents", userHandler.GetTenantDocuments)
 			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
