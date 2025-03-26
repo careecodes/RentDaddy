@@ -5,23 +5,22 @@ INSERT INTO users (
     last_name,
     email,
     phone,
-    unit_number,
     image_url,
     role,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, now()
-) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at;
+    $1, $2, $3, $4, $5, $6, $7, now()
+) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at;
 
 
 -- name: GetUser :one
-SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
 FROM users
 WHERE clerk_id = $1
 LIMIT 1;
 
 -- name: ListUsersByRole :many
-SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC;

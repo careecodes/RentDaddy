@@ -60,11 +60,11 @@ func (r CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
 		ExternalDocID:  "",
 		TenantID:       r.TenantID,
 		LandlordID:     r.LandlordID,
-		ApartmentID:    pgtype.Int8{Int64: 0, Valid: false}, // Default empty
+		ApartmentID:    0, // Default empty
 		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: true},
 		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: true},
 		RentAmount:     floatToPgNumeric(r.RentAmount),
-		LeaseStatus:    "active",
+		Status:         "active",
 	}
 }
 
@@ -74,7 +74,7 @@ type CreateLeaseResponse struct {
 	// Explicitly expose only required fields
 	LeaseID       int64  `json:"lease_id"`
 	ExternalDocID string `json:"external_doc_id,omitempty"`
-	LeaseStatus   string `json:"lease_status"`
+	Status        string `json:"lease_status"`
 }
 
 // Convert `db.Lease` to `CreateLeaseResponse`
@@ -83,7 +83,7 @@ func NewCreateLeaseResponse(lease db.Lease) CreateLeaseResponse {
 		Lease:         lease,
 		LeaseID:       lease.ID,
 		ExternalDocID: lease.ExternalDocID,
-		LeaseStatus:   string(lease.LeaseStatus),
+		Status:        string(lease.Status),
 	}
 }
 

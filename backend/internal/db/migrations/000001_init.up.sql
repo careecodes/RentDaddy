@@ -59,14 +59,14 @@ CREATE TABLE IF NOT EXISTS "complaints"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "complaint_number" BIGINT               NOT NULL,
-    "created_by"       BIGINT                 NOT NULL,
+    "created_by"       BIGINT               NOT NULL,
     "category"         "Complaint_Category" NOT NULL  DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
-    "unit_number"      SMALLINT             NOT NULL,
-    "status"           "Status"             NOT NULL  DEFAULT "Status" 'open',
-    "updated_at"       TIMESTAMP(0)         DEFAULT now(),
-    "created_at"       TIMESTAMP(0)         DEFAULT now()
+    "unit_number"      SMALLINT             NULL,
+    "status"           "Status"             NOT NULL DEFAULT "Status" 'open',
+    "updated_at"       TIMESTAMP(0)                  DEFAULT now(),
+    "created_at"       TIMESTAMP(0)                  DEFAULT now()
 );
 
 CREATE TABLE IF NOT EXISTS "work_orders"
@@ -87,36 +87,32 @@ CREATE TYPE "Account_Status" AS ENUM ('active', 'inactive', 'suspended');
 CREATE TYPE "Role" AS ENUM ('tenant', 'admin');
 CREATE TABLE IF NOT EXISTS "users"
 (
-    "id"          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "clerk_id"    TEXT UNIQUE                    NOT NULL, -- Clerk ID's "user_2u9IV7xs5cUaYv2MsGH3pcI5hzK" cannot be converted to UUID format
-    "first_name"  VARCHAR                        NOT NULL,
-    "last_name"   VARCHAR                        NOT NULL,
-    "email"       VARCHAR                        NOT NULL,
-    "phone"       VARCHAR                        NULL,
-    "unit_number" SMALLINT                       NULL,
-    "role"        "Role"                         NOT NULL DEFAULT "Role" 'tenant',
-    "status"      "Account_Status"               NOT NULL DEFAULT "Account_Status" 'active',
-    "last_login"  TIMESTAMP(0) NOT NULL,
-    "updated_at"  TIMESTAMP(0)          DEFAULT now(),
-    "created_at"  TIMESTAMP(0)          DEFAULT now()
+    "id"         BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "clerk_id"   TEXT UNIQUE      NOT NULL, -- Clerk ID's "user_2u9IV7xs5cUaYv2MsGH3pcI5hzK" cannot be converted to UUID format
+    "first_name" VARCHAR          NOT NULL,
+    "last_name"  VARCHAR          NOT NULL,
+    "email"      VARCHAR          NOT NULL,
+    "phone"      VARCHAR          NULL,
+    "image_url"  TEXT             NULL,     --Avatar picture
+    "role"       "Role"           NOT NULL DEFAULT "Role" 'tenant',
+    "status"     "Account_Status" NOT NULL DEFAULT "Account_Status" 'active',
+    "updated_at" TIMESTAMP(0)              DEFAULT now(),
+    "created_at" TIMESTAMP(0)              DEFAULT now()
 );
 CREATE INDEX "user_clerk_id_index" ON "users" ("clerk_id");
-CREATE INDEX "user_unit_number_index" ON "users" ("unit_number");
 
 COMMENT ON COLUMN "users"."clerk_id" IS 'provided by Clerk';
 CREATE TABLE IF NOT EXISTS "apartments"
 (
-    "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "unit_number"      SMALLINT       NOT NULL,
-    "price"            NUMERIC(10, 2) NOT NULL,
-    "size"             SMALLINT       NOT NULL,
-    "management_id"    BIGINT         NOT NULL,
-    "availability"     BOOLEAN        NOT NULL        DEFAULT false,
-    "lease_id"         BIGINT         NOT NULL,
-    "lease_start_date" DATE           NOT NULL,
-    "lease_end_date"   DATE           NOT NULL,
-    "updated_at"       TIMESTAMP(0) DEFAULT now(),
-    "created_at"       TIMESTAMP(0) DEFAULT now()
+    "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    "unit_number"   SMALLINT       NULL,
+    "price"         NUMERIC(10, 2) NULL,
+    "size"          SMALLINT       NULL,
+    "management_id" BIGINT         NOT NULL,
+    "availability"  BOOLEAN        NOT NULL DEFAULT false,
+    "lease_id"      BIGINT         NULL,
+    "updated_at"    TIMESTAMP(0)            DEFAULT now(),
+    "created_at"    TIMESTAMP(0)            DEFAULT now()
 );
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
@@ -132,7 +128,7 @@ CREATE TABLE IF NOT EXISTS "leases"
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
     "rent_amount"      DECIMAL(10, 2) NOT NULL,
-    "lease_status"     "Lease_Status" NOT NULL        DEFAULT 'active',
+    "status"     "Lease_Status" NOT NULL        DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
     "created_at"       TIMESTAMP(0) DEFAULT now(),
@@ -140,7 +136,7 @@ CREATE TABLE IF NOT EXISTS "leases"
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
-CREATE INDEX "lease_apartment_id_index" ON "leases" ("id");
+CREATE INDEX "lease_apartment_id_index" ON "leases" ("apartment_id");
 
 CREATE TABLE IF NOT EXISTS "lockers"
 (
@@ -184,3 +180,4 @@ ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
+
