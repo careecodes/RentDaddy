@@ -13,6 +13,11 @@ import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import { useQuery } from "@tanstack/react-query";
+
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
@@ -491,12 +496,38 @@ const paginationConfig: TablePaginationConfig = {
 };
 
 const AdminWorkOrder = () => {
-    const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
+    // const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
     const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
     const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
     const [currentStatus, setCurrentStatus] = useState<string>("");
+
+    // Add Tanstack Query for fetching work orders
+    const { data: workOrderData, isLoading: isWorkOrdersLoading, error: workOrdersError } = useQuery({
+        queryKey: ['workOrders'],
+        queryFn: async () => {
+            const response = await fetch(`${API_URL}/admin/work_orders`);
+            if (!response.ok) {
+                throw new Error('Failed to fetch work orders');
+            }
+            const data = await response.json();
+
+            // Transform the backend data to match our frontend interface
+            return data.map((item: any) => ({
+                key: item.id,
+                workOrderNumber: item.order_number,
+                creatingBy: item.created_by,
+                category: item.category,
+                title: item.title,
+                description: item.description,
+                apartmentNumber: item.unit_number,
+                status: item.status,
+                createdAt: new Date(item.created_at),
+                updatedAt: new Date(item.updated_at),
+            })) as WorkOrderData[];
+        },
+    });
 
     const handleStatusChange = (newStatus: string) => {
         setCurrentStatus(newStatus);
@@ -650,22 +681,28 @@ const AdminWorkOrder = () => {
             {/* Work Order Table */}
             <div className="mb-5">
                 <h4 className="mb-3">Work Orders</h4>
-                <TableComponent<WorkOrderData>
-                    columns={workOrderColumns}
-                    dataSource={workOrderData}
-                    style=".lease-table-container"
-                    pagination={paginationConfig}
-                    onChange={(pagination, filters, sorter, extra) => {
-                        console.log("Table changed:", pagination, filters, sorter, extra);
-                    }}
-                    onRow={(record: WorkOrderData) => ({
-                        onClick: () => handleRowClick(record, "workOrder"),
-                        style: {
-                            cursor: "pointer",
-                        },
-                        className: "hoverable-row",
-                    })}
-                />
+                {isWorkOrdersLoading ? (
+                    <div>Loading work orders...</div>
+                ) : workOrdersError ? (
+                    <div>Error loading work orders: {workOrdersError.message}</div>
+                ) : (
+                    <TableComponent<WorkOrderData>
+                        columns={workOrderColumns}
+                        dataSource={workOrderData || []}
+                        style=".lease-table-container"
+                        pagination={paginationConfig}
+                        onChange={(pagination, filters, sorter, extra) => {
+                            console.log("Table changed:", pagination, filters, sorter, extra);
+                        }}
+                        onRow={(record: WorkOrderData) => ({
+                            onClick: () => handleRowClick(record, "workOrder"),
+                            style: {
+                                cursor: "pointer",
+                            },
+                            className: "hoverable-row",
+                        })}
+                    />
+                )}
             </div>
 
             {/* Complaints Table */}
@@ -700,7 +737,7 @@ const AdminWorkOrder = () => {
                     modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
                     isModalOpen={isModalVisible}
                     onCancel={() => setIsModalVisible(false)}
-                    apartmentBuildingSetEditBuildingState={() => {}}
+                    apartmentBuildingSetEditBuildingState={() => { }}
                 />
             )}
         </div>
