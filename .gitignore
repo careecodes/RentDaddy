@@ -54,3 +54,7 @@ logging/
 *.log.*
 
 .local
+terraform*
+terraform.tfstate*
+.terraform.*
+.terraform
