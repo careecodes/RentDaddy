@@ -1,11 +1,12 @@
 #!/bin/sh
-echo "[ENTRYPOINT] Starting backend container..."
-echo "[ENTRYPOINT] PG_URL: $PG_URL"
-echo "[ENTRYPOINT] POSTGRES_HOST: $POSTGRES_HOST"
-echo "[ENTRYPOINT] POSTGRES_USER: $POSTGRES_USER"
-echo "[ENTRYPOINT] POSTGRES_DB: $POSTGRES_DB"
-echo "[ENTRYPOINT] PORT: $PORT"
-echo "[ENTRYPOINT] DEBUG_MODE: $DEBUG_MODE"
+set -e
+echo "🔥 entrypoint-prod.sh running at $(date)"
+
+echo "[ENTRYPOINT] Attempting to connect to PostgreSQL with:"
+echo "[ENTRYPOINT] Host: $POSTGRES_HOST"
+echo "[ENTRYPOINT] User: $POSTGRES_USER"
+echo "[ENTRYPOINT] Database: $POSTGRES_DB"
+echo "[ENTRYPOINT] Connection string: postgresql://$POSTGRES_USER:***@$POSTGRES_HOST:${POSTGRES_PORT:-5432}/$POSTGRES_DB"
 
 echo "[ENTRYPOINT] Checking for /tmp/server:"
 ls -lh /tmp/server || echo "Backend binary not found!"
@@ -18,11 +19,12 @@ fi
 
 # Wait for PostgreSQL to be ready
 echo "[ENTRYPOINT] Waiting for PostgreSQL..."
-echo "postgresql:5432:${POSTGRES_DB}:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > ~/.pgpass
+echo "${POSTGRES_HOST}:5432:${POSTGRES_DB}:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > ~/.pgpass
 chmod 600 ~/.pgpass
 export PGPASSFILE=~/.pgpass
 
-until PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
+
+until PGPASSWORD="$POSTGRES_PASSWORD" psql -h "$POSTGRES_HOST" -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q' 2>/dev/null; do
   echo "[ENTRYPOINT] PostgreSQL is unavailable - sleeping..."
   sleep 2
 done

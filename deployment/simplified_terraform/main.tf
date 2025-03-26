@@ -205,12 +205,22 @@ resource "aws_launch_template" "ecs_lt" {
 
   vpc_security_group_ids = [aws_security_group.ec2_sg.id]
 
+
   user_data = base64encode(<<-EOF
     #!/bin/bash
     echo ECS_CLUSTER=${aws_ecs_cluster.main.name} >> /etc/ecs/ecs.config
+    
+    # Create directories with proper permissions
     mkdir -p /home/ec2-user/app/{temp,postgres-data}
     mkdir -p /home/ec2-user/documenso/postgres-data
-    chown -R ec2-user:ec2-user /home/ec2-user
+    
+    # Set proper ownership and permissions for postgres data directory
+    chown -R 999:999 /home/ec2-user/app/postgres-data
+    chmod -R 700 /home/ec2-user/app/postgres-data
+    
+    # Make sure ec2-user owns other directories
+    chown -R ec2-user:ec2-user /home/ec2-user/app/temp
+    chown -R ec2-user:ec2-user /home/ec2-user/documenso
     EOF
   )
 
@@ -239,9 +249,11 @@ resource "aws_launch_template" "ecs_lt" {
 resource "aws_autoscaling_group" "ecs_asg" {
   name                = "rentdaddy-ecs-asg"
   vpc_zone_identifier = aws_subnet.public[*].id
-  desired_capacity    = 1
+  desired_capacity    = 2
   min_size            = 1
   max_size            = 2
+
+
 
   launch_template {
     id      = aws_launch_template.ecs_lt.id
@@ -265,7 +277,7 @@ resource "aws_autoscaling_group" "ecs_asg" {
 
 resource "aws_ecs_task_definition" "backend_with_frontend" {
   family                   = "rentdaddy-app"
-  network_mode             = "awsvpc"
+  network_mode             = "bridge"
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
@@ -437,7 +449,7 @@ resource "aws_ecs_task_definition" "documenso" {
 # PostgreSQL containers for both apps
 resource "aws_ecs_task_definition" "main_postgres" {
   family       = "rentdaddy-main-postgres"
-  network_mode = "awsvpc"
+  network_mode = "bridge"
 
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
@@ -451,16 +463,19 @@ resource "aws_ecs_task_definition" "main_postgres" {
       name      = "main-postgres"
       image     = "postgres:15"
       essential = true
-
+      user      = "postgres" # Add explicit user
+      repository_credentials = {
+        credentials_parameter = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PULL_TOKEN::"
+      }
       portMappings = [
         {
           containerPort = 5432,
-          hostPort      = 5432, # Add explicit host port 
           protocol      = "tcp"
         }
       ]
       environment = [
         { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" },
+        { name = "PGDATA", value = "/var/lib/postgresql/data/pgdata" } # Set explicit PGDATA path
       ]
       secrets = [
         {
@@ -476,7 +491,6 @@ resource "aws_ecs_task_definition" "main_postgres" {
           valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::"
         }
       ]
-
       mountPoints = [
         {
           sourceVolume  = "postgres-data"
@@ -496,8 +510,20 @@ resource "aws_ecs_task_definition" "main_postgres" {
   ])
 
   volume {
-    name      = "postgres-data"
-    host_path = "/home/ec2-user/app/postgres-data"
+    name = "postgres-data"
+    # host_path = "/home/ec2-user/app/postgres-data"
+
+
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        "type"   = "none",
+        "device" = "/home/ec2-user/app/postgres-data",
+        "o"      = "bind"
+      }
+    }
   }
 }
 resource "aws_ecs_task_definition" "documenso_postgres" {
@@ -515,6 +541,7 @@ resource "aws_ecs_task_definition" "documenso_postgres" {
     {
       name      = "documenso-postgres"
       image     = "postgres:15"
+      user      = "postgres"
       essential = true
       portMappings = [
         {
@@ -575,8 +602,20 @@ resource "aws_ecs_task_definition" "documenso_postgres" {
 
 
   volume {
-    name      = "documenso-postgres-data"
-    host_path = "/home/ec2-user/documenso/postgres-data"
+    name = "documenso-postgres-data"
+
+
+
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      driver_opts = {
+        "type"   = "none",
+        "device" = "/home/ec2-user/documenso/postgres-data",
+        "o"      = "bind"
+      }
+    }
   }
 }
 
@@ -588,19 +627,20 @@ resource "aws_ecs_service" "backend_with_frontend" {
   desired_count   = 1
 
   enable_execute_command = true
-  network_configuration {
-    subnets          = aws_subnet.public[*].id
-    security_groups  = [aws_security_group.ec2_sg.id]
-    assign_public_ip = false
-  }
+  # network_configuration {
+  #   subnets          = aws_subnet.public[*].id
+  #   security_groups  = [aws_security_group.ec2_sg.id]
+  #   assign_public_ip = false
+  # }
   ordered_placement_strategy {
     type  = "binpack"
     field = "memory"
   }
-  service_registries {
-    registry_arn   = aws_service_discovery_service.documenso.arn
-    container_name = "documenso"
-  }
+  # service_registries {
+  #   registry_arn   = aws_service_discovery_service.documenso.arn
+  #   container_name = "documenso"
+  #   container_port = 3000
+  # }
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
     container_name   = "backend"
@@ -641,14 +681,15 @@ resource "aws_ecs_service" "main_postgres" {
   desired_count   = 1
 
   enable_execute_command = true
-  network_configuration {
-    subnets         = aws_subnet.public[*].id
-    security_groups = [aws_security_group.ec2_sg.id]
-  }
+  # network_configuration {
+  #   subnets         = aws_subnet.public[*].id
+  #   security_groups = [aws_security_group.ec2_sg.id]
+  # }
 
   service_registries {
     registry_arn   = aws_service_discovery_service.main_postgres.arn
     container_name = "main-postgres"
+    container_port = 5432
   }
 
   depends_on = [aws_lb_listener.https]
@@ -765,7 +806,7 @@ resource "aws_lb_target_group" "frontend" {
   port        = 5173
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip"
+  target_type = "instance"
 
 
   health_check {
@@ -783,7 +824,7 @@ resource "aws_lb_target_group" "backend" {
   port        = 8080
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip"
+  target_type = "instance"
 
   health_check {
     path                = "/"
@@ -800,7 +841,7 @@ resource "aws_lb_target_group" "documenso" {
   port        = 3000
   protocol    = "HTTP"
   vpc_id      = aws_vpc.main.id
-  target_type = "ip"
+  target_type = "instance"
 
   health_check {
     path                = "/"
@@ -955,7 +996,7 @@ resource "aws_service_discovery_service" "main_postgres" {
     namespace_id = aws_service_discovery_private_dns_namespace.rentdaddy.id
 
     dns_records {
-      type = "A"
+      type = "SRV"
       ttl  = 10
     }
 
