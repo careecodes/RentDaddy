@@ -20,6 +20,13 @@ type Building = {
     numberOfRooms: number;
 };
 
+type AdminSetup = {
+    parkingTotal: number;
+    perUserParking: number;
+    lockerCount: number;
+    buildingsInfo: Building[];
+};
+
 const AdminApartmentSetupAndDetailsManagement = () => {
     // State that holds the locations (building #, floor #s in that building, room numbers in that building)
     // TODO: When no longer needed for development, delete the clear locations button and mock data
@@ -32,7 +39,56 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         numberOfRooms: 0,
     });
 
+    const [adminSetupObject, setAdminSetupObject] = useState<AdminSetup>({
+        parkingTotal: 0,
+        perUserParking: 0,
+        lockerCount: 0,
+        buildingsInfo: [],
+    });
+
     console.log(editBuildingObj);
+
+    const { mutate: adminApartmentSetup } = useMutation({
+        mutationFn: async (adminSetupObject: AdminSetup) => {
+            console.log("Starting admin apartment setup admin");
+
+            const res = await fetch(`${API_URL}/admin/setup`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(adminSetupObject),
+            });
+
+            if (!res.ok) {
+                throw new Error("Failed to setup apartment");
+            }
+
+            return res;
+        },
+        onSuccess: () => {
+            // Invalidate and refetch
+            console.log("success");
+        },
+        onError: (e: any) => {
+            console.log("error ", e);
+        },
+    });
+
+    console.log("Testing for Ryan, this is the adminApartmentSetup return from the Tanstack useMutation", adminApartmentSetup);
+
+    const handleSendAdminSetup = () => {
+        console.log("starting admin setup");
+        adminApartmentSetup(adminSetupObject);
+
+        // Reset the state
+        setAdminSetupObject({
+            parkingTotal: 0,
+            perUserParking: 0,
+            lockerCount: 0,
+            buildingsInfo: [],
+        });
+
+        console.log("adminSetupObject", adminSetupObject);
+    };
 
     // tanstack for editing locations that were put in
     const { mutate: editLocations } = useMutation({
@@ -200,43 +256,20 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         type="number"
                     />
                 </Form.Item>
-                <Form.Item
+                {/* <Form.Item
                     name="smtp-settings"
                     label="SMTP Settings"
                     rules={[{ required: true, message: "Please enter SMTP settings" }]}>
                     <div className="flex flex-column gap-3">
-                        {/* Url / Domain */}
                         <Input placeholder="Url/Domain" />
-                        {/* Port */}
                         <Input
                             placeholder="Port"
                             type="number"
                         />
-                        {/* Username */}
                         <Input placeholder="Username" />
-                        {/* Password */}
                         <Input placeholder="Password" />
                     </div>
-                </Form.Item>
-                <Form.Item
-                    name="apartment-manager-contact-information"
-                    label="Apartment Manager Contact Information"
-                    rules={[
-                        {
-                            required: true,
-                            message: "Please enter apartment manager contact information",
-                        },
-                    ]}>
-                    <div className="flex flex-column gap-3">
-                        {/* Phone Number */}
-                        <Input
-                            placeholder="Phone Number"
-                            type="number"
-                        />
-                        {/* Email */}
-                        <Input placeholder="Email" />
-                    </div>
-                </Form.Item>
+                </Form.Item> */}
                 <div className="flex justify-content-end gap-2">
                     {/* Cancel button */}
                     <Form.Item name="cancel">
