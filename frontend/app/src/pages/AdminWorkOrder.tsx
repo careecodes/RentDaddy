@@ -14,6 +14,8 @@ import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useQuery } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
+
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
 const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
@@ -503,17 +505,25 @@ const AdminWorkOrder = () => {
     const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
     const [currentStatus, setCurrentStatus] = useState<string>("");
 
-    // Add Tanstack Query for fetching work orders
+    const { getToken } = useAuth();
+
+    // Update your query to include the auth token
     const { data: workOrderData, isLoading: isWorkOrdersLoading, error: workOrdersError } = useQuery({
         queryKey: ['workOrders'],
         queryFn: async () => {
-            const response = await fetch(`${API_URL}/admin/work_orders`);
+            const token = await getToken();
+            const response = await fetch(`${API_URL}/admin/work_orders`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                }
+            });
             if (!response.ok) {
                 throw new Error('Failed to fetch work orders');
             }
             const data = await response.json();
 
-            // Transform the backend data to match our frontend interface
             return data.map((item: any) => ({
                 key: item.id,
                 workOrderNumber: item.order_number,
