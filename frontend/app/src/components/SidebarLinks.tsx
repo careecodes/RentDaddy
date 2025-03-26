@@ -69,9 +69,9 @@ const SidebarLinks = () => {
                             Apartment Setup
                         </Link>
                         <Link
-                            to="/admin/add-tenant"
-                            className={getLinkClass("/admin/add-tenant") + " hover-lift transition-all"}>
-                            Add Tenant
+                            to="/admin/manage-tenants"
+                            className={getLinkClass("/admin/manage-tenants") + " hover-lift transition-all"}>
+                            Manage Tenants
                         </Link>
                         <Link
                             to="/admin/admin-view-and-edit-leases"
