@@ -35,6 +35,7 @@ type ClerkUserEntry struct {
 	FirstName      string          `json:"first_name"`
 	LastName       string          `json:"last_name"`
 	PublicMetaData json.RawMessage `json:"public_metadata"`
+	Password       string          `json:"password"`
 }
 
 func main() {
