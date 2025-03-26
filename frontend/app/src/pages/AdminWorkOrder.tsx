@@ -6,14 +6,13 @@ import { Input, Select } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
-import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || "http://localhost";
@@ -149,12 +148,12 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
                     color = "red";
                     break;
                 case "in_progress":
-                    color = "blue";
-                    break;
-                case "awaiting_parts":
                     color = "orange";
                     break;
-                case "completed":
+                case "resolved":
+                    color = "blue";
+                    break;
+                case "closed":
                     color = "green";
                     break;
             }
@@ -381,6 +380,7 @@ const AdminWorkOrder = () => {
     const [currentStatus, setCurrentStatus] = useState<string>("");
 
     const { getToken } = useAuth();
+    const queryClient = useQueryClient();
 
     // Update your query to include the auth token
     const { data: workOrderData, isLoading: isWorkOrdersLoading, error: workOrdersError } = useQuery({
@@ -418,34 +418,53 @@ const AdminWorkOrder = () => {
         setCurrentStatus(newStatus);
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         if (selectedItem && currentStatus) {
-            if (itemType === "workOrder") {
-                const updatedWorkOrders = workOrderData.map((item) => {
-                    if (item.key === selectedItem.key) {
-                        return {
-                            ...item,
+            try {
+                if (itemType === "workOrder") {
+                    const token = await getToken();
+                    // Make API call to update work order
+                    const response = await fetch(`${API_URL}/admin/work_orders/${selectedItem.key}/status`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            "Authorization": `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
                             status: currentStatus,
-                            updatedAt: new Date(),
-                        } as WorkOrderData;
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to update work order');
                     }
-                    return item;
-                });
-                setWorkOrderData(updatedWorkOrders);
-            } else {
-                const updatedComplaints = complaintsData.map((item) => {
-                    if (item.key === selectedItem.key) {
-                        return {
-                            ...item,
-                            status: currentStatus,
-                            updatedAt: new Date(),
-                        } as ComplaintsData;
-                    }
-                    return item;
-                });
-                setComplaintsData(updatedComplaints);
+
+                    queryClient.setQueryData(['workOrders'], (oldData: WorkOrderData[] | undefined) => {
+                        if (!oldData) return oldData;
+                        return oldData.map(item =>
+                            item.key === selectedItem.key
+                                ? { ...item, status: currentStatus, updatedAt: new Date() }
+                                : item
+                        );
+                    });
+                } else {
+                    // Handle complaint update (keep existing dummy data logic for now)
+                    const updatedComplaints = complaintsData.map((item) => {
+                        if (item.key === selectedItem.key) {
+                            return {
+                                ...item,
+                                status: currentStatus,
+                                updatedAt: new Date(),
+                            } as ComplaintsData;
+                        }
+                        return item;
+                    });
+                    setComplaintsData(updatedComplaints);
+                }
+                setIsModalVisible(false);
+            } catch (error) {
+                console.error("Error updating status:", error);
             }
-            setIsModalVisible(false);
         }
     };
 
@@ -541,8 +560,8 @@ const AdminWorkOrder = () => {
                         <>
                             <Select.Option value="open">Open</Select.Option>
                             <Select.Option value="in_progress">In Progress</Select.Option>
-                            <Select.Option value="awaiting_parts">Awaiting Parts</Select.Option>
-                            <Select.Option value="completed">Completed</Select.Option>
+                            <Select.Option value="resolved">Resolved</Select.Option>
+                            <Select.Option value="closed">Closed</Select.Option>
                         </>
                     ) : (
                         <>
