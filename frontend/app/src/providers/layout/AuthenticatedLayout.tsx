@@ -97,21 +97,25 @@ const AuthenticatedLayout: React.FC = () => {
                 <Footer style={{ textAlign: "center" }}>
                     <Link
                         to="/about"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         About
                     </Link>
                     <Link
                         to="/contact"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         Contact
                     </Link>
                     <Link
                         to="/privacy"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         Privacy Policy
                     </Link>
                     <Link
                         to="/terms"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         Terms of Service
                     </Link>

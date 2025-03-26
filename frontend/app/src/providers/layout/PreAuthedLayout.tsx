@@ -113,22 +113,22 @@ const PreAuthedLayout: React.FC = () => {
                 <div>
                     <Link
                         to="/about"
-                        className="link">
+                        className="link disabled-link">
                         About
                     </Link>
                     <Link
                         to="/contact"
-                        className="link">
+                        className="link disabled-link">
                         Contact
                     </Link>
                     <Link
                         to="/privacy"
-                        className="link">
+                        className="link disabled-link">
                         Privacy Policy
                     </Link>
                     <Link
                         to="/terms"
-                        className="link">
+                        className="link disabled-link">
                         Terms of Service
                     </Link>
                 </div>
