@@ -129,38 +129,37 @@ const AuthenticatedLayout: React.FC = () => {
                 {/* Menu Container */}
                 {/* <Menu theme='dark' style={{ backgroundColor: '#7789f4', color: '#000000' }} mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} /> */}
 
-                
-                    <SidebarLinks />
+                <SidebarLinks />
 
-                    {/* Avatar and Login Container */}
-                    <div className="avatar-container mt-auto pb-3">
-                        <Divider className="divider-text border-white" />
-                        {isSignedIn ? (
-                            <SignOutButton>
-                                <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
-                                    <p className="login-text text-white m-0">Sign Out</p>
-                                    <Avatar
-                                        className="avatar-icon"
-                                        size={48}
-                                        src={user?.imageUrl}
-                                    />
-                                </div>
-                            </SignOutButton>
-                        ) : (
-                            <Link
-                                to="/auth/login"
-                                className="text-decoration-none">
-                                <div className="flex align-items-center justify-content-center gap-2 mb-4">
-                                    <p className="login-text text-white m-0">Login</p>
-                                    <Avatar
-                                        className="avatar-icon"
-                                        size={48}
-                                        icon={<UserOutlined />}
-                                    />
-                                </div>
-                            </Link>
-                        )}
-                    </div>
+                {/* Avatar and Login Container */}
+                <div className="avatar-container mt-auto pb-3">
+                    <Divider className="divider-text border-white" />
+                    {isSignedIn ? (
+                        <SignOutButton>
+                            <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
+                                <p className="login-text text-white m-0">Sign Out</p>
+                                <Avatar
+                                    className="avatar-icon"
+                                    size={48}
+                                    src={user?.imageUrl}
+                                />
+                            </div>
+                        </SignOutButton>
+                    ) : (
+                        <Link
+                            to="/auth/login"
+                            className="text-decoration-none">
+                            <div className="flex align-items-center justify-content-center gap-2 mb-4">
+                                <p className="login-text text-white m-0">Login</p>
+                                <Avatar
+                                    className="avatar-icon"
+                                    size={48}
+                                    icon={<UserOutlined />}
+                                />
+                            </div>
+                        </Link>
+                    )}
+                </div>
             </Sider>
 
             {/* Content Container */}

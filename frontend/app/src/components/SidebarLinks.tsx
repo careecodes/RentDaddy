@@ -30,7 +30,7 @@ const SidebarLinks = () => {
     return (
         <div className="menu-container d-flex flex-column gap-3 px-1 mb-5">
             {/* Home Menu Item */}
-            <div className="menu-item rounded-lg px-2 px-md-3 mt-3">
+            {/* <div className="menu-item rounded-lg px-2 px-md-3 mt-3">
                 <div className="d-flex align-items-center">
                     <HomeOutlined
                         className="menu-icon text-white me-2 me-md-3"
@@ -42,7 +42,7 @@ const SidebarLinks = () => {
                         Home
                     </Link>
                 </div>
-            </div>
+            </div> */}
 
             {isAdmin && (
                 <div className="menu-item rounded-lg p-3">
@@ -140,6 +140,7 @@ const SidebarLinks = () => {
                     </div>
                 </div>
             )}
+            <div className="mt-5" />
         </div>
     );
 };
