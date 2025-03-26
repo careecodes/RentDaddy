@@ -8,7 +8,9 @@ import { useMutation, useQueries } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react-router";
 import { ComplaintEntry, ComplaintsData, WorkOrderData, WorkOrderEntry } from "../types/types";
 import { ColumnsType } from "antd/es/table";
+import { absoluteServerUrl } from "../lib/utils";
 
+//TODO: Test all connections and double check absoluteServerUrl is working correctly
 const TenantComplaintsAndWorkOrders = () => {
     const { getToken, userId } = useAuth();
     const [activeKey, setActiveKey] = useState("1");
@@ -22,7 +24,7 @@ const TenantComplaintsAndWorkOrders = () => {
                     if (!authToken) {
                         throw new Error("[TENANT_DASHBOARD] Error unauthorized");
                     }
-                    const res = await fetch("http://localhost:8080/tenant/complaints", {
+                    const res = await fetch(absoluteServerUrl("/tenant/complaints"), {
                         method: "GET",
                         headers: {
                             "Content-Type": "application/json",
@@ -43,7 +45,7 @@ const TenantComplaintsAndWorkOrders = () => {
                     if (!authToken) {
                         throw new Error("[TENANT_DASHBOARD] Error unauthorized");
                     }
-                    const res = await fetch("http://localhost:8080/tenant/work_orders", {
+                    const res = await fetch(absoluteServerUrl("/tenant/work_orders"), {
                         method: "GET",
                         headers: {
                             "Content-Type": "application/json",
@@ -214,7 +216,7 @@ function TenantCreateComplaintsModal() {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
             // console.log(`NEW COMPLAINT ENTRY FORM VALUES: ${JSON.stringify(complaintForm.getFieldsValue())}`);
-            const res = await fetch("http://localhost:8080/tenant/complaint", {
+            const res = await fetch(absoluteServerUrl("/tenant/complaints"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -322,7 +324,7 @@ function TenantCreateWorkOrderModal() {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
             // console.log(`NEW WORK_ORDER ENTRY FORM VALUES: ${JSON.stringify(workOrderForm.getFieldsValue())}`);
-            const res = await fetch("http://localhost:8080/tenant/work_orders", {
+            const res = await fetch(absoluteServerUrl("/tenant/work_orders"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",

@@ -10,6 +10,7 @@ import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
 import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
 import { ComplaintsData, Parking, WorkOrderData } from "../types/types";
+import { absoluteServerUrl } from "../lib/utils";
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
@@ -20,7 +21,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch("http://localhost:8080/tenant/parking", {
+        const res = await fetch(absoluteServerUrl("/tenant/parking"), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -39,7 +40,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch("http://localhost:8080/tenant/complaints", {
+        const res = await fetch(absoluteServerUrl("/tenant/complaints"), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -58,7 +59,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch("http://localhost:8080/tenant/work_orders", {
+        const res = await fetch(absoluteServerUrl("/tenant/work_orders"), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -77,7 +78,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch(`http://localhost:8080/tenant/lockers`, {
+        const res = await fetch(absoluteServerUrl(`/tenant/lockers`), {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -280,7 +281,7 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
             }
 
             // console.log(`FORM VALUES: ${JSON.stringify(parkingPermitForm.getFieldsValue())}`);
-            const res = await fetch("http://localhost:8080/tenant/parking", {
+            const res = await fetch(absoluteServerUrl("/tenant/parking"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -502,7 +503,7 @@ function TenantCreateComplaintsModal() {
             }
 
             // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
-            const res = await fetch("http://localhost:8080/tenant/complaint", {
+            const res = await fetch(absoluteServerUrl("/tenant/complaints"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -600,7 +601,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
             if (!authToken) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
-            const res = await fetch("http://localhost:8080/tenants/lockers", {
+            const res = await fetch(absoluteServerUrl("/tenants/lockers"), {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
