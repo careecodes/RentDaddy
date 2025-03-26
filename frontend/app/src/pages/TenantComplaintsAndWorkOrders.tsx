@@ -2,19 +2,18 @@
 import { Button, Divider, Form, Input, Modal, Select, Tabs } from "antd";
 import type { TabsProps } from "antd";
 import { useState } from "react";
-import TableComponent from "../components/reusableComponents/TableComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useMutation, useQueries } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react-router";
 import { ComplaintEntry, ComplaintsData, WorkOrderData, WorkOrderEntry } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 import { absoluteServerUrl } from "../lib/utils";
+import TableComponent from "../components/reusableComponents/TableComponent";
 
 //TODO: Test all connections and double check absoluteServerUrl is working correctly
 const TenantComplaintsAndWorkOrders = () => {
     const { getToken, userId } = useAuth();
     const [activeKey, setActiveKey] = useState("1");
-
     const [complaints, workOrders] = useQueries({
         queries: [
             {

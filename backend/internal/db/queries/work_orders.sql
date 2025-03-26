@@ -19,8 +19,18 @@ LIMIT 1;
 -- name: ListWorkOrders :many
 SELECT *
 FROM work_orders
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2;
+ORDER BY created_at DESC;
+
+-- name: ListWorkOrdersByUser :many
+SELECT *
+FROM work_orders
+WHERE created_by = $1
+ORDER BY created_at DESC;
+
+-- name: CountWorkOrdersByUser :one
+SELECT COUNT(*)
+FROM work_orders
+WHERE created_by = $1;
 
 -- name: ListTenantWorkOrders :many
 SELECT *

@@ -16,8 +16,11 @@ INSERT INTO complaints (
     title,
     description,
     unit_number,
-    status
+    status,
+	updated_at,
+	created_at
   )
+<<<<<<< HEAD
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, created_by, category, title, description, unit_number, status, updated_at, created_at
 `

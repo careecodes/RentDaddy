@@ -18,36 +18,33 @@ INSERT INTO users (
     last_name,
     email,
     phone,
-    unit_number,
     image_url,
     role,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, $8, now()
-) RETURNING id, clerk_id, first_name, last_name, email, phone, unit_number,role, created_at
+    $1, $2, $3, $4, $5, $6, $7, now()
+) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at
 `
 
 type CreateUserParams struct {
-	ClerkID    string      `json:"clerk_id"`
-	FirstName  string      `json:"first_name"`
-	LastName   string      `json:"last_name"`
-	Email      string      `json:"email"`
-	Phone      pgtype.Text `json:"phone"`
-	UnitNumber pgtype.Int2 `json:"unit_number"`
-	ImageUrl   pgtype.Text `json:"image_url"`
-	Role       Role        `json:"role"`
+	ClerkID   string      `json:"clerk_id"`
+	FirstName string      `json:"first_name"`
+	LastName  string      `json:"last_name"`
+	Email     string      `json:"email"`
+	Phone     pgtype.Text `json:"phone"`
+	ImageUrl  pgtype.Text `json:"image_url"`
+	Role      Role        `json:"role"`
 }
 
 type CreateUserRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Phone      pgtype.Text      `json:"phone"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Role       Role             `json:"role"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	ID        int64            `json:"id"`
+	ClerkID   string           `json:"clerk_id"`
+	FirstName string           `json:"first_name"`
+	LastName  string           `json:"last_name"`
+	Email     string           `json:"email"`
+	Phone     pgtype.Text      `json:"phone"`
+	Role      Role             `json:"role"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateUserRow, error) {
@@ -57,7 +54,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
-		arg.UnitNumber,
 		arg.ImageUrl,
 		arg.Role,
 	)
@@ -69,7 +65,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		&i.LastName,
 		&i.Email,
 		&i.Phone,
-		&i.UnitNumber,
 		&i.Role,
 		&i.CreatedAt,
 	)
@@ -87,23 +82,22 @@ func (q *Queries) DeleteUser(ctx context.Context, clerkID string) error {
 }
 
 const getUser = `-- name: GetUser :one
-SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
 FROM users
 WHERE clerk_id = $1
 LIMIT 1
 `
 
 type GetUserRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Phone      pgtype.Text      `json:"phone"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	ID        int64            `json:"id"`
+	ClerkID   string           `json:"clerk_id"`
+	FirstName string           `json:"first_name"`
+	LastName  string           `json:"last_name"`
+	Email     string           `json:"email"`
+	Phone     pgtype.Text      `json:"phone"`
+	Role      Role             `json:"role"`
+	Status    AccountStatus    `json:"status"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, error) {
@@ -117,7 +111,6 @@ func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, erro
 		&i.Email,
 		&i.Phone,
 		&i.Role,
-		&i.UnitNumber,
 		&i.Status,
 		&i.CreatedAt,
 	)
@@ -197,23 +190,22 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, clerk_id, first_name, last_name, email, phone, role, unit_number, status, created_at
+SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC
 `
 
 type ListUsersByRoleRow struct {
-	ID         int64            `json:"id"`
-	ClerkID    string           `json:"clerk_id"`
-	FirstName  string           `json:"first_name"`
-	LastName   string           `json:"last_name"`
-	Email      string           `json:"email"`
-	Phone      pgtype.Text      `json:"phone"`
-	Role       Role             `json:"role"`
-	UnitNumber pgtype.Int2      `json:"unit_number"`
-	Status     AccountStatus    `json:"status"`
-	CreatedAt  pgtype.Timestamp `json:"created_at"`
+	ID        int64            `json:"id"`
+	ClerkID   string           `json:"clerk_id"`
+	FirstName string           `json:"first_name"`
+	LastName  string           `json:"last_name"`
+	Email     string           `json:"email"`
+	Phone     pgtype.Text      `json:"phone"`
+	Role      Role             `json:"role"`
+	Status    AccountStatus    `json:"status"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
 }
 
 func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersByRoleRow, error) {
@@ -233,7 +225,6 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersBy
 			&i.Email,
 			&i.Phone,
 			&i.Role,
-			&i.UnitNumber,
 			&i.Status,
 			&i.CreatedAt,
 		); err != nil {

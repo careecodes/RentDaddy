@@ -82,6 +82,7 @@ func main() {
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
+	complaintHandler := handlers.NewComplaintHandler(pool,queries)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -149,6 +150,14 @@ func main() {
 				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 			})
 			// End of Apartment Handlers
+
+			// Complaint
+			r.Route("/complaints", func(r chi.Router) {
+				r.Get("/", complaintHandler.ListComplaintsHandler)
+				r.Post("/", complaintHandler.CreateComplaintHandler)
+				r.Patch("/{complaint}", complaintHandler.UpdateComplaintHandler)
+				r.Delete("/{complaint}", complaintHandler.DeleteComplaintHandler)
+			})
 		})
 		// End Admin
 

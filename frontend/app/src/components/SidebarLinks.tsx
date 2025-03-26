@@ -28,9 +28,9 @@ const SidebarLinks = () => {
     const isTenant = path.startsWith("/tenant");
 
     return (
-        <div className="menu-container d-flex flex-column gap-3 px-1 overflow-y-auto">
+        <div className="menu-container d-flex flex-column gap-3 px-1 mb-5">
             {/* Home Menu Item */}
-            <div className="menu-item rounded-lg p-2 p-md-3">
+            {/* <div className="menu-item rounded-lg px-2 px-md-3 mt-3">
                 <div className="d-flex align-items-center">
                     <HomeOutlined
                         className="menu-icon text-white me-2 me-md-3"
@@ -42,7 +42,7 @@ const SidebarLinks = () => {
                         Home
                     </Link>
                 </div>
-            </div>
+            </div> */}
 
             {isAdmin && (
                 <div className="menu-item rounded-lg p-3">
@@ -83,11 +83,17 @@ const SidebarLinks = () => {
                             className={getLinkClass("/admin/admin-view-and-edit-work-orders-and-complaints") + " hover-lift transition-all"}>
                             Work Orders & Complaints
                         </Link>
-                        <Link
+                        {/* View Smart Lockers */}
+                        {/* <Link
+                            to="/admin/admin-view-and-edit-smart-lockers"
+                            className={getLinkClass("/admin/admin-view-and-edit-smart-lockers") + " hover-lift transition-all"}>
+                            View Smart Lockers
+                        </Link> */}
+                        {/* <Link
                             to="/components/settings"
                             className={getLinkClass("/components/settings") + " hover-lift transition-all"}>
                             Settings
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
             )}
@@ -126,14 +132,15 @@ const SidebarLinks = () => {
                             className={getLinkClass("/tenant/tenant-work-orders-and-complaints") + " hover-lift transition-all"}>
                             Work Orders & Complaints
                         </Link>
-                        <Link
+                        {/* <Link
                             to="/tenant/settings"
                             className={getLinkClass("/tenant/settings") + " hover-lift transition-all"}>
                             Settings
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
             )}
+            <div className="mt-5" />
         </div>
     );
 };

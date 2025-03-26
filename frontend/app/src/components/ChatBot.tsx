@@ -20,7 +20,7 @@ const MyChatBot: React.FC = () => {
         },
         tooltip: {
             mode: "START",
-            text: "Have a issue? Chat with me!",
+            text: "Have an issue? Chat with me!",
         },
         header: {
             title: <div style={{ cursor: "pointer", margin: 0, fontSize: 20, fontWeight: "bold" }}>EZRA Bot</div>,
