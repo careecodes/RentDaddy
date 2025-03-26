@@ -278,48 +278,44 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/backend:latest"
       essential = true
       environment = [
-        { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" }
+        { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" },
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", value = "pk_test_ZXF1YWwtaWd1YW5hLTgwLmNsZXJrLmFjY291bnRzLmRldiQ" },
+        { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
+        { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
+        { name = "VITE_PORT", value = "8080" },
+        { name = "VITE_DOMAIN_URL", value = "http://localhost" },
+        { name = "PORT", value = "8080" },
+        { name = "DOMAIN_URL", value = "http://localhost" },
+        { name = "TEMP_DIR", value = "/app/temp" },
+        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
+        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
+        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "FRONTEND_PORT", value = "5173" },
+        { name = "SMTP_PORT", value = "587" },
+        { name = "SMTP_ENDPOINT_ADDRESS", value = "email-smtp.us-east-2.amazonaws.com" },
+        { name = "SMTP_USER", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
+        { name = "SMTP_TLS_MODE", value = "starttls" },
+        { name = "SMTP_FROM", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "SMTP_TEST_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "s3Region", value = "us-east-1" },
+        { name = "s3Bucket", value = "rentdaddydocumenso" },
+        { name = "s3BaseURL", value = "https://s3.us-east-1.amazonaws.com" },
+        { name = "awsAccessID", value = "AKIASOMWUJVJOJ63YFFE" },
+        { name = "DOCUMENSO_HOST", value = "documenso" },
+        { name = "DOCUMENSO_PORT", value = "3000" },
+        { name = "DOCUMENSO_API_URL", value = "http://documenso:3000" },
+        { name = "DOCUMENSO_PUBLIC_URL", value = "http://localhost:3000" },
+        { name = "ENV", value = "development" },
+        { name = "DEBUG_MODE", value = "false" }
       ]
       portMappings = [{ containerPort = 8080, protocol = "tcp" }]
       secrets = [
-        { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
-        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
         { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
-        { name = "CLERK_WEBHOOK", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_WEBHOOK::" },
-        { name = "CLERK_LANDLORD_USER_ID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_LANDLORD_USER_ID::" },
-        { name = "VITE_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_PORT::" },
-        { name = "VITE_DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_DOMAIN_URL::" },
-        { name = "PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PORT::" },
-        { name = "DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOMAIN_URL::" },
-        { name = "TEMP_DIR", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:TEMP_DIR::" },
-        { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_USER::" },
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
-        { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::" },
-        { name = "POSTGRES_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PORT::" },
-        { name = "ADMIN_FIRST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_FIRST_NAME::" },
-        { name = "ADMIN_LAST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_LAST_NAME::" },
-        { name = "ADMIN_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_EMAIL::" },
-        { name = "FRONTEND_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:FRONTEND_PORT::" },
-        { name = "SMTP_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PORT::" },
-        { name = "SMTP_ENDPOINT_ADDRESS", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_ENDPOINT_ADDRESS::" },
-        { name = "SMTP_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_USER::" },
         { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
-        { name = "SMTP_TLS_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TLS_MODE::" },
-        { name = "SMTP_FROM", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_FROM::" },
-        { name = "SMTP_TEST_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TEST_EMAIL::" },
-        { name = "s3Region", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Region::" },
-        { name = "s3Bucket", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Bucket::" },
-        { name = "s3BaseURL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3BaseURL::" },
-        { name = "awsAccessID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsAccessID::" },
         { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
-        { name = "DOCUMENSO_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_HOST::" },
-        { name = "DOCUMENSO_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PORT::" },
-        { name = "DOCUMENSO_API_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_URL::" },
         { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
         { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" },
-        { name = "DOCUMENSO_PUBLIC_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PUBLIC_URL::" },
-        { name = "ENV", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ENV::" },
-        { name = "DEBUG_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DEBUG_MODE::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
@@ -335,52 +331,30 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:latest"
       essential    = true
       portMappings = [{ containerPort = 5173, protocol = "tcp" }]
+      environment = [
+        { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
+        { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
+        { name = "VITE_PORT", value = "8080" },
+        { name = "VITE_DOMAIN_URL", value = "http://localhost" },
+        { name = "PORT", value = "8080" },
+        { name = "DOMAIN_URL", value = "http://localhost" },
+        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
+        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
+        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "FRONTEND_PORT", value = "5173" },
+        { name = "ENV", value = "development" },
+        { name = "DEBUG_MODE", value = "false" }
+      ]
       secrets = [
-        { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
         { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
         { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
-        { name = "CLERK_WEBHOOK", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_WEBHOOK::" },
-        { name = "CLERK_LANDLORD_USER_ID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_LANDLORD_USER_ID::" },
-        { name = "VITE_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_PORT::" },
-        { name = "VITE_DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_DOMAIN_URL::" },
-        { name = "PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PORT::" },
-        { name = "DOMAIN_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOMAIN_URL::" },
-        { name = "TEMP_DIR", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:TEMP_DIR::" },
-        { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_USER::" },
-        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
-        { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_DB::" },
-        { name = "POSTGRES_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PORT::" },
-        { name = "ADMIN_FIRST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_FIRST_NAME::" },
-        { name = "ADMIN_LAST_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_LAST_NAME::" },
-        { name = "ADMIN_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ADMIN_EMAIL::" },
-        { name = "FRONTEND_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:FRONTEND_PORT::" },
-        { name = "SMTP_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PORT::" },
-        { name = "SMTP_ENDPOINT_ADDRESS", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_ENDPOINT_ADDRESS::" },
-        { name = "SMTP_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_USER::" },
-        { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
-        { name = "SMTP_TLS_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TLS_MODE::" },
-        { name = "SMTP_FROM", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_FROM::" },
-        { name = "SMTP_TEST_EMAIL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_TEST_EMAIL::" },
-        { name = "s3Region", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Region::" },
-        { name = "s3Bucket", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3Bucket::" },
-        { name = "s3BaseURL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:s3BaseURL::" },
-        { name = "awsAccessID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsAccessID::" },
-        { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
-        { name = "DOCUMENSO_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_HOST::" },
-        { name = "DOCUMENSO_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PORT::" },
-        { name = "DOCUMENSO_API_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_URL::" },
-        { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
-        { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" },
-        { name = "DOCUMENSO_PUBLIC_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_PUBLIC_URL::" },
-        { name = "ENV", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:ENV::" },
-        { name = "DEBUG_MODE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DEBUG_MODE::" }
       ]
       logConfiguration = {
         logDriver = "awslogs"
         options = {
-          awslogs-group         = aws_cloudwatch_log_group.backend_logs.name
+          awslogs-group         = aws_cloudwatch_log_group.frontend_logs.name
           awslogs-region        = "us-east-2"
-          awslogs-stream-prefix = "backend"
+          awslogs-stream-prefix = "frontend"
         }
       }
     }
@@ -415,36 +389,34 @@ resource "aws_ecs_task_definition" "documenso" {
       ]
       environment = [
         { name = "NODE_ENV", value = "production" },
-        # { name = "PORT", value = "3000" },
+        { name = "POSTGRES_USER", value = "documenso" },
+        { name = "POSTGRES_DB", value = "documenso" },
+        { name = "POSTGRES_HOST", value = "10.0.0.107" },
+        { name = "NEXT_PUBLIC_WEBAPP_URL", value = "http://localhost:3000" },
+        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://documenso:3000" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
+        { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
+        { name = "NEXT_PRIVATE_SMTP_USERNAME", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
+        { name = "NEXT_PRIVATE_SMTP_SECURE", value = "false" },
+        { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.us-east-2.amazonaws.com" },
+        { name = "NEXT_PRIVATE_SMTP_PORT", value = "587" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "PORT", value = "3000" },
+        { name = "NEXT_PUBLIC_UPLOAD_TRANSPORT", value = "s3" },
+        { name = "NEXT_PRIVATE_UPLOAD_BUCKET", value = "rentdaddydocumenso" },
+        { name = "NEXT_PRIVATE_UPLOAD_ENDPOINT", value = "https://s3.us-east-1.amazonaws.com" },
+        { name = "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE", value = "false" },
+        { name = "NEXT_PRIVATE_UPLOAD_REGION", value = "us-east-1" },
+        { name = "NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID", value = "AKIASOMWUJVJM34XMXUN" },
         { name = "POSTGRES_HOST", value = "main-postgres.rentdaddy.local" },
       ]
       secrets = [
-        { name = "POSTGRES_USER", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_USER::" },
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
-        { name = "POSTGRES_DB", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_DB::" },
         { name = "NEXTAUTH_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXTAUTH_SECRET::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_KEY::" },
         { name = "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY::" },
-        { name = "NEXT_PUBLIC_WEBAPP_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PUBLIC_WEBAPP_URL::" },
-        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_INTERNAL_WEBAPP_URL::" },
         { name = "NEXT_PRIVATE_SIGNING_PASSPHRASE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SIGNING_PASSPHRASE::" },
-        { name = "NEXT_PRIVATE_SMTP_FROM_NAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_FROM_NAME::" },
-        { name = "NEXT_PRIVATE_SMTP_TRANSPORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_TRANSPORT::" },
-        { name = "NEXT_PRIVATE_SMTP_USERNAME", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_USERNAME::" },
         { name = "NEXT_PRIVATE_SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_PASSWORD::" },
-        { name = "NEXT_PRIVATE_SMTP_SECURE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_SECURE::" },
-        { name = "NEXT_PRIVATE_SMTP_HOST", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_HOST::" },
-        { name = "NEXT_PRIVATE_SMTP_PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_PORT::" },
-        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_FROM_ADDRESS::" },
-        { name = "NEXT_PRIVATE_DATABASE_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_DATABASE_URL::" },
-        { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_DIRECT_DATABASE_URL::" },
-        { name = "PORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:PORT::" },
-        { name = "NEXT_PUBLIC_UPLOAD_TRANSPORT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PUBLIC_UPLOAD_TRANSPORT::" },
-        { name = "NEXT_PRIVATE_UPLOAD_BUCKET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_BUCKET::" },
-        { name = "NEXT_PRIVATE_UPLOAD_ENDPOINT", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_ENDPOINT::" },
-        { name = "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE::" },
-        { name = "NEXT_PRIVATE_UPLOAD_REGION", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_REGION::" },
-        { name = "NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID::" },
         { name = "NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY::" }
       ]
       logConfiguration = {
@@ -624,7 +596,10 @@ resource "aws_ecs_service" "backend_with_frontend" {
     type  = "binpack"
     field = "memory"
   }
-
+  service_registries {
+    registry_arn   = aws_service_discovery_service.documenso.arn
+    container_name = "documenso"
+  }
   load_balancer {
     target_group_arn = aws_lb_target_group.backend.arn
     container_name   = "backend"
@@ -974,6 +949,25 @@ resource "aws_service_discovery_private_dns_namespace" "rentdaddy" {
 
 resource "aws_service_discovery_service" "main_postgres" {
   name = "main-postgres"
+
+  dns_config {
+    namespace_id = aws_service_discovery_private_dns_namespace.rentdaddy.id
+
+    dns_records {
+      type = "A"
+      ttl  = 10
+    }
+
+    routing_policy = "MULTIVALUE"
+  }
+
+  health_check_custom_config {
+    failure_threshold = 1
+  }
+}
+
+resource "aws_service_discovery_service" "documenso" {
+  name = "documenso"
 
   dns_config {
     namespace_id = aws_service_discovery_private_dns_namespace.rentdaddy.id

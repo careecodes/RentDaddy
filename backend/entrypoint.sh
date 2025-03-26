@@ -1,13 +1,23 @@
 #!/bin/sh
+
+
+echo "[ENTRYPOINT] Backend starting..."
+echo "[ENTRYPOINT] PG_URL: $PG_URL"
+echo "[ENTRYPOINT] POSTGRES_HOST: $POSTGRES_HOST"
+echo "[ENTRYPOINT] POSTGRES_USER: $POSTGRES_USER"
+echo "[ENTRYPOINT] PORT: $PORT"
+echo "[ENTRYPOINT] Running migrations and app..."
+
 set -e
-export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@10.0.0.107:5432/${POSTGRES_DB}?sslmode=disable"
+
+export PG_URL="postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@${POSTGRES_HOST}:5432/${POSTGRES_DB}?sslmode=disable"
 
 echo "Waiting for PostgreSQL to be ready..."
 echo "postgresql:5432:${POSTGRES_DB}:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > ~/.pgpass
 chmod 600 ~/.pgpass
 export PGPASSFILE=~/.pgpass
 
-until PGPASSWORD="$POSTGRES_PASSWORD" psql -h 10.0.0.107 -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
+until PGPASSWORD="$POSTGRES_PASSWORD" psql -h ${POSTGRES_HOST} -U "$POSTGRES_USER" -d "$POSTGRES_DB" -c '\q'; do
   echo "PostgreSQL is unavailable - sleeping"
   sleep 2
 done
