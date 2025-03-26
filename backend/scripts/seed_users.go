@@ -4,13 +4,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+
 	"github.com/careecodes/RentDaddy/internal/utils"
 
 	//"github.com/careecodes/RentDaddy/internal/utils"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"os"
 	"time"
+
+	"github.com/jackc/pgx/v5/pgxpool"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -35,7 +37,6 @@ type ClerkUserEntry struct {
 	FirstName      string          `json:"first_name"`
 	LastName       string          `json:"last_name"`
 	PublicMetaData json.RawMessage `json:"public_metadata"`
-	Password       string          `json:"password"`
 }
 
 func main() {
@@ -90,9 +91,10 @@ func main() {
 	}
 
 	log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
+	log.Printf("[SEED_USERS] The admin user is %s", adminUser.ID)
 
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
-	time.Sleep(3 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	qString := fmt.Sprintf(`SELECT id FROM users WHERE clerk_id = '%s' AND role = 'admin'`, adminUser.ID)
 

@@ -6,6 +6,7 @@ vars:
   MPATH: "internal/db/migrations/"
   # PG_URL: postgresql://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
   PG_URL: postgresql://{{.POSTGRES_USER}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+  CLERK_SECRET_KEY: "{{.CLERK_SECRET_KEY}}"
 
 tasks:
   seed-users:
