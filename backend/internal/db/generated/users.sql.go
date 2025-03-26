@@ -18,11 +18,10 @@ INSERT INTO users (
     last_name,
     email,
     phone,
-    image_url,
     role,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, now()
+    $1, $2, $3, $4, $5, $6, now()
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at
 `
 
@@ -32,7 +31,6 @@ type CreateUserParams struct {
 	LastName  string      `json:"last_name"`
 	Email     string      `json:"email"`
 	Phone     pgtype.Text `json:"phone"`
-	ImageUrl  pgtype.Text `json:"image_url"`
 	Role      Role        `json:"role"`
 }
 
@@ -54,7 +52,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
-		arg.ImageUrl,
 		arg.Role,
 	)
 	var i CreateUserRow
@@ -72,7 +69,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users
+DELETE
+FROM users
 WHERE clerk_id = $1
 `
 
@@ -126,10 +124,9 @@ SELECT
     users.email,
     users.phone,
     users.role,
-    users.unit_number,
     users.status,
     users.created_at,
-    leases.lease_status,
+    leases.status,
     leases.lease_start_date,
     leases.lease_end_date
 FROM users
@@ -147,10 +144,9 @@ type ListTenantsWithLeasesRow struct {
 	Email          string           `json:"email"`
 	Phone          pgtype.Text      `json:"phone"`
 	Role           Role             `json:"role"`
-	UnitNumber     pgtype.Int2      `json:"unit_number"`
 	Status         AccountStatus    `json:"status"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	LeaseStatus    NullLeaseStatus  `json:"lease_status"`
+	Status_2       NullLeaseStatus  `json:"status_2"`
 	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
 }
@@ -172,10 +168,9 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 			&i.Email,
 			&i.Phone,
 			&i.Role,
-			&i.UnitNumber,
 			&i.Status,
 			&i.CreatedAt,
-			&i.LeaseStatus,
+			&i.Status_2,
 			&i.LeaseStartDate,
 			&i.LeaseEndDate,
 		); err != nil {
@@ -190,7 +185,15 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
+SELECT id,
+       clerk_id,
+       first_name,
+       last_name,
+       email,
+       phone,
+       role,
+       status,
+       created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC
@@ -240,7 +243,11 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersBy
 
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, image_url = $6, updated_at = now()
+SET first_name = $2,
+    last_name  = $3,
+    email      = $4,
+    phone      = $5,
+    updated_at = now()
 WHERE clerk_id = $1
 `
 
@@ -250,7 +257,6 @@ type UpdateUserParams struct {
 	LastName  string      `json:"last_name"`
 	Email     string      `json:"email"`
 	Phone     pgtype.Text `json:"phone"`
-	ImageUrl  pgtype.Text `json:"image_url"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -260,7 +266,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
-		arg.ImageUrl,
 	)
 	return err
 }

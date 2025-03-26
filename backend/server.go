@@ -82,7 +82,7 @@ func main() {
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
-	complaintHandler := handlers.NewComplaintHandler(pool,queries)
+	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -93,6 +93,13 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
+			r.Put("/setup", func(w http.ResponseWriter, r *http.Request) {
+				err := handlers.ConstructApartments(queries, w, r)
+				if err != nil {
+					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					return
+				}
+			})
 
 			// Tenants
 			r.Route("/tenants", func(r chi.Router) {

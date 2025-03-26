@@ -41,10 +41,9 @@ SELECT
     users.email,
     users.phone,
     users.role,
-    users.unit_number,
     users.status,
     users.created_at,
-    leases.lease_status,
+    leases.status,
     leases.lease_start_date,
     leases.lease_end_date
 FROM users

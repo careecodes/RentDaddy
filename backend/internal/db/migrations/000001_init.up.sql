@@ -63,7 +63,7 @@ CREATE TABLE IF NOT EXISTS "complaints"
     "category"         "Complaint_Category" NOT NULL DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
     "description"      TEXT                 NOT NULL,
-    "unit_number"      SMALLINT             NULL,
+    "unit_number"      BIGINT             NULL,
     "status"           "Status"             NOT NULL DEFAULT "Status" 'open',
     "updated_at"       TIMESTAMP(0)                  DEFAULT now(),
     "created_at"       TIMESTAMP(0)                  DEFAULT now()
@@ -77,7 +77,7 @@ CREATE TABLE IF NOT EXISTS "work_orders"
     "category"     "Work_Category" NOT NULL,
     "title"        VARCHAR         NOT NULL,
     "description"  TEXT            NOT NULL,
-    "unit_number"  SMALLINT        NOT NULL,
+    "unit_number"  BIGINT        NOT NULL,
     "status"       "Status"        NOT NULL       DEFAULT "Status" 'open',
     "updated_at"   TIMESTAMP(0) DEFAULT now(),
     "created_at"   TIMESTAMP(0) DEFAULT now()
@@ -104,7 +104,7 @@ COMMENT ON COLUMN "users"."clerk_id" IS 'provided by Clerk';
 CREATE TABLE IF NOT EXISTS "apartments"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "unit_number"   SMALLINT       NULL,
+    "unit_number"   BIGINT       NULL,
     "building_id"      BIGINT         NOT NULL,
     "price"         NUMERIC(10, 2) NULL,
     "size"          SMALLINT       NULL,

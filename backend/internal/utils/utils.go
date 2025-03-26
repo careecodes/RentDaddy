@@ -3,6 +3,7 @@ package utils
 import (
 	"fmt"
 	"log"
+	"math/big"
 	"math/rand"
 	"os"
 	"time"
@@ -40,4 +41,11 @@ func ConvertToPgTimestamp(input string) (pgtype.Timestamp, error) {
 
 	// Assign it to pgtype.Timestamp
 	return pgtype.Timestamp{Time: parsedTime, Valid: true}, nil
+}
+
+func ConvertToPgTypeNumeric(value int) pgtype.Numeric {
+	var numeric pgtype.Numeric
+	numeric.Int = big.NewInt(int64(value))
+	numeric.Valid = true
+	return numeric
 }

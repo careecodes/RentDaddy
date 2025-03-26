@@ -42,7 +42,7 @@ type CreateWorkOrderParams struct {
 	Category    WorkCategory `json:"category"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
+	UnitNumber  int64        `json:"unit_number"`
 	Status      Status       `json:"status"`
 }
 
@@ -236,7 +236,7 @@ type UpdateWorkOrderParams struct {
 	Category    WorkCategory `json:"category"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
+	UnitNumber  int64        `json:"unit_number"`
 	Status      Status       `json:"status"`
 }
 

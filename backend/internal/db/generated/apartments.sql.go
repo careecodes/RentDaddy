@@ -16,19 +16,22 @@ INSERT INTO apartments (
     unit_number,
     price,
     size,
+    building_id,
     management_id,
     availability,
     created_at,
     updated_at
-  ) VALUES ($1, $2, $3, $4, $5, now(), now())
-RETURNING id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
+  ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+
+RETURNING id, unit_number, building_id, price, size, management_id, availability, lease_id, updated_at, created_at
 `
 
 type CreateApartmentParams struct {
-	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	UnitNumber   pgtype.Int8    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	BuildingID   int64          `json:"building_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -37,6 +40,7 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 		arg.UnitNumber,
 		arg.Price,
 		arg.Size,
+		arg.BuildingID,
 		arg.ManagementID,
 		arg.Availability,
 	)
@@ -44,6 +48,7 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 	err := row.Scan(
 		&i.ID,
 		&i.UnitNumber,
+		&i.BuildingID,
 		&i.Price,
 		&i.Size,
 		&i.ManagementID,
@@ -79,10 +84,10 @@ LIMIT 1
 
 type GetApartmentRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	UnitNumber   pgtype.Int8    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -106,7 +111,7 @@ FROM apartments
 WHERE unit_number = $1
 `
 
-func (q *Queries) GetApartmentByUnitNumber(ctx context.Context, unitNumber pgtype.Int2) (int64, error) {
+func (q *Queries) GetApartmentByUnitNumber(ctx context.Context, unitNumber pgtype.Int8) (int64, error) {
 	row := q.db.QueryRow(ctx, getApartmentByUnitNumber, unitNumber)
 	var id int64
 	err := row.Scan(&id)
@@ -126,10 +131,10 @@ ORDER BY unit_number DESC
 
 type ListApartmentsRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	UnitNumber   pgtype.Int8    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -172,7 +177,7 @@ WHERE id = $1
 type UpdateApartmentParams struct {
 	ID           int64          `json:"id"`
 	Price        pgtype.Numeric `json:"price"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
