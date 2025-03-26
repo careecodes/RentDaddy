@@ -1,8 +1,9 @@
 FROM golang:1.23-alpine as builder
 # Copy application files
-COPY . .
 COPY go.mod go.sum ./
 RUN go mod download
+COPY . .
+
 
 # Check if server.go exists and print directory contents
 RUN ls -la
@@ -37,6 +38,8 @@ RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/do
 # Install Air inside the backend container
 RUN go install github.com/air-verse/air@latest && \
     mv /go/bin/air /usr/local/bin/air
+
+COPY entrypoint.sh /app/entrypoint.sh
 
 # Copy entrypoint.sh and set correct permissions
 RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
