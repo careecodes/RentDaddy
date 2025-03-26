@@ -93,7 +93,7 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
-			r.Put("/setup", func(w http.ResponseWriter, r *http.Request) {
+			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
 				if err != nil {
 					http.Error(w, "Internal server error", http.StatusInternalServerError)

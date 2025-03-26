@@ -26,8 +26,8 @@ type BuildingRequest struct {
 	PerUserParking int        `json:"per_user_parking"`
 	LockerCount    int        `json:"locker_count"`
 	ManagementID   int        `json:"management_id"`
-	ManagePhone    string     `json:"manage_phone"`
-	ManageEmail    string     `json:"manage_email"`
+	ManagePhone    string     `json:"manager_phone"`
+	ManageEmail    string     `json:"manager_email"`
 }
 
 func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Request) error {
