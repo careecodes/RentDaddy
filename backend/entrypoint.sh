@@ -13,6 +13,7 @@ done
 
 echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
+echo "Database migrations complete."
 
 if [ "$DEBUG_MODE" = "true" ]; then
   echo "Debug mode enabled. Container will stay alive."
