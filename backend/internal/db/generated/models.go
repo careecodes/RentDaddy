@@ -157,6 +157,7 @@ const (
 	LeaseStatusExpired         LeaseStatus = "expired"
 	LeaseStatusTerminated      LeaseStatus = "terminated"
 	LeaseStatusRenewed         LeaseStatus = "renewed"
+	LeaseStatusCanceled        LeaseStatus = "canceled"
 )
 
 func (e *LeaseStatus) Scan(src interface{}) error {
@@ -407,6 +408,26 @@ type Complaint struct {
 }
 
 type Lease struct {
+<<<<<<< HEAD
+	ID                 int64            `json:"id"`
+	LeaseNumber        int64            `json:"lease_number"`
+	ExternalDocID      string           `json:"external_doc_id"`
+	LeasePdfS3         pgtype.Text      `json:"lease_pdf_s3"`
+	TenantID           int64            `json:"tenant_id"`
+	LandlordID         int64            `json:"landlord_id"`
+	ApartmentID        int64            `json:"apartment_id"`
+	LeaseStartDate     pgtype.Date      `json:"lease_start_date"`
+	LeaseEndDate       pgtype.Date      `json:"lease_end_date"`
+	RentAmount         pgtype.Numeric   `json:"rent_amount"`
+	Status             LeaseStatus      `json:"status"`
+	CreatedBy          int64            `json:"created_by"`
+	UpdatedBy          int64            `json:"updated_by"`
+	CreatedAt          pgtype.Timestamp `json:"created_at"`
+	UpdatedAt          pgtype.Timestamp `json:"updated_at"`
+	PreviousLeaseID    pgtype.Int8      `json:"previous_lease_id"`
+	TenantSigningUrl   pgtype.Text      `json:"tenant_signing_url"`
+	LandlordSigningUrl pgtype.Text      `json:"landlord_signing_url"`
+=======
 	ID             int64            `json:"id"`
 	LeaseNumber    int64            `json:"lease_number"`
 	ExternalDocID  string           `json:"external_doc_id"`
@@ -421,6 +442,7 @@ type Lease struct {
 	UpdatedBy      int64            `json:"updated_by"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
+>>>>>>> main
 }
 
 type Locker struct {

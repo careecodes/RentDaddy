@@ -187,11 +187,30 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
 		return
 	}
+	var fullLeases []db.Lease
+	for _, row := range leases {
+		fullLeases = append(fullLeases, db.Lease{
+			ID:              row.ID,
+			LeaseNumber:     row.LeaseNumber,
+			ExternalDocID:   row.ExternalDocID,
+			LeasePdfS3:      row.LeasePdfS3,
+			TenantID:        row.TenantID,
+			LandlordID:      row.LandlordID,
+			ApartmentID:     row.ApartmentID,
+			LeaseStartDate:  row.LeaseStartDate,
+			LeaseEndDate:    row.LeaseEndDate,
+			RentAmount:      row.RentAmount,
+			Status:          row.Status,
+			CreatedBy:       row.CreatedBy,
+			UpdatedBy:       row.UpdatedBy,
+			PreviousLeaseID: row.PreviousLeaseID,
+		})
+	}
 
 	adminOverview := &AdminOverviewRequest{
 		WorkeOrders: workOrders,
 		Complaints:  complaints,
-		Leases:      leases,
+		Leases:      fullLeases,
 	}
 
 	adminOverviewData, err := json.Marshal(adminOverview)

@@ -22,6 +22,9 @@ frontend/app/.env.development.local
 frontend/app/.env.test.local
 frontend/app/.env.production.local
 
+# Backend dependencies and build
+backend/vendor
+
 # Wildcard ignore for any .env files
 **/*.env
 
@@ -49,3 +52,9 @@ log/
 logs/
 logging/
 *.log.*
+
+.local
+terraform*
+terraform.tfstate*
+.terraform.*
+.terraform

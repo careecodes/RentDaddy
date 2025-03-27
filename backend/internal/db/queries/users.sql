@@ -73,4 +73,15 @@ FROM users
 WHERE clerk_id = $1;
 
 
+-- name: GetUserByID :one
+SELECT id, clerk_id, first_name, last_name, email, phone, image_url, role, status
+FROM users
+WHERE id = $1
+LIMIT 1;
+
+-- name: GetTenantsWithNoLease :many
+SELECT id, clerk_id, first_name, last_name, email, phone, image_url, role, status
+FROM users
+WHERE role = 'tenant' 
+AND id NOT IN (SELECT tenant_id FROM leases);
 

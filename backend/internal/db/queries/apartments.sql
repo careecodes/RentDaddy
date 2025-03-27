@@ -49,3 +49,33 @@ WHERE id = $1;
 -- name: DeleteApartment :exec
 DELETE FROM apartments
 WHERE id = $1;
+
+
+-- name: ListApartmentsWithoutLease :many
+SELECT id,
+  unit_number,
+  price,
+  size,
+  management_id,
+  availability,
+  lease_id
+FROM apartments
+ORDER BY unit_number DESC
+LIMIT $1 OFFSET $2;
+
+-- name: GetApartmentsWithoutLease :many
+SELECT 
+  id,
+  unit_number,
+  price,
+  size,
+  management_id,
+  availability
+FROM apartments
+WHERE 
+  id NOT IN (
+    SELECT apartment_id FROM leases 
+    WHERE status = 'active' AND apartment_id IS NOT NULL
+  )
+  AND availability = true
+ORDER BY unit_number ASC;

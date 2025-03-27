@@ -24,14 +24,16 @@ CREATE TYPE "Type" AS ENUM (
     'termination',
     'addendum'
     );
+
 CREATE TYPE "Lease_Status" AS ENUM (
-    'draft',
-    'pending_approval',
-    'active',
-    'expired',
-    'terminated',
-    'renewed'
-    );
+  'draft',
+  'pending_approval', 
+  'active',
+  'expired',
+  'terminated',
+  'renewed',
+  'canceled'          
+);
 CREATE TYPE "Compliance_Status" AS ENUM (
     'pending_review',
     'compliant',
@@ -118,22 +120,28 @@ CREATE TABLE IF NOT EXISTS "apartments"
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
+
+
 CREATE TABLE IF NOT EXISTS "leases"
 (
     "id"               BIGSERIAL PRIMARY KEY,
-    "lease_number"     BIGINT UNIQUE  NOT NULL,
+    "lease_number"     BIGINT  NOT NULL,
     "external_doc_id"  TEXT           NOT NULL UNIQUE, -- Maps to Documenso's externalId
+    "lease_pdf_s3" TEXT,
     "tenant_id"        BIGINT         NOT NULL REFERENCES users (id),
     "landlord_id"      BIGINT         NOT NULL REFERENCES users (id),
-    "apartment_id"     BIGINT,
+    "apartment_id"     BIGINT         NOT NULL ,
     "lease_start_date" DATE           NOT NULL,
     "lease_end_date"   DATE           NOT NULL,
     "rent_amount"      DECIMAL(10, 2) NOT NULL,
-    "status"           "Lease_Status" NOT NULL DEFAULT 'active',
+    "status"            "Lease_Status" NOT NULL DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
     "created_at"       TIMESTAMP(0)            DEFAULT now(),
-    "updated_at"       TIMESTAMP(0)            DEFAULT now()
+    "updated_at"       TIMESTAMP(0)            DEFAULT now(),
+    "previous_lease_id" BIGINT REFERENCES leases(id),
+    "tenant_signing_url" TEXT,
+    "landlord_signing_url" TEXT
 );
 
 CREATE INDEX "lease_lease_number_index" ON "leases" ("lease_number");
@@ -143,7 +151,7 @@ CREATE TABLE IF NOT EXISTS "lockers"
 (
     "id"          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "access_code" varchar,
-    "in_use"      BOOLEAN NOT NULL DEFAULT false,
+    "in_use"      BOOLEAN NOT NULL DEFAULT true,
     "user_id"     BIGINT
 );
 

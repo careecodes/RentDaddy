@@ -1,206 +1,387 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
+import { useState, useEffect } from "react";
 import "../styles/styles.scss";
-import { Dropdown, Input, Space } from "antd";
-import type { TableProps, TablePaginationConfig, MenuProps } from "antd";
+import { Space, Spin, Alert } from "antd";
 import type { ColumnsType } from "antd/es/table";
-
 import dayjs from "dayjs";
 import TableComponent from "../components/reusableComponents/TableComponent.tsx";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import { DownOutlined, SearchOutlined } from "@ant-design/icons";
-import type { ColumnType } from "antd/es/table";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { LeaseData } from "../types/types.ts";
-import { ItemType } from "antd/es/menu/interface";
-import { useMutation, useQuery } from "@tanstack/react-query";
-import ModalComponent from "../components/ModalComponent.tsx";
-import PageTitleComponent from "../components/reusableComponents/PageTitleComponent.tsx";
+import { LeaseModalComponent } from "../components/LeaseModalComponent";
+import { SearchOutlined } from "@ant-design/icons";
+import { Input, message } from "antd";
+import type { ColumnType } from "antd/es/table";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
+import { FileTextOutlined } from "@ant-design/icons";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
 
-const today = dayjs();
+// Log the API_URL to ensure it's correctly formed
+console.log("API URL:", API_URL);
 
-// Dummy lease data
-const leaseDataRaw = [
-    { key: 1, tenantName: "Grace Hall", apartment: "B218", leaseStartDate: "2024-06-13", leaseEndDate: "2024-12-13", rentAmount: 2060, status: "draft" },
-    { key: 2, tenantName: "James Smith", apartment: "A212", leaseStartDate: "2024-03-20", leaseEndDate: "2024-09-20", rentAmount: 2223, status: "pending_approval" },
-    { key: 3, tenantName: "Diego Lewis", apartment: "C466", leaseStartDate: "2024-05-01", leaseEndDate: "2025-05-01", rentAmount: 1100, status: "active" },
-    { key: 4, tenantName: "Hector Wilson", apartment: "B179", leaseStartDate: "2024-10-02", leaseEndDate: "2025-10-02", rentAmount: 2150, status: "active" },
-    { key: 5, tenantName: "Charlie Davis", apartment: "C378", leaseStartDate: "2024-11-03", leaseEndDate: "2025-11-03", rentAmount: 1803, status: "active" },
-    { key: 6, tenantName: "JJ SchraderBachar", apartment: "A333", leaseStartDate: "2024-07-15", leaseEndDate: "2024-08-30", rentAmount: 1950, status: "expires_soon" },
-    { key: 7, tenantName: "Rosalind Franklin", apartment: "D401", leaseStartDate: "2023-02-10", leaseEndDate: "2024-02-10", rentAmount: 1200, status: "expired" },
-    { key: 8, tenantName: "Malik Johnson", apartment: "C299", leaseStartDate: "2024-07-01", leaseEndDate: "2025-07-01", rentAmount: 1400, status: "active" },
-    { key: 9, tenantName: "Carree Brown", apartment: "B155", leaseStartDate: "2024-05-01", leaseEndDate: "2024-07-01", rentAmount: 1750, status: "terminated" },
-    { key: 10, tenantName: "John Doe", apartment: "A101", leaseStartDate: "2024-04-20", leaseEndDate: "2024-10-20", rentAmount: 2000, status: "active" },
-    { key: 11, tenantName: "Jane Smith", apartment: "B221", leaseStartDate: "2024-06-25", leaseEndDate: "2024-07-25", rentAmount: 2100, status: "expired" },
-    { key: 12, tenantName: "Jill Hall", apartment: "D450", leaseStartDate: "2024-01-10", leaseEndDate: "2024-02-10", rentAmount: 1300, status: "terminated" },
-    { key: 13, tenantName: "Emily Wildaughter", apartment: "C310", leaseStartDate: "2024-09-10", leaseEndDate: "2025-09-10", rentAmount: 1900, status: "active" },
-    { key: 14, tenantName: "Charlie Chill", apartment: "A450", leaseStartDate: "2024-03-01", leaseEndDate: "2024-03-30", rentAmount: 1600, status: "expired" },
-    { key: 15, tenantName: "Planter Lewis", apartment: "D180", leaseStartDate: "2024-12-01", leaseEndDate: "2025-06-01", rentAmount: 1700, status: "active" },
-    { key: 16, tenantName: "Unfrank Thomas", apartment: "B222", leaseStartDate: "2024-10-10", leaseEndDate: "2025-04-10", rentAmount: 2200, status: "active" },
-    { key: 17, tenantName: "Henry Clark", apartment: "C199", leaseStartDate: "2024-07-15", leaseEndDate: "2025-01-15", rentAmount: 1450, status: "active" },
-    { key: 18, tenantName: "Danny Thompson", apartment: "A205", leaseStartDate: "2024-11-05", leaseEndDate: "2025-05-05", rentAmount: 1800, status: "active" },
-    { key: 19, tenantName: "Dennis Garcia", apartment: "D299", leaseStartDate: "2024-08-20", leaseEndDate: "2024-09-20", rentAmount: 1550, status: "expires_soon" },
-    { key: 20, tenantName: "Yoon Soon", apartment: "B305", leaseStartDate: "2024-09-15", leaseEndDate: "2025-09-15", rentAmount: 2000, status: "active" },
+// Default status filters in case dynamic generation fails
+const DEFAULT_STATUS_FILTERS = [
+    { text: "Active", value: "active" },
+    { text: "Expires Soon", value: "expires_soon" },
+    { text: "Expired", value: "expired" },
+    { text: "Draft", value: "draft" },
+    { text: "Terminated", value: "terminated" },
+    { text: "Pending Approval", value: "pending_approval" }
 ];
 
-// This is the dropdown that performs a search in each column
-const getColumnSearchProps = (dataIndex: keyof LeaseData, title: string): ColumnType<LeaseData> => {
-    return {
-        filterDropdown: (filterDropdownProps) => {
-            return (
-                <div style={{ padding: 8 }}>
-                    <Input
-                        placeholder={"Search " + title}
-                        value={filterDropdownProps.selectedKeys[0]}
-                        onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
-                    />
-                    <ButtonComponent
-                        type="primary"
-                        title="Search"
-                        icon={<SearchOutlined />}
-                        size="small"
-                        onClick={() => filterDropdownProps.confirm()}
-                    />
-                    <ButtonComponent
-                        type="default"
-                        title="Reset"
-                        size="small"
-                        onClick={() => {
-                            filterDropdownProps.clearFilters && filterDropdownProps.clearFilters();
-                            filterDropdownProps.confirm();
-                        }}
-                    />
-                </div>
-            );
-        },
-        filterIcon: function (filtered) {
-            return <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />;
-        },
-        onFilter: function (value, record) {
-            return record[dataIndex].toString().toLowerCase().includes(value.toString().toLowerCase());
-        },
-    };
-};
-
-// This is to style and provide a title for each tenant status
-const getStatusAlertType = (status: string) => {
-    switch (status) {
-        case "active":
-            return { type: "success", message: "Active" };
-        case "expired":
-            return { type: "error", message: "Expired" };
-        case "pending_approval":
-            return { type: "info", message: "Pending Approval" };
-        case "terminated":
-            return { type: "error", message: "Terminated" };
-        case "draft":
-            return { type: "warning", message: "Draft" };
-        case "expires_soon":
-            return { type: "warning", message: "Expiring Soon" };
-        default:
-            return { type: "info", message: status };
-    }
-};
-
-// Button actions -> will be used for backend calls
-const sendLease = (record: LeaseData) => {
-    console.log(`Sending lease for ${record.tenantName}`);
-};
-
-const terminateLease = (record: LeaseData) => {
-    console.log(`Terminating lease for ${record.tenantName}`);
-};
-
-const sendRenewal = (record: LeaseData) => {
-    console.log(`Sending renewal for ${record.tenantName}`);
-};
-
-// Setup of lease columns for all LeaseData properties
-
-// Get the lease status of each record. We don't care about terminated, draft, or pending approval.
-// For expired or expires_soon, we need to check against lease end date:
-// 1) if it already ended, dynamically return "expired".
-// 2) if it's less than 60 days, return "expires_soon"
-// Otherwise, return active.
-const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
-    const leaseEnd = dayjs(record.leaseEndDate);
-    if (record.status === "terminated" || record.status === "draft" || record.status === "pending_approval") return record.status;
-    if (leaseEnd.isBefore(today)) return "expired";
-    if (leaseEnd.diff(today, "days") <= 60) return "expires_soon";
-    return "active";
-};
-
 export default function AdminViewEditLeases() {
-    const { data: leaseTemplates, isLoading } = useQuery({
-        queryKey: ["leaseTemplates"],
-        queryFn: async () => {
-            const res = await fetch(`${API_URL}/admins/leases/getLeaseTemplates`, {
-                method: "GET",
-                headers: { "Content-Type": "application/json" },
-            });
-            const data = await res.json();
-            return data;
-        },
+    const { getToken, isLoaded: authLoaded, isSignedIn } = useAuth();
+    const [authError, setAuthError] = useState<string | null>(null);
+
+    const [modalConfig, setModalConfig] = useState({
+        visible: false,
+        mode: "add" as "add" | "send" | "renew" | "amend",
+        selectedLease: null as LeaseData | null
     });
+    const [statusFilters, setStatusFilters] = useState<{ text: string; value: string }[]>(DEFAULT_STATUS_FILTERS);
 
-    const { mutate: sendLease } = useMutation({
-        mutationKey: ["sendLease"],
-        mutationFn: async () => {
-            const res = await fetch(`${API_URL}/admins/leases/sendLease`, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ id: "1" }),
-            });
+    // Initialize the query client
+    const queryClient = useQueryClient();
 
-            if (!res.ok) {
-                throw new Error("Failed to fetch lease templates");
+    // Verify authentication when component loads
+    useEffect(() => {
+        const verifyAuth = async () => {
+            try {
+                if (isSignedIn) {
+                    const token = await getToken();
+                    if (!token) {
+                        setAuthError("Authentication token not available. Please sign in again.");
+                    } else {
+                        // Clear any previous error if we have a valid token
+                        setAuthError(null);
+                    }
+                }
+            } catch (error) {
+                console.error("Authentication error:", error);
+                setAuthError("Failed to authenticate. Please try signing in again.");
+            }
+        };
+
+        if (authLoaded) {
+            verifyAuth();
+        }
+    }, [authLoaded, isSignedIn, getToken]);
+
+    // Function to extract and format status filters
+    const extractStatusFilters = (data: any[]) => {
+        if (data && Array.isArray(data)) {
+            try {
+                // Extract unique status values from the lease data
+                const uniqueStatuses = [...new Set(data.map(lease => lease.status))];
+
+                // Format the status values for display
+                const formattedFilters = uniqueStatuses
+                    .filter(status => status) // Filter out any null/undefined values
+                    .map(status => {
+                        // Parse the status string
+                        const text = String(status)
+                            .split('_')
+                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .join(' ');
+
+                        return { text, value: status };
+                    });
+
+                // Sort filters alphabetically for better UX
+                formattedFilters.sort((a, b) => a.text.localeCompare(b.text));
+
+                setStatusFilters(formattedFilters);
+            } catch (error) {
+                console.error("Error generating status filters:", error);
+                // Default filters will be used from initial state
+            }
+        }
+    };
+
+    // Populate table with Tanstack Query
+    const {
+        data: leases = [],
+        isLoading,
+        isError,
+        error,
+        refetch
+    } = useQuery<LeaseData[]>({
+        queryKey: ['tenants', 'leases'],
+        queryFn: async () => {
+            if (!API_URL) {
+                throw new Error('API URL is not configured');
             }
 
-            console.log("success");
+            // Get the authentication token
+            const token = await getToken();
+            if (!token) {
+                throw new Error('Authentication token is required');
+            }
 
-            return res.json(); // Assuming the response is JSON.
+            console.log(`Fetching leases from: ${API_URL}/admin/leases/`);
+            console.log('Using auth token:', token ? 'Token available' : 'No token');
+
+            const response = await fetch(`${API_URL}/admin/leases/`, {
+                headers: {
+                    'Authorization': `Bearer ${token}`,
+                    'Content-Type': 'application/json'
+                }
+            });
+
+            if (!response.ok) {
+                if (response.status === 401) {
+                    throw new Error('Authentication failed. Please sign in again.');
+                }
+                throw new Error(`Failed to fetch leases: ${response.statusText}`);
+            }
+
+            const data = await response.json();
+            console.log("Raw API response:", data);
+            console.log("Sample lease data:", data[0]);
+            extractStatusFilters(data);
+            return data || [];
         },
+        // Only run query if authentication is loaded and user is signed in
+        enabled: authLoaded && isSignedIn && !authError,
+        // Only retry once to avoid flooding logs with errors
+        retry: 1,
+        // Set stale time to reduce unnecessary refetches
+        staleTime: 5 * 60 * 1000, // 5 minutes
     });
 
-    const templates = leaseTemplates?.data;
+    // Retry fetching leases if auth is fixed
+    useEffect(() => {
+        if (authLoaded && isSignedIn && !authError) {
+            refetch();
+        }
+    }, [authLoaded, isSignedIn, authError, refetch]);
 
-    console.log(templates);
+    const getColumnSearchProps = (dataIndex: keyof LeaseData, title: string): ColumnType<LeaseData> => {
+        return {
+            filterDropdown: (filterDropdownProps) => {
+                return (
+                    <div style={{ padding: 8 }}>
+                        <Input
+                            placeholder={"Search " + title}
+                            value={filterDropdownProps.selectedKeys[0]}
+                            onChange={(e) => filterDropdownProps.setSelectedKeys(e.target.value ? [e.target.value] : [])}
+                            style={{ width: 188, marginBottom: 8, display: 'block' }}
+                        />
+                        <ButtonComponent
+                            type="primary"
+                            title="Search"
+                            icon={<SearchOutlined />}
+                            size="small"
+                            onClick={() => filterDropdownProps.confirm()}
+                        />
+                        <ButtonComponent
+                            type="default"
+                            title="Reset"
+                            size="small"
+                            onClick={() => {
+                                filterDropdownProps.clearFilters && filterDropdownProps.clearFilters();
+                                filterDropdownProps.confirm();
+                            }}
+                        />
+                    </div>
+                );
+            },
+            filterIcon: function (filtered) {
+                return <SearchOutlined style={{ color: filtered ? "#1677ff" : undefined }} />;
+            },
+            onFilter: function (value, record) {
+                // Safely handle null/undefined values
+                const recordValue = record[dataIndex];
+                if (recordValue == null) {
+                    return false;
+                }
+                return recordValue.toString().toLowerCase().includes(value.toString().toLowerCase());
+            },
+        };
+    };
 
+    // Status is calculated on the backend, but we maintain this function for backward compatibility
+    const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
+        // If the status is already set to terminated, respect that
+        if (record.status === "active") {
+            const today = dayjs();
+            const leaseEnd = dayjs(record.leaseEndDate);
+            if (leaseEnd.diff(today, "days") <= 60) return "expires_soon";
+        }
+        return record.status;
+    };
+
+
+    // Prepare lease data before rendering
+    const filteredData: LeaseData[] = Array.isArray(leases) ? leases.map((lease) => {
+        return {
+            ...lease,
+            key: lease.id,
+            id: lease.id,
+            tenantId: lease.tenantId || lease.id,
+            apartmentId: lease.apartmentId,
+            tenantName: lease.tenantName || '',
+            apartment: lease.apartment || '',
+            leaseStartDate: dayjs(lease.leaseStartDate).format("YYYY-MM-DD"),
+            leaseEndDate: dayjs(lease.leaseEndDate).format("YYYY-MM-DD"),
+            rentAmount: lease.rentAmount ? lease.rentAmount / 100 : 0,
+            status: lease.status === "terminated" ? "terminated" : getLeaseStatus(lease),
+            adminDocUrl: lease.admin_doc_url
+        };
+    }) : [];
+
+    const showSendModal = (lease: LeaseData) => {
+        console.log("Opening send modal", lease);
+        setModalConfig({
+            visible: true,
+            mode: "send",
+            selectedLease: {
+                ...lease,
+                formattedStartDate: dayjs(lease.leaseStartDate),
+                formattedEndDate: dayjs(lease.leaseEndDate),
+            }
+        });
+    };
+
+    const handleModalClose = () => {
+        setModalConfig(prev => ({ ...prev, visible: false }));
+
+        // Invalidate the query to trigger a refetch
+        queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+    };
+
+    const handleAddLease = () => {
+        setModalConfig({
+            visible: true,
+            mode: "add",
+            selectedLease: null
+        });
+    };
+
+    const handleRenew = (lease: LeaseData) => {
+        console.log("Renewing lease:", lease);
+
+        // Ensure we have the correct IDs (especially apartmentId)
+        if (!lease.apartmentId) {
+            message.error("Cannot renew lease: Missing apartment ID");
+            return;
+        }
+
+        setModalConfig({
+            visible: true,
+            mode: "renew",
+            selectedLease: {
+                ...lease,
+                formattedStartDate: dayjs().add(1, 'day'),
+                formattedEndDate: dayjs().add(1, 'year'),
+            }
+        });
+    };
+
+
+    const handleAmend = (lease: LeaseData) => {
+        console.log("Amend button clicked", lease);
+
+        // Ensure we have the correct IDs
+        if (!lease.apartmentId) {
+            console.error("Missing apartmentId in lease:", lease);
+            message.error("Cannot amend lease: Missing apartment ID");
+            return;
+        }
+
+        console.log("Setting modal config:", {
+            visible: true,
+            mode: "amend",
+            selectedLease: {
+                ...lease,
+                formattedStartDate: dayjs(lease.leaseStartDate),
+                formattedEndDate: dayjs(lease.leaseEndDate),
+            }
+        });
+
+        setModalConfig({
+            visible: true,
+            mode: "amend",
+            selectedLease: {
+                ...lease,
+                formattedStartDate: dayjs(lease.leaseStartDate),
+                formattedEndDate: dayjs(lease.leaseEndDate),
+            }
+        });
+
+        // Log state change after setting it
+        setTimeout(() => {
+            console.log("Modal config after state update:", modalConfig);
+        }, 0);
+    };
+
+    const handleTerminate = async (leaseId: number) => {
+        try {
+            const token = await getToken();
+            if (!token) {
+                throw new Error('Authentication token is required');
+            }
+
+            const payload = {
+                id: leaseId,
+                updated_by: 100, // You might want to use the actual user ID here
+            };
+
+            const response = await fetch(`${API_URL}/admin/leases/terminate/${leaseId}`, {
+                method: 'POST',
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(payload)
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to terminate lease');
+            }
+
+            message.success("Lease successfully terminated");
+
+            // Invalidate the query to trigger a refetch
+            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+        } catch (err) {
+            console.error("Error terminating lease:", err);
+            message.error("Failed to terminate lease");
+        }
+    };
+
+    // Define lease table columns
     const leaseColumns: ColumnsType<LeaseData> = [
         {
             title: "Tenant Name",
-            fixed: "left",
             dataIndex: "tenantName",
             key: "tenantName",
             sorter: (a, b) => a.tenantName.localeCompare(b.tenantName),
             ...getColumnSearchProps("tenantName", "Tenant Name"),
-            className: "text-primary text-left",
         },
         {
-            title: "Apt",
+            title: "Apartment",
             dataIndex: "apartment",
             key: "apartment",
-            ellipsis: true,
-            sorter: (a, b) => a.apartment.localeCompare(b.apartment),
             ...getColumnSearchProps("apartment", "Apartment"),
-            className: "text-secondary text-left",
         },
         {
             title: "Lease Start",
             dataIndex: "leaseStartDate",
             key: "leaseStartDate",
-            ...getColumnSearchProps("leaseStartDate", "Lease Start"),
             sorter: (a, b) => dayjs(a.leaseStartDate).unix() - dayjs(b.leaseStartDate).unix(),
+            ...getColumnSearchProps("leaseStartDate", "Lease Start"),
         },
         {
             title: "Lease End",
             dataIndex: "leaseEndDate",
             key: "leaseEndDate",
-            ...getColumnSearchProps("leaseEndDate", "Lease End"),
             sorter: (a, b) => dayjs(a.leaseEndDate).unix() - dayjs(b.leaseEndDate).unix(),
+            ...getColumnSearchProps("leaseEndDate", "Lease End"),
         },
         {
             title: "Rent Amount ($)",
@@ -208,115 +389,147 @@ export default function AdminViewEditLeases() {
             key: "rentAmount",
             sorter: (a, b) => a.rentAmount - b.rentAmount,
             ...getColumnSearchProps("rentAmount", "Rent Amount"),
-            className: "fw-bold text-right",
         },
         {
             title: "Status",
             dataIndex: "status",
-            filters: [
-                { text: "Active", value: "active" },
-                { text: "Expired", value: "expired" },
-                { text: "Pending Approval", value: "pending_approval" },
-                { text: "Terminated", value: "terminated" },
-                { text: "Draft", value: "draft" },
-                { text: "Expiring Soon", value: "expires_soon" },
-            ],
-            onFilter: (value, record) => record.status.includes(value as string),
-            render: (status) => {
-                const { type, message } = getStatusAlertType(status);
-                return (
-                    <AlertComponent
-                        title={message}
-                        type={type}
-                    />
-                );
-            },
-            sorter: (a, b) => a.status.localeCompare(b.status),
-            className: "text-center",
+            key: "status",
+            render: (status) => (
+                <AlertComponent title={status} type={status === "active" ? "success" : "warning"} />
+            ),
+            filters: statusFilters,
+            onFilter: (value, record) => record.status === value,
         },
         {
             title: "Actions",
-            fixed: "right",
-            width: 100,
             key: "actions",
             render: (_, record) => (
-                <Space size="middle">
-                    {record.status === "draft" && (
-                        <>
-                            {/* <ButtonComponent
-                                type="primary"
-                                title="Send Lease"
-                                onClick={() => sendLease(record)}
-                            /> */}
-                            <ModalComponent
-                                buttonTitle="Send Lease"
-                                buttonType="primary"
-                                modalTitle="Send Lease"
-                                content="Select a lease template to send to the tenant."
-                                type="Send Tenant Lease"
-                                leases={templates}
-                                handleOkay={sendLease}
-                            />
-                        </>
+
+                <Space size="middle" wrap={true}>
+                    {record.admin_doc_url && (
+                        <a
+                            href={record.admin_doc_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="btn btn-info"
+                            style={{ padding: '4px 10px', borderRadius: 4 }}
+                        >
+                            <FileTextOutlined style={{ marginRight: 4 }} />
+                            View Lease
+                        </a>
                     )}
-                    {record.status === "active" && (
+                    {record.status === "draft" && (
                         <ButtonComponent
-                            type="danger"
-                            title="Terminate"
-                            onClick={() => terminateLease(record)}
+                            type="primary"
+                            title="Send Lease"
+                            onClick={() => showSendModal(record)}
                         />
                     )}
-                    {record.status === "expires_soon" && (
-                        <>
-                            <div className="flex flex-column gap-2">
-                                {" "}
-                                <ButtonComponent
-                                    type="danger"
-                                    title="Terminate"
-                                    onClick={() => terminateLease(record)}
-                                />
-                                <ButtonComponent
-                                    type="primary"
-                                    title="Send Renewal"
-                                    onClick={() => sendRenewal(record)}
-                                />
-                            </div>
-                        </>
+                    {(record.status === "expired" || record.status === "expires_soon") && (
+                        <ButtonComponent
+                            type="default"
+                            title="Renew Lease"
+                            onClick={() => handleRenew(record)}
+                        />
+                    )}
+                    {(record.status === "active" || record.status === "expires_soon" || record.status === "draft") && (
+                        <ButtonComponent
+                            type="info"
+                            title="Amend Lease"
+                            onClick={() => handleAmend(record)}
+                        />
+                    )}
+                    {(record.status === "active" || record.status === "pending_approval" || record.status === "expires_soon") && (
+                        <ButtonComponent
+                            type="danger"
+                            title="Terminate Lease"
+                            onClick={() => handleTerminate(record.id)}
+                        />
                     )}
                 </Space>
             ),
-            className: "text-left",
-        },
+        }
+
     ];
 
-    const filteredData: LeaseData[] = leaseDataRaw.map(function (lease) {
-        return {
-            key: lease.key,
-            tenantName: lease.tenantName,
-            apartment: lease.apartment,
-            leaseStartDate: lease.leaseStartDate,
-            leaseEndDate: lease.leaseEndDate,
-            rentAmount: lease.rentAmount,
-            status: getLeaseStatus(lease),
-        };
-    });
+    // Render authentication errors if needed
+    if (!authLoaded) {
+        return (
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+                <Spin size="large" tip="Loading authentication..." />
+            </div>
+        );
+    }
 
+    if (!isSignedIn) {
+        return (
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+                <Alert
+                    message="Authentication Required"
+                    description="You need to sign in to view this page."
+                    type="error"
+                    showIcon
+                />
+            </div>
+        );
+    }
+
+    if (authError) {
+        return (
+            <div className="container overflow-hidden">
+                <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
+                <Alert
+                    message="Authentication Error"
+                    description={authError}
+                    type="error"
+                    showIcon
+                />
+            </div>
+        );
+    }
+
+    // Render loading, error, or table
     return (
         <div className="container overflow-hidden">
-            {/* <h1 className="p-3 text-primary">Admin View & Edit Leases</h1> */}
-            <PageTitleComponent title="Admin View & Edit Leases" />
+            <h1 className="p-3 text-primary">Admin View & Edit Leases</h1>
 
-            <TableComponent<LeaseData>
-                columns={leaseColumns}
-                dataSource={filteredData}
-                onChange={(
-                    pagination: TablePaginationConfig,
-                    filters: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[1],
-                    sorter: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[2],
-                    extra: Parameters<NonNullable<TableProps<LeaseData>["onChange"]>>[3]
-                ) => {
-                    console.log("Table changed:", pagination, filters, sorter, extra);
-                }}
+            <div className="mb-3">
+                <ButtonComponent
+                    type="primary"
+                    title="Add New Lease"
+                    onClick={handleAddLease}
+                />
+            </div>
+
+            {
+                isLoading ? (
+                    <Spin size="large" />
+                ) : isError ? (
+                    <Alert
+                        message="Error Loading Leases"
+                        description={(error as Error)?.message || "Failed to fetch leases"}
+                        type="error"
+                        showIcon
+                    />
+                ) : (
+                    <TableComponent<LeaseData>
+                        columns={leaseColumns}
+                        dataSource={filteredData}
+                        scroll={{ x: "100%" }}
+                        onChange={(pagination, filters, sorter, extra) => {
+                            // This properly forwards the event to the underlying Table component
+                            console.log('Table changed:', { pagination, filters, sorter, extra });
+                        }}
+                    />
+                )}
+            <LeaseModalComponent
+                visible={modalConfig.visible}
+                onClose={handleModalClose}
+                mode={modalConfig.mode}
+                selectedLease={modalConfig.selectedLease}
+                API_URL={API_URL}
             />
         </div>
     );

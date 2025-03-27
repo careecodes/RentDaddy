@@ -2,7 +2,7 @@
 set -e
 
 echo "Waiting for PostgreSQL to be ready..."
-echo "postgres:5432:${POSTGRES_DB}:${POSTGRES_USER}:${POSTGRES_PASSWORD}" > ~/.pgpass
+echo "postgres:5432:${POSTGRES_DB}:${POSTGRES_USER}:${POSTGRES_PASSWORD}" >~/.pgpass
 chmod 600 ~/.pgpass
 export PGPASSFILE=~/.pgpass
 
@@ -15,18 +15,24 @@ echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
 echo "Database migrations complete."
 
-if [ "$DEBUG_MODE" = "true" ]; then
-  echo "Debug mode enabled. Container will stay alive."
-  # Debugging: Show working directory and files
-  echo "Current directory: $(pwd)"
-  ls -lah
-  tail -f /dev/null
-else
-  # Run Air with config file
-  echo "Starting Air..."
+# Start cron in background
+crond
+
+# Make sure the pre-built binary has proper permissions
+
+if [ ! -f /app/tmp/server ]; then
+  echo "Binary not found, building application..."
+  mkdir -p /app/tmp
+  go build -o /app/tmp/server .
+fi
+
+chmod +x /app/tmp/server || echo "Could not set executable permission, continuing anyway"
+
+# Choose whether to use Air for development or direct execution
+if [ "${USE_AIR:-true}" = "true" ]; then
+  echo "Starting Air with pre-built binary..."
   exec air -c /app/.air.toml
-  # Starting backend server
-  echo "Starting the backend server..."
-  chmod -R 777 /tmp/server
-  exec /tmp/server
+else
+  echo "Starting the server directly..."
+  exec /app/tmp/server
 fi

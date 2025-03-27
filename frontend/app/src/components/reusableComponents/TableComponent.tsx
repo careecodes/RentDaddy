@@ -13,9 +13,10 @@ interface TableComponentProps<T> {
     onRow?: (record: T) => { onClick: () => void };
     disabled?: boolean | undefined;
     loading?: boolean | undefined;
+    scroll?: TableProps<T>["scroll"];
 }
 const useStyle = createStyles(({ css, token }) => {
-    const { antCls } = token; //ignore the warning
+    const antCls = token.antCls || ""; // Ensure compatibility if antCls is undefined
     return {
         customTable: css`
             ${antCls}-table {
@@ -35,7 +36,7 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, disabled, loading }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, loading, scroll: scrollProp }: TableComponentProps<T>) => {
 
     const { styles } = useStyle();
 
@@ -50,7 +51,7 @@ const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, paginati
                 onChange={onChange}
                 onRow={onRow}
                 loading={loading}
-                scroll={{ x: "max-content" }}
+                scroll={scrollProp ?? { x: "max-content" }}
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}
             />
         </>

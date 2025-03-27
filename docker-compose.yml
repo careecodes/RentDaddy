@@ -1,10 +1,6 @@
 services:
   postgres:
     image: postgres:15
-    environment:
-      POSTGRES_USER: ${POSTGRES_USER:-appuser}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-apppassword}
-      POSTGRES_DB: ${POSTGRES_DB:-appdb}
     ports:
       - "${POSTGRES_PORT:-5432}:5432"
     container_name: rentdaddy-postgres
@@ -19,13 +15,13 @@ services:
        retries: 5
     networks:
       - app-network
-
   backend:
     build:
       context: ./backend
       dockerfile: Dockerfile
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
+      - "2345:2345" 
     depends_on:
       postgres:
         condition: service_healthy
@@ -34,10 +30,16 @@ services:
     volumes:
       - ./backend:/app
       - /app/tmp
+      - /app/temp
+      - ./backend/tmp:/app/tmp
+      - ./backend/temp:/app/temp
+      - go-mod-cache:/go/pkg/mod
     env_file: .env
     networks:
-      - app-network
-    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh"]
+        - app-network
+        - documenso-rentdaddy
+    #command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
+    
 
   frontend:
     build:
@@ -56,6 +58,9 @@ services:
 networks:
   app-network:
     driver: bridge
+  documenso-rentdaddy:
+    external: true
 
 volumes:
   postgres_data:
+  go-mod-cache:

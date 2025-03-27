@@ -4,10 +4,8 @@ dotenv: ["../.env"]
 
 vars:
   MPATH: "internal/db/migrations/"
-  # PG_URL: postgresql://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
-  PG_URL: postgresql://{{.POSTGRES_USER}}@postgres:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
-  CLERK_SECRET_KEY: "{{.CLERK_SECRET_KEY}}"
-
+  PG_URL: postgresql://{{.POSTGRES_USER}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+  DATABASE_URL: .PG_URL
 tasks:
   seed-users:
     desc: "Seed users into the database and syncs with Clerk"
@@ -81,3 +79,48 @@ tasks:
     cmds:
       - chmod +x ./scripts/test-changed.sh
       - ./scripts/test-changed.sh
+  db:connect:
+    desc: "Test changed files only in backend in container"
+    cmds:
+      # Check if container is running
+      - |
+        CONTAINER_NAME="rentdaddy-backend"
+          if ! docker ps | grep -q "$CONTAINER_NAME"; then 
+          echo "Error: Container $CONTAINER_NAME is not running!"
+        exit 1
+        fi
+        echo "Running all tests in container: $CONTAINER_NAME..."
+        psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+  cron:expire-leases:
+    desc: "Run lease expiration job manually in backend container"
+    cmds:
+      - docker exec rentdaddy-backend /app/bin/expire-leases
+  cron:test-expired-leases:
+    desc: "Seed db with leases to expire"
+    cmds:
+      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
+
+  cron:test-status-update:
+    desc: "Test the lease status update endpoint"
+    cmds:
+      - bash ./scripts/lease-status-test.sh
+
+  cron:simulate-midnight:
+    desc: "Simulate the midnight cron job"
+    cmds:
+      - bash ./scripts/simulate-cron.sh
+
+  cron:run-all-tests:
+    desc: "Run all lease cron job tests in sequence"
+    cmds:
+      - task: cron:test-expired-leases
+      - echo "Waiting 2 seconds for database to process changes..."
+      - sleep 2
+      - task: cron:simulate-midnight
+      - echo "Waiting 2 seconds for API to process changes..."
+      - sleep 2
+      - task: cron:test-status-update
+  cron:test-notify:
+    desc: "Test the lease expiration notification system"
+    cmds:
+      - bash ./scripts/test-lease-notify.sh
