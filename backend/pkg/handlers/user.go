@@ -556,7 +556,7 @@ func (u UserHandler) TenantCreateComplaint(w http.ResponseWriter, r *http.Reques
 		Category:    createComplaintReq.Category,
 		Title:       createComplaintReq.Title,
 		Description: createComplaintReq.Description,
-		UnitNumber:  pgtype.Int2{Int16: createComplaintReq.UnitNumber.Int16, Valid: true},
+		UnitNumber:  pgtype.Int8{Int64: createComplaintReq.UnitNumber.Int64, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed creating tenant complaint: %v", err)

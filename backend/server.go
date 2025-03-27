@@ -66,9 +66,6 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-	// Added to make this work for testing.
-	r.Use(clerkhttp.WithHeaderAuthorization())
-	r.Use(mymiddleware.ClerkAuthMiddleware)
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
