@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS "apartments"
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
-
+-- Leases Table
 
 CREATE TABLE IF NOT EXISTS "leases"
 (
