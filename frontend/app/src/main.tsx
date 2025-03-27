@@ -122,10 +122,11 @@ createRoot(document.getElementById("root")!).render(
 
                                 <Route
                                     path="/auth/sign-in/"
-                                    element={<div className="d-flex justify-content-center align-items-center h-100 py-5">
-                                        <SignIn />
-                                    </div>}>
-                                </Route>
+                                    element={
+                                        <div className="d-flex justify-content-center align-items-center h-100 py-5">
+                                            <SignIn />
+                                        </div>
+                                    }></Route>
 
                                 {/* Testing Routes */}
                                 <Route path="test">
@@ -152,7 +153,7 @@ createRoot(document.getElementById("root")!).render(
                                             element={<AdminApartmentSetupAndDetailsManagement />}
                                         />
                                         <Route
-                                            path="add-tenant"
+                                            path="manage-tenants"
                                             element={<AddTenant />}
                                         />
                                         <Route
@@ -197,6 +198,6 @@ createRoot(document.getElementById("root")!).render(
                     </ClerkProvider>
                 </BrowserRouter>
             </QueryClientProvider>
-        </ConfigProvider >
-    </StrictMode >
+        </ConfigProvider>
+    </StrictMode>
 );

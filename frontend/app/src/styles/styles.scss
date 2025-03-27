@@ -254,7 +254,7 @@ body {
     }
 }
 
-.ant-table-tbody>tr.hoverable-row:hover>td {
+.ant-table-tbody > tr.hoverable-row:hover > td {
     background-color: #1890ff20 !important;
 }
 
@@ -289,7 +289,6 @@ body {
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15); // Adds a slight shadow for contrast
 }
 
-
 // Hover Effects for the Sidebar Links
 .hover-lift {
     transition: transform 0.3s ease-in-out;
@@ -299,3 +298,17 @@ body {
     transform: translateY(-5px);
 }
 
+// Admin tenant table action menu
+.custom-dropdown .ant-dropdown-menu-item,
+.custom-dropdown .ant-dropdown-menu-submenu-title {
+    background-color: white !important;
+    color: inherit !important;
+}
+
+.custom-dropdown .ant-dropdown-menu-item:hover,
+.custom-dropdown .ant-dropdown-menu-submenu-title:hover,
+.custom-dropdown .ant-dropdown-menu-item:active,
+.custom-dropdown .ant-dropdown-menu-submenu-title:active {
+    background-color: #eeeeee !important;
+    color: inherit !important;
+}

@@ -20,6 +20,7 @@
     "axios": "^1.8.3",
     "bootstrap": "^5.3.3",
     "react": "^19.0.0",
+    "react-chatbotify": "^2.0.0-beta.32",
     "react-dom": "^19.0.0",
     "react-router": "^7.2.0",
     "react-router-dom": "^7.3.0",

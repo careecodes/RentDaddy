@@ -12,11 +12,8 @@ import (
 )
 
 type ClerkUserPublicMetaData struct {
-	DbId       int32   `json:"db_id"`
-	Role       db.Role `json:"role"`
-	UnitNumber int     `json:"unit_number"`
-	// Admin(clerk_id) inviting tenant
-	ManagementId string `json:"management_id"`
+	DbId int32   `json:"db_id"`
+	Role db.Role `json:"role"`
 }
 
 type UserContext struct {

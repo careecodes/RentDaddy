@@ -16,6 +16,7 @@ import (
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 
 	"github.com/careecodes/RentDaddy/middleware"
+
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
@@ -75,9 +76,15 @@ func main() {
 
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
+
+	// Locker Handler
+	lockerHandler := handlers.NewLockerHandler(pool, queries)
+
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
+	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
+	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -96,6 +103,7 @@ func main() {
 				r.Route("/{clerk_id}", func(r chi.Router) {
 					r.Get("/", userHandler.GetUserByClerkId)
 					r.Patch("/", userHandler.UpdateTenantProfile)
+					r.Delete("/", userHandler.DeleteTenant)
 					r.Get("/work_orders", userHandler.GetTenantWorkOrders)
 					r.Get("/complaints", userHandler.GetTenantComplaints)
 				})
@@ -113,6 +121,7 @@ func main() {
 
 			// Work Orders
 			r.Route("/work_orders", func(r chi.Router) {
+				// r.Post("/test", workOrderHandler.CreateManyWorkOrdersHandler)
 				r.Get("/", workOrderHandler.ListWorkOrdersHandler)
 				r.Post("/", workOrderHandler.CreateWorkOrderHandler)
 				r.Route("/{order_id}", func(r chi.Router) {
@@ -122,13 +131,34 @@ func main() {
 				})
 			})
 
-			// Apartment
+			// Start of Locker Handlers
+			r.Route("/lockers", func(r chi.Router) {
+				r.Get("/", lockerHandler.GetLockers)
+				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
+				r.Get("/{id}", lockerHandler.GetLocker)
+				// Used to change the user assigned to a locker or the status of a locker
+				r.Patch("/{id}", lockerHandler.UpdateLocker)
+				// Used to set up the initial lockers for an apartment
+				r.Post("/", lockerHandler.CreateManyLockers)
+			})
+			// End of Locker Handlers
+
+			// Start of Apartment Handlers
 			r.Route("/apartments", func(r chi.Router) {
 				r.Get("/", apartmentHandler.ListApartmentsHandler)
 				r.Get("/{apartment}", apartmentHandler.GetApartmentHandler)
 				r.Post("/", apartmentHandler.CreateApartmentHandler)
 				r.Patch("/{apartment}", apartmentHandler.UpdateApartmentHandler)
 				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
+			})
+			// End of Apartment Handlers
+
+			// Complaint
+			r.Route("/complaints", func(r chi.Router) {
+				r.Get("/", complaintHandler.ListComplaintsHandler)
+				r.Post("/", complaintHandler.CreateComplaintHandler)
+				r.Patch("/{complaint}", complaintHandler.UpdateComplaintHandler)
+				r.Delete("/{complaint}", complaintHandler.DeleteComplaintHandler)
 			})
 
 			// Leases
@@ -155,6 +185,12 @@ func main() {
 			r.Get("/documents", userHandler.GetTenantDocuments)
 			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
 			r.Get("/complaints", userHandler.GetTenantComplaints)
+
+			// Locker Endpoints
+			r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
+			r.Post("/lockers/{user_id}/unlock", lockerHandler.UnlockLocker)
+
+			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {
 				r.Get("/", parkingPermitHandler.TenantGetParkingPermits)
 				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
@@ -169,6 +205,11 @@ func main() {
 		})
 	})
 
+	// ChatBot routes
+	r.Route("/api/chat", func(r chi.Router) {
+		r.Post("/", chatbotHandler.ChatHandler)
+		r.Get("/", chatbotHandler.ChatGetHandler)
+	})
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{
@@ -184,7 +225,7 @@ func main() {
 		}
 	}()
 
-	// Block until we reveive an interrupt signal
+	// Block until we revive an interrupt signal
 	<-sigChan
 	log.Println("shutting down server...")
 

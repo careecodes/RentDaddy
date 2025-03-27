@@ -23,8 +23,7 @@ type AdminOverviewRequest struct {
 }
 
 type InviteUserRequest struct {
-	Email      string `json:"email"`
-	UnitNumber int    `json:"unit_number"`
+	Email string `json:"email"`
 }
 
 type TenantUpdateProfileRequest struct {
@@ -88,6 +87,37 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// log.Printf("user ctx ID: %d\n", adminCtx.ID)
+	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
+		EmailAddress:   tenantPayload.Email,
+		IgnoreExisting: clerk.Bool(true),
+	})
+
+	if invite.Response != nil && invite.Response.StatusCode == http.StatusOK {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("Successfully invited user"))
+		return
+	}
+
+	log.Printf("[USER_HANDLER] Failed inviting tenant: %v", err)
+	http.Error(w, "Error inviting tenant", http.StatusInternalServerError)
+}
+
+func (u UserHandler) InviteAdmin(w http.ResponseWriter, r *http.Request) {
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed reading body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	var adminPayload InviteUserRequest
+	if err := json.Unmarshal(body, &adminPayload); err != nil {
+		log.Printf("[USER_HANDLER] Failed to parse JSON payload: %v", err)
+		http.Error(w, "Error JSON payload", http.StatusBadRequest)
+		return
+	}
+
 	adminCtx := middleware.GetUserCtx(r)
 	if adminCtx == nil {
 		log.Println("[PARKING_HANDLER] Failed no user context")
@@ -98,8 +128,7 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 	// log.Printf("user ctx ID: %d\n", adminCtx.ID)
 
 	publicMetadata := &ClerkUserPublicMetaData{
-		UnitNumber:   tenantPayload.UnitNumber,
-		ManagementId: adminCtx.ID,
+		Role: db.RoleAdmin,
 	}
 	publicMetadataBytes, err := json.Marshal(publicMetadata)
 	if err != nil {
@@ -110,7 +139,7 @@ func (u UserHandler) InviteTenant(w http.ResponseWriter, r *http.Request) {
 
 	publicMetadataRawJson := json.RawMessage(publicMetadataBytes)
 	invite, err := invitation.Create(r.Context(), &invitation.CreateParams{
-		EmailAddress:   tenantPayload.Email,
+		EmailAddress:   adminPayload.Email,
 		PublicMetadata: &publicMetadataRawJson,
 		IgnoreExisting: clerk.Bool(true),
 	})
@@ -143,10 +172,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	workOrders, err := u.queries.ListWorkOrders(r.Context(), db.ListWorkOrdersParams{
-		Limit:  5,
-		Offset: 0,
-	})
+	workOrders, err := u.queries.ListWorkOrders(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying work_orders for adminOverview: %v", err)
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
@@ -191,7 +217,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserHandler) GetAllTenants(w http.ResponseWriter, r *http.Request) {
-	tenants, err := u.queries.ListUsersByRole(r.Context(), db.RoleTenant)
+	tenants, err := u.queries.ListTenantsWithLeases(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed getting tenants: %v", err)
 		http.Error(w, "Failed getting tenants", http.StatusInternalServerError)
@@ -280,6 +306,30 @@ func (u UserHandler) UpdateTenantProfile(w http.ResponseWriter, r *http.Request)
 
 	w.WriteHeader(http.StatusOK)
 	w.Write([]byte("Successfully updated tenant"))
+}
+
+func (u UserHandler) DeleteTenant(w http.ResponseWriter, r *http.Request) {
+	tenantClerkId := chi.URLParam(r, "clerk_id")
+	if tenantClerkId == "" {
+		log.Printf("[USER_HANDLER] Failed no tenant clerk ID provided")
+		http.Error(w, "Error No tenant Clerk ID", http.StatusBadRequest)
+		return
+	}
+
+	res, err := user.Delete(r.Context(), tenantClerkId)
+	if err != nil {
+		log.Printf("[COMPLAINT_HANDLER] Failed getting tenant from Clerk")
+		http.Error(w, "Error getting tenant from Clerk", http.StatusBadRequest)
+		return
+	}
+
+	if res.Response.StatusCode != http.StatusOK {
+		log.Printf("[COMPLAINT_HANDLER] Failed deleting tenant from Clerk")
+		http.Error(w, "Error deleting tenant from Clerk", http.StatusBadRequest)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
 }
 
 // ADMIN END

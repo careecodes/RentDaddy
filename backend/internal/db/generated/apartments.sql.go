@@ -18,20 +18,18 @@ INSERT INTO apartments (
     size,
     management_id,
     availability,
-    lease_id,
     created_at,
     updated_at
-  ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+  ) VALUES ($1, $2, $3, $4, $5, now(), now())
 RETURNING id, unit_number, price, size, management_id, availability, lease_id, updated_at, created_at
 `
 
 type CreateApartmentParams struct {
-	UnitNumber   int16          `json:"unit_number"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
-	Size         int16          `json:"size"`
-	ManagementID int64          `json:"management_id"`
+	Size         pgtype.Int2    `json:"size"`
+	ManagementID pgtype.Int8    `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
 }
 
 func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams) (Apartment, error) {
@@ -41,7 +39,6 @@ func (q *Queries) CreateApartment(ctx context.Context, arg CreateApartmentParams
 		arg.Size,
 		arg.ManagementID,
 		arg.Availability,
-		arg.LeaseID,
 	)
 	var i Apartment
 	err := row.Scan(
@@ -74,8 +71,7 @@ SELECT id,
   price,
   size,
   management_id,
-  availability,
-  lease_id
+  availability
 FROM apartments
 WHERE id = $1
 LIMIT 1
@@ -83,12 +79,11 @@ LIMIT 1
 
 type GetApartmentRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   int16          `json:"unit_number"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
-	Size         int16          `json:"size"`
-	ManagementID int64          `json:"management_id"`
+	Size         pgtype.Int2    `json:"size"`
+	ManagementID pgtype.Int8    `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
 }
 
 func (q *Queries) GetApartment(ctx context.Context, id int64) (GetApartmentRow, error) {
@@ -101,7 +96,6 @@ func (q *Queries) GetApartment(ctx context.Context, id int64) (GetApartmentRow, 
 		&i.Size,
 		&i.ManagementID,
 		&i.Availability,
-		&i.LeaseID,
 	)
 	return i, err
 }
@@ -112,7 +106,7 @@ FROM apartments
 WHERE unit_number = $1
 `
 
-func (q *Queries) GetApartmentByUnitNumber(ctx context.Context, unitNumber int16) (int64, error) {
+func (q *Queries) GetApartmentByUnitNumber(ctx context.Context, unitNumber pgtype.Int2) (int64, error) {
 	row := q.db.QueryRow(ctx, getApartmentByUnitNumber, unitNumber)
 	var id int64
 	err := row.Scan(&id)
@@ -179,20 +173,18 @@ SELECT id,
   price,
   size,
   management_id,
-  availability,
-  lease_id
+  availability
 FROM apartments
 ORDER BY unit_number DESC
 `
 
 type ListApartmentsRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   int16          `json:"unit_number"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
-	Size         int16          `json:"size"`
-	ManagementID int64          `json:"management_id"`
+	Size         pgtype.Int2    `json:"size"`
+	ManagementID pgtype.Int8    `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
 }
 
 func (q *Queries) ListApartments(ctx context.Context) ([]ListApartmentsRow, error) {
@@ -211,7 +203,6 @@ func (q *Queries) ListApartments(ctx context.Context) ([]ListApartmentsRow, erro
 			&i.Size,
 			&i.ManagementID,
 			&i.Availability,
-			&i.LeaseID,
 		); err != nil {
 			return nil, err
 		}
@@ -267,7 +258,6 @@ func (q *Queries) ListApartmentsWithoutLease(ctx context.Context, arg ListApartm
 			&i.Size,
 			&i.ManagementID,
 			&i.Availability,
-			&i.LeaseID,
 		); err != nil {
 			return nil, err
 		}
@@ -284,7 +274,6 @@ UPDATE apartments
 SET price = $2,
   management_id = $3,
   availability = $4,
-  lease_id = $5,
   updated_at = now()
 WHERE id = $1
 `
@@ -292,9 +281,8 @@ WHERE id = $1
 type UpdateApartmentParams struct {
 	ID           int64          `json:"id"`
 	Price        pgtype.Numeric `json:"price"`
-	ManagementID int64          `json:"management_id"`
+	ManagementID pgtype.Int8    `json:"management_id"`
 	Availability bool           `json:"availability"`
-	LeaseID      pgtype.Int8    `json:"lease_id"`
 }
 
 func (q *Queries) UpdateApartment(ctx context.Context, arg UpdateApartmentParams) error {
@@ -303,7 +291,6 @@ func (q *Queries) UpdateApartment(ctx context.Context, arg UpdateApartmentParams
 		arg.Price,
 		arg.ManagementID,
 		arg.Availability,
-		arg.LeaseID,
 	)
 	return err
 }

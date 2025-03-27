@@ -8,7 +8,8 @@ import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
-import { useUser } from "@clerk/react-router";
+import MyChatBot from "../components/ChatBot";
+import { useAuth } from "@clerk/react-router";
 import { useQuery } from "@tanstack/react-query";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
@@ -26,27 +27,34 @@ export const TenantDashBoard = () => {
     const { user } = useUser();
     const userId = user?.publicMetadata["db_id"];
 
-    // Fetch lease status using TanStack Query
-    const { data: leaseData, isLoading, isError } = useQuery({
+    // Simulate fetching lease status using TanStack Query
+    const {
+        data: leaseStatus,
+        isLoading,
+        isError,
+    } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            if (!userId) {
-                console.log("`userId` variable is not populated");
-                return null;
-            }
-            const response = await fetch(`${API_URL}/leases/${userId}/signing-url`);
-            if (!response.ok) {
-                return null;
-            }
+            // Simulate a delay to mimic network request and give dummy data
+            await new Promise((resolve) => setTimeout(resolve, 500));
+            const leaseData = {
+                // userId: userId,
+                userId: "notme",
+                lease_status: "pending_approval",
+            };
+            // const response = await fetch(`/api/leases?tenantId=${userId}`);
+            // if (!response.ok) {
+            //     throw new Error("Failed to fetch lease status");
+            // }
+            // const data = await response.json();
 
-            // If empty, return null so tenant dashboard can still load
-            const contentType = response.headers.get("content-type");
-            if (!contentType || !contentType.includes("application/json")) {
-                return null;
+            // Return dummy data if the userId matches
+            if (userId === leaseData.userId) {
+                console.log(leaseData.lease_status);
+                return leaseData.lease_status;
+            } else {
+                return "active";
             }
-
-            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
-            return leaseData;
         },
         enabled: !!userId,
     });
@@ -97,7 +105,7 @@ export const TenantDashBoard = () => {
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
                     button={
-                        <Link to="/tenant/tenant-view-and-edit-work-orders-and-complaints">
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
                             <ButtonComponent
                                 title="View All"
                                 type="primary"
@@ -163,13 +171,13 @@ export const TenantDashBoard = () => {
                     description={<Tag color="orange">Current In Progress</Tag>}
                     hoverable={true}
                     button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all work orders"
-                            content="Work orders should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
+                            <ButtonComponent
+                                title="View all workorders"
+                                type="primary"
+                                onClick={() => { }}
+                            />
+                        </Link>
                     }
                 />
                 <CardComponent
@@ -186,6 +194,8 @@ export const TenantDashBoard = () => {
                         />
                     }
                 />
+
+                <MyChatBot />
             </div>
 
             {/* Inescapable Modal for lease signing */}
@@ -198,19 +208,21 @@ export const TenantDashBoard = () => {
                 keyboard={false} // Prevents closing with ESC key
                 closable={false} // Removes the X button
                 footer={[
-                    <Button key="submit" type="primary" onClick={handleOk}>
+                    <Button
+                        key="submit"
+                        type="primary"
+                        onClick={handleOk}>
                         Sign Lease Now
-                    </Button>
-                ]}
-            >
+                    </Button>,
+                ]}>
                 <div style={{ textAlign: "center" }}>
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
-                    <p>Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.</p>
-                    <p>You must sign your lease to continue using the tenant portal.</p>
-                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>
-                        This action is required and cannot be dismissed.
+                    <p>
+                        Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.
                     </p>
+                    <p>You must sign your lease to continue using the tenant portal.</p>
+                    <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
                 </div>
             </Modal>
         </div>

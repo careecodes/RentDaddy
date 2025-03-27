@@ -11,6 +11,48 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
+const createLocker = `-- name: CreateLocker :exec
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+) VALUES (
+    $1, $2, $3
+)
+`
+
+type CreateLockerParams struct {
+	AccessCode pgtype.Text `json:"access_code"`
+	UserID     pgtype.Int8 `json:"user_id"`
+	InUse      bool        `json:"in_use"`
+}
+
+func (q *Queries) CreateLocker(ctx context.Context, arg CreateLockerParams) error {
+	_, err := q.db.Exec(ctx, createLocker, arg.AccessCode, arg.UserID, arg.InUse)
+	return err
+}
+
+const createManyLockers = `-- name: CreateManyLockers :execrows
+INSERT INTO lockers (
+    access_code,
+    user_id,
+    in_use
+)
+SELECT 
+    NULL::text,
+    NULL::bigint,             -- default null user_id, explicitly cast to bigint (not sure if I need to change this to string, since the Clerk UserId is a string)
+    false                     -- default to not in use
+FROM generate_series(1, $1::int)
+`
+
+func (q *Queries) CreateManyLockers(ctx context.Context, count int32) (int64, error) {
+	result, err := q.db.Exec(ctx, createManyLockers, count)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
 const getLocker = `-- name: GetLocker :one
 SELECT id, access_code, in_use, user_id
 FROM lockers
@@ -30,20 +72,34 @@ func (q *Queries) GetLocker(ctx context.Context, id int64) (Locker, error) {
 	return i, err
 }
 
+const getLockerByUserId = `-- name: GetLockerByUserId :one
+SELECT id, access_code, in_use, user_id
+FROM lockers
+WHERE user_id = $1
+LIMIT 1
+`
+
+func (q *Queries) GetLockerByUserId(ctx context.Context, userID pgtype.Int8) (Locker, error) {
+	row := q.db.QueryRow(ctx, getLockerByUserId, userID)
+	var i Locker
+	err := row.Scan(
+		&i.ID,
+		&i.AccessCode,
+		&i.InUse,
+		&i.UserID,
+	)
+	return i, err
+}
+
 const getLockers = `-- name: GetLockers :many
 SELECT id, access_code, in_use, user_id
 FROM lockers
 ORDER BY id DESC
-LIMIT $1 OFFSET $2
+LIMIT (SELECT COUNT(*) FROM lockers)
 `
 
-type GetLockersParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) GetLockers(ctx context.Context, arg GetLockersParams) ([]Locker, error) {
-	rows, err := q.db.Query(ctx, getLockers, arg.Limit, arg.Offset)
+func (q *Queries) GetLockers(ctx context.Context) ([]Locker, error) {
+	rows, err := q.db.Query(ctx, getLockers)
 	if err != nil {
 		return nil, err
 	}
@@ -67,6 +123,19 @@ func (q *Queries) GetLockers(ctx context.Context, arg GetLockersParams) ([]Locke
 	return items, nil
 }
 
+const getNumberOfLockersInUse = `-- name: GetNumberOfLockersInUse :one
+SELECT COUNT(*)
+FROM lockers
+WHERE in_use = true
+`
+
+func (q *Queries) GetNumberOfLockersInUse(ctx context.Context) (int64, error) {
+	row := q.db.QueryRow(ctx, getNumberOfLockersInUse)
+	var count int64
+	err := row.Scan(&count)
+	return count, err
+}
+
 const updateAccessCode = `-- name: UpdateAccessCode :exec
 UPDATE lockers
 SET access_code = $2
@@ -84,6 +153,7 @@ func (q *Queries) UpdateAccessCode(ctx context.Context, arg UpdateAccessCodePara
 }
 
 const updateLockerUser = `-- name: UpdateLockerUser :exec
+
 UPDATE lockers
 SET user_id = $2, in_use = $3
 WHERE id = $1
@@ -95,6 +165,7 @@ type UpdateLockerUserParams struct {
 	InUse  bool        `json:"in_use"`
 }
 
+// Used the sqlc.arg to help create the amount of lockers we pass in (1 through "count")
 func (q *Queries) UpdateLockerUser(ctx context.Context, arg UpdateLockerUserParams) error {
 	_, err := q.db.Exec(ctx, updateLockerUser, arg.ID, arg.UserID, arg.InUse)
 	return err

@@ -1,11 +1,11 @@
 ![image](assets/logo.png)
 
-# RentDaddy
+# Ezra
 
-RentDaddy is a modern apartment management platform written in Go. It
+EZRA is a modern apartment management platform written in Go. It
 streamlines property management by offering a robust solution for tenant
 management, maintenance tracking, lease management, and comprehensive reporting.
-Designed for scalability and security, RentDaddy is ideal for property managers
+Designed for scalability and security, EZRA is ideal for property managers
 looking to simplify their workflow.
 
 ## Table of Contents
@@ -48,8 +48,8 @@ or testing.
 1. **Clone the Repository**
 
    ```bash
-   git clone https://github.com/careecodes/RentDaddy.git
-   cd RentDaddy
+   git clone https://github.com/Team-Rent-Daddy/RentDaddy/ EZRA
+   cd EZRA
    ```
 
 2. **Install Dependencies**
@@ -126,7 +126,7 @@ Access the application by navigating to `http://localhost:8080`.
 Subject to change as needed
 
 ```bash
-RentDaddy/
+EZRA/
 ├── frontend/       # Vite/Tanstack/react frontend
 ├── backend/        # Go/SQL Backend
 ├── assets/         # Images, Icons, Logos, Etc

@@ -19,8 +19,8 @@ const faqs: FAQ[] = [
         answer: "Yes! We implement a smart notification system to let you know when your package arrives!",
     },
     {
-        question: "Why Rent Daddy?",
-        answer: "Blame Carree",
+        question: "Why EZRA?",
+        answer: "Because its so much better than RentDaddy",
     },
 ];
 
@@ -40,11 +40,6 @@ const HomePageFAQs: React.FC = () => {
                     </Panel>
                 ))}
             </Collapse>
-            <Link
-                to="/more-faqs"
-                className="my-2 btn btn-primary">
-                More FAQs
-            </Link>
         </div>
     );
 };

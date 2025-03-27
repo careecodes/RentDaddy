@@ -13,6 +13,7 @@ done
 
 echo "Running database migrations..."
 task migrate:up || echo "Migration failed!"
+echo "Database migrations complete."
 
 # Start cron in background
 crond
