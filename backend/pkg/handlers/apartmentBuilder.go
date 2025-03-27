@@ -47,14 +47,16 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 	if err != nil {
 		log.Printf("[Construct-Admin] cannot retrieve admin: %v", err)
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return err
+		return errors.New("[Construct] cannot retrieve admin")
 	}
 	if adminUser.ClerkID != adminClerkID {
 		log.Printf("[Construct] admin user does not belong to clerk")
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return errors.New("[Construct] admin user does not belong to clerk")
 	}
 	if adminUser.Role != db.RoleAdmin {
 		log.Printf("[Construct] unauthorized user")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return errors.New("[Construct] unauthorized user")
 	}
 
@@ -63,8 +65,17 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 		log.Printf("[Construct-CreateManyLockers] error creating lockers: %v", err)
 		return errors.New("[Construct] error creating lockers: " + err.Error())
 	}
+	log.Println("[Construct-CreateManyLockers] created lockers successfully")
 
-	buildingApartments := make([]int64, 0)
+	_, err = queries.CreateManyParkingPermits(r.Context(), int32(params.ParkingTotal))
+	if err != nil {
+		log.Printf("[Construct-CreateManyParkingSpaces] error creating parking spaces: %v", err)
+		http.Error(w, "error creating parking spaces: "+err.Error(), http.StatusBadRequest)
+		return errors.New("[Construct] error creating parking spaces: " + err.Error())
+	}
+	log.Println("[Construct-CreateManyParkingSpaces] created parking spaces successfully")
+
+	aCount := 0
 	for _, building := range params.Buildings {
 
 		buildingParams := db.CreateBuildingParams{
@@ -92,21 +103,22 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 					return errors.New("[Construct] error creating apartment: " + err.Error())
 				}
 
-				apartment, err := queries.CreateApartment(r.Context(), db.CreateApartmentParams{
+				_, err = queries.CreateApartment(r.Context(), db.CreateApartmentParams{
 					UnitNumber:   pgtype.Int8{Int64: int64(unitNum), Valid: true},
 					Price:        utils.ConvertToPgTypeNumeric(2 * sqft[0]),
 					Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
 					ManagementID: adminUser.ID,
+					BuildingID:   buildingResponse.ID,
 				})
 				if err != nil {
 					log.Printf("[Construct-Create-Apartment] error creating apartment: %v", err)
 					return errors.New(fmt.Sprintf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error()))
 				}
-				buildingApartments = append(buildingApartments, apartment.ID)
+				aCount++
 			}
 		}
 	}
 
-	log.Printf("[SEEDER] apartments seeded successfully: %d apartments created", 4*54)
+	log.Printf("[Construct] apartments seeded successfully: %d apartments created", aCount)
 	return nil
 }

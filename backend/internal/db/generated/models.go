@@ -432,8 +432,11 @@ type Locker struct {
 
 type ParkingPermit struct {
 	ID           int64            `json:"id"`
-	PermitNumber int64            `json:"permit_number"`
-	CreatedBy    int64            `json:"created_by"`
+	LicensePlate pgtype.Text      `json:"license_plate"`
+	CarMake      pgtype.Text      `json:"car_make"`
+	CarColor     pgtype.Text      `json:"car_color"`
+	Available    bool             `json:"available"`
+	CreatedBy    pgtype.Int8      `json:"created_by"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	// 5 days long
 	ExpiresAt pgtype.Timestamp `json:"expires_at"`

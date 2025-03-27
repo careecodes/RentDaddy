@@ -48,10 +48,13 @@ CREATE TYPE "Work_Category" AS ENUM (
 CREATE TABLE IF NOT EXISTS "parking_permits"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "permit_number" BIGINT       NOT NULL,
-    "created_by"    BIGINT       NOT NULL,
+    "license_plate" TEXT          NULL,
+    "car_make"      TEXT          NULL,
+    "car_color"     TEXT          NULL,
+    "available"     BOOLEAN       NOT NULL DEFAULT true,
+    "created_by"    BIGINT        NULL,
     "updated_at"    TIMESTAMP(0) DEFAULT now(),
-    "expires_at"    TIMESTAMP(0) NOT NULL
+    "expires_at"    TIMESTAMP(0)  NULL
 );
 
 COMMENT ON COLUMN "parking_permits"."expires_at" IS '5 days long';

@@ -5,14 +5,12 @@ import (
 	_ "database/sql"
 	"errors"
 	"fmt"
-	"log"
-	"math/rand"
-	"time"
-
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-faker/faker/v4"
-	"github.com/jackc/pgx/v5/pgtype"
+	_ "github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
+	"math/rand"
 )
 
 func RandomWorkCategory() db.WorkCategory {
@@ -95,22 +93,6 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 	}
 
 	log.Println("[SEEDER] complaints seeded successfully")
-	return nil
-}
-
-func createParkingPermits(queries *db.Queries, user db.User, createCount int, ctx context.Context) error {
-	for i := 0; i < createCount; i++ {
-		_, err := queries.CreateParkingPermit(ctx, db.CreateParkingPermitParams{
-			CreatedBy:    user.ID,
-			PermitNumber: user.ID + int64(i),
-			ExpiresAt:    pgtype.Timestamp{Time: time.Now().AddDate(0, 0, 2), Valid: true},
-		})
-		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating parking permit: %d %v", user.ID, err.Error()))
-		}
-	}
-
-	log.Println("[SEEDER] parking permits seeded successfully")
 	return nil
 }
 
@@ -206,17 +188,6 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 			}
 		}
 
-		pCount, err := queries.GetTenantParkingPermits(ctx, u.ID)
-		if err != nil {
-			log.Println("[SEEDER] error counting parking permits: " + err.Error())
-		}
-		if len(pCount) < 2 {
-			// create up to 2 parking permits for the tenant
-			err = createParkingPermits(queries, u, 2-len(pCount), ctx)
-			if err != nil {
-				return errors.New("[SEEDER] error creating parking permits: " + err.Error())
-			}
-		}
 	}
 
 	return nil

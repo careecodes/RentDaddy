@@ -1,17 +1,16 @@
--- name: CreateParkingPermit :one
+-- name: CreateManyParkingPermits :execrows
 INSERT INTO parking_permits (
-    permit_number,
-    created_by,
-    expires_at,
-    updated_at
-)
-VALUES (
-    $1,
-    $2,
-    $3,
-    now()
-)
-RETURNING *;
+     license_plate,
+     car_make,
+     car_color,
+     created_by,
+     expires_at)
+SELECT NULL::TEXT,
+       NULL::TEXT,
+       NULL::TEXT,
+       NULL::BIGINT,
+       NULL::TIMESTAMP -- default null expires_at
+FROM generate_series(1, sqlc.arg(count)::int);
 
 -- name: GetNumOfUserParkingPermits :one
 SELECT COUNT(*)
@@ -24,6 +23,12 @@ FROM parking_permits
 WHERE id = $1
 LIMIT 1;
 
+-- name: GetAvailableParkingPermit :one
+SELECT *
+FROM parking_permits
+WHERE available IS TRUE
+LIMIT 1;
+
 -- name: GetTenantParkingPermits :many
 SELECT *
 FROM parking_permits
@@ -34,7 +39,22 @@ SELECT *
 FROM parking_permits
 ORDER BY created_by DESC;
 
--- name: DeleteParkingPermit :exec
-DELETE FROM parking_permits
+-- name: UpdateParkingPermit :exec
+UPDATE parking_permits
+SET license_plate = $2,
+    car_make = $3,
+    car_color = $4,
+    available = FALSE,
+    created_by = $5,
+    expires_at = $6
 WHERE id = $1;
 
+-- name: ClearParkingPermit :exec
+UPDATE parking_permits
+SET license_plate = NULL,
+    car_make = NULL,
+    car_color = NULL,
+    available = TRUE,
+    expires_at = NULL,
+    created_by = NULL
+WHERE id = $1;

@@ -96,7 +96,7 @@ func main() {
 			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
 				if err != nil {
-					http.Error(w, "Internal server error", http.StatusInternalServerError)
+					log.Printf("[ERROR] Error constructing Apartments: %v", err)
 					return
 				}
 			})
