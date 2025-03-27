@@ -112,7 +112,7 @@ CREATE TABLE IF NOT EXISTS "apartments"
     "price"         NUMERIC(10, 2) NULL,
     "size"          SMALLINT       NULL,
     "management_id" BIGINT         NOT NULL,
-    "availability"  BOOLEAN        NOT NULL DEFAULT true,
+    "availability"  BOOLEAN        NOT NULL DEFAULT false,
     "lease_id"      BIGINT         NULL,
     "updated_at"    TIMESTAMP(0)            DEFAULT now(),
     "created_at"    TIMESTAMP(0)            DEFAULT now()
