@@ -1,10 +1,6 @@
-// Comment to git add .
-// TODO: Once we have the tenant info from the backend, make sure to populate the fields in the edit tenant modal so that the user can edit the tenant info easily
 import { useState } from "react";
 import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
-import { EditOutlined, PlusOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-import { useMutation } from "@tanstack/react-query";
 
 type InviteTenant = {
     email: string;
@@ -27,7 +23,19 @@ interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
-    type: "default" | "Smart Locker" | "Guest Parking" | "Invite Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
+    type:
+        | "default"
+        | "Smart Locker"
+        | "Guest Parking"
+        | "Invite Tenant"
+        | "Edit Tenant"
+        | "View Tenant Complaints"
+        | "View Tenant Work Orders"
+        | "Send Tenant Lease"
+        | "Edit Apartment Building"
+        | "Update Password Locker"
+        | "Edit Tenant"
+        | "Admin Unlock Locker";
     handleOkay: (data?: any) => void;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
@@ -495,6 +503,58 @@ const ModalComponent = (props: ModalComponentProps) => {
                             </Form.Item>
                             <p>Please go create a template in Documenso.</p>
                         </Form>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Admin Unlock Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Divider />
+                    </Modal>
+                </>
+            )}
+            {props.type === "Update Password Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Form>
+                            <Form.Item name="password">
+                                <Input
+                                    placeholder="New Password"
+                                    maxLength={4}
+                                />
+                            </Form.Item>
+                        </Form>
+                        <Divider />
                     </Modal>
                 </>
             )}

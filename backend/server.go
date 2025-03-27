@@ -84,6 +84,8 @@ func main() {
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
+	r.Post("/create-lockers", lockerHandler.CreateManyLockers)
+
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
@@ -140,7 +142,6 @@ func main() {
 				// Used to change the user assigned to a locker or the status of a locker
 				r.Patch("/{id}", lockerHandler.UpdateLocker)
 				// Used to set up the initial lockers for an apartment
-				r.Post("/", lockerHandler.CreateManyLockers)
 			})
 			// End of Locker Handlers
 
