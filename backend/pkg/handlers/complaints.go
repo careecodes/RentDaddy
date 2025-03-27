@@ -45,20 +45,19 @@ func (h *ComplaintHandler) GetComplaintHandler(w http.ResponseWriter, r *http.Re
 	}
 }
 
-func (h ComplaintHandler) ListComplaintsHandler(w http.ResponseWriter, r *http.Request){
+func (h ComplaintHandler) ListComplaintsHandler(w http.ResponseWriter, r *http.Request) {
 	props := db.ListComplaintsParams{
-		Limit: 10,
+		Limit:  10,
 		Offset: 0,
 	}
 
-	complaints, err := h.queries.ListComplaints(r.Context(),props)
-	log.Println("complaints",complaints)
+	complaints, err := h.queries.ListComplaints(r.Context(), props)
+	log.Println("complaints", complaints)
 	if err != nil {
 		log.Println("error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)
 		return
 	}
-
 
 	w.Header().Set("Content-Type", "application/json")
 	err = json.NewEncoder(w).Encode(complaints)
@@ -175,4 +174,47 @@ func (h *ComplaintHandler) DeleteComplaintHandler(w http.ResponseWriter, r *http
 		http.Error(w, "Failed to write response", http.StatusInternalServerError)
 		return
 	}
+}
+
+func (h *ComplaintHandler) UpdateComplaintStatusHandler(w http.ResponseWriter, r *http.Request) {
+	param := chi.URLParam(r, "complaint_id")
+	complaintId, err := strconv.Atoi(param)
+	if err != nil {
+		log.Printf("Error parsing complaint number: %v", err)
+		http.Error(w, "Invalid complaint number", http.StatusBadRequest)
+		return
+	}
+
+	var updateParams db.UpdateComplaintStatusParams
+	if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	updateParams.ID = int64(complaintId)
+	err = h.queries.UpdateComplaintStatus(r.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating complaint status %d: %v", complaintId, err)
+		http.Error(w, "Failed to update complaint status", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	jsonRes, err := json.Marshal(map[string]string{"message": "Complaint updated successfully"})
+	if err != nil {
+		log.Printf("Error marshalling response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonRes)
+	if err != nil {
+		log.Printf("Error writing response from UpdateComplaintStatusHandler: %v", err)
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Complaint status for %d updated successfully", complaintId)
 }
