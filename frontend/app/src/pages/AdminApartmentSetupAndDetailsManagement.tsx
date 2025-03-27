@@ -1,4 +1,4 @@
-import { Button, Form, Input, Select, Table } from "antd";
+import { Button, Form, Input } from "antd";
 import React, { useState } from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
@@ -32,25 +32,20 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     // State that holds the locations (building #, floor #s in that building, room numbers in that building)
     // TODO: When no longer needed for development, delete the clear locations button and mock data
     const [locations, setLocations] = React.useState<{ building: number; floors: number; rooms: number }[]>([]);
-    const { getToken, userId } = useAuth();
+    const { getToken } = useAuth();
 
-    console.log( "locations on load", locations);
+    console.log("locations on load", locations);
 
-    // State the holds the location that is currently being located
-    const [editBuildingObj, setEditBuildingObj] = useState<Building>({
-        buildingNumber: 0,
-        floorNumbers: 0,
-        numberOfRooms: 0,
-    });
+    const [editBuildingObj, setEditBuildingObj] = useState<Building>({} as Building);
 
     const [adminSetupObject, setAdminSetupObject] = useState<AdminSetup>({
-        parkingTotal: 40,
-        perUserParking: 2,
-        lockerCount: 20,
-        buildings: [
-            { buildingNumber: 3, floorNumbers: 2, numberOfRooms: 23 },
-        ],
+        parkingTotal: 0,
+        perUserParking: 0,
+        lockerCount: 0,
+        buildings: [],
     });
+
+    console.log("adminSetupObject", adminSetupObject);
 
     console.log(editBuildingObj);
 
@@ -65,12 +60,12 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${token}`
+                    Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify(adminSetupObject),
             });
 
-            console.log(res)
+            console.log(res);
 
             if (!res.ok) {
                 throw new Error("Failed to setup apartment");
@@ -135,6 +130,50 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         editLocations(editBuildingObj);
     };
 
+    const handleFormValuesChange = (_: any, allValues: any) => {
+        setAdminSetupObject((prev) => ({
+            ...prev,
+            parkingTotal: Number(allValues["parking-settings"][0]) || 0,
+            perUserParking: Number(allValues["parking-settings"][1]) || 0,
+            lockerCount: Number(allValues["mail-locker-settings"]) || 0,
+            buildings: prev.buildings,
+        }));
+    };
+
+    // Handles adding the building to the locations state
+    const handleAddLocation = () => {
+        const buildingInput = document.querySelector('input[placeholder="Building #"]') as HTMLInputElement;
+        const floorsInput = document.querySelector('input[placeholder="# of Floors"]') as HTMLInputElement;
+        const roomsInput = document.querySelector('input[placeholder="# of Room"]') as HTMLInputElement;
+
+        const newBuilding = {
+            building: parseInt(buildingInput?.value || "0"),
+            floors: parseInt(floorsInput?.value || "0"),
+            rooms: parseInt(roomsInput?.value || "0"),
+        };
+
+        // Update locations state
+        setLocations((prev) => [...prev, newBuilding]);
+
+        // Update adminSetupObject with the new building
+        setAdminSetupObject((prev) => ({
+            ...prev,
+            buildings: [
+                ...prev.buildings,
+                {
+                    buildingNumber: newBuilding.building,
+                    floorNumbers: newBuilding.floors,
+                    numberOfRooms: newBuilding.rooms,
+                },
+            ],
+        }));
+
+        // Reset the inputs
+        if (buildingInput) buildingInput.value = "";
+        if (floorsInput) floorsInput.value = "";
+        if (roomsInput) roomsInput.value = "";
+    };
+
     const columns = [
         {
             title: "Building",
@@ -164,6 +203,10 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         icon={<DeleteOutlined />}
                         onClick={() => {
                             setLocations(locations.filter((location) => location.building !== record.building));
+                            setAdminSetupObject((prev) => ({
+                                ...prev,
+                                buildings: prev.buildings.filter((b) => b.buildingNumber !== record.building),
+                            }));
                         }}
                     />
                     <ModalComponent
@@ -187,9 +230,13 @@ const AdminApartmentSetupAndDetailsManagement = () => {
             <PageTitleComponent title="Admin Apartment Setup and Details Management" />
             <Form
                 onFinish={handleSendAdminSetup}
-                // onValuesChange={}
+                onValuesChange={handleFormValuesChange}
                 className="admin-apartment-setup-form-container"
-                layout="vertical">
+                layout="vertical"
+                initialValues={{
+                    "parking-settings": [adminSetupObject.parkingTotal, adminSetupObject.perUserParking],
+                    "mail-locker-settings": adminSetupObject.lockerCount,
+                }}>
                 {/* Table */}
                 {locations.length > 0 && (
                     <TableComponent
@@ -211,14 +258,17 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         <Input
                             placeholder="Building #"
                             type="number"
+                            min={0}
                         />
                         <Input
                             placeholder="# of Floors"
                             type="number"
+                            min={0}
                         />
                         <Input
                             placeholder="# of Room"
                             type="number"
+                            min={0}
                         />
                     </div>
                 </Form.Item>
@@ -237,31 +287,28 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         title="Add Location"
                         type="primary"
                         icon={<PlusOutlined />}
-                        onClick={() => {
-                            const buildingInput = document.querySelector('input[placeholder="Building #"]') as HTMLInputElement;
-                            const building = parseInt(buildingInput?.value || "0");
-                            const floors = document.querySelector('input[placeholder="# of Floors"]') as HTMLInputElement;
-                            const rooms = document.querySelector('input[placeholder="# of Room"]') as HTMLInputElement;
-                            setLocations([...locations, { building, floors: parseInt(floors?.value || "0"), rooms: parseInt(rooms?.value || "0") }]);
-                        }}
+                        onClick={handleAddLocation}
                     />
                 </div>
                 <Form.Item
-                    name="parking-settings"
-                    label="Parking Settings"
-                    rules={[{ required: true, message: "Please enter parking settings" }]}>
-                    {/* Available Spots */}
-                    <div className="flex flex-column gap-3">
-                        <Input
-                            placeholder="Available Spots"
-                            type="number"
-                        />
-                        {/* Max Spots Per User */}
-                        <Input
-                            placeholder="Max Spots Per User"
-                            type="number"
-                        />
-                    </div>
+                    name={["parking-settings", 0]}
+                    label="Available Parking Spots"
+                    rules={[{ required: true, message: "Please enter available parking spots" }]}>
+                    <Input
+                        placeholder="Available Spots"
+                        type="number"
+                        min={0}
+                    />
+                </Form.Item>
+                <Form.Item
+                    name={["parking-settings", 1]}
+                    label="Max Parking Spots Per User"
+                    rules={[{ required: true, message: "Please enter max spots per user" }]}>
+                    <Input
+                        placeholder="Max Spots Per User"
+                        type="number"
+                        min={0}
+                    />
                 </Form.Item>
                 <Form.Item
                     name="mail-locker-settings"
@@ -270,6 +317,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                     <Input
                         placeholder="Available Lockers"
                         type="number"
+                        min={0}
                     />
                 </Form.Item>
                 {/* <Form.Item
