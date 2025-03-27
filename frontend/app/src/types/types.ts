@@ -37,8 +37,8 @@ export interface WorkOrderData {
     category: WorkCategory;
     title: string;
     description: string;
-    apartmentNumber: string;
     status: WorkStatus;
+    unitNumber: string;
     createdAt: Date;
     updatedAt: Date;
 }
