@@ -126,10 +126,9 @@ SELECT
     users.email,
     users.phone,
     users.role,
-    users.unit_number,
     users.status,
     users.created_at,
-    leases.lease_status,
+    leases.status,
     leases.lease_start_date,
     leases.lease_end_date
 FROM users
@@ -147,10 +146,9 @@ type ListTenantsWithLeasesRow struct {
 	Email          string           `json:"email"`
 	Phone          pgtype.Text      `json:"phone"`
 	Role           Role             `json:"role"`
-	UnitNumber     pgtype.Int2      `json:"unit_number"`
 	Status         AccountStatus    `json:"status"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	LeaseStatus    NullLeaseStatus  `json:"lease_status"`
+	Status_2       NullLeaseStatus  `json:"status_2"`
 	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
 }
@@ -172,10 +170,9 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 			&i.Email,
 			&i.Phone,
 			&i.Role,
-			&i.UnitNumber,
 			&i.Status,
 			&i.CreatedAt,
-			&i.LeaseStatus,
+			&i.Status_2,
 			&i.LeaseStartDate,
 			&i.LeaseEndDate,
 		); err != nil {

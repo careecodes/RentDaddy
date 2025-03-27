@@ -141,7 +141,7 @@ func createApartments(queries *db.Queries, adminID int64, ctx context.Context) e
 				UnitNumber:   pgtype.Int2{Int16: int16(unitNum), Valid: true},
 				Price:        convertToPgTypeNumeric(2 * sqft[0]),
 				Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
-				ManagementID: pgtype.Int8{Int64: adminID, Valid: true},
+				ManagementID: adminID,
 			})
 			if err != nil {
 				return errors.New(fmt.Sprintf("[SEEDER] error creating apartment: %d %v", adminID, err.Error()))

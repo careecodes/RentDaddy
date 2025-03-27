@@ -28,7 +28,7 @@ type CreateApartmentParams struct {
 	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -82,7 +82,7 @@ type GetApartmentRow struct {
 	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -129,7 +129,7 @@ type ListApartmentsRow struct {
 	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -172,7 +172,7 @@ WHERE id = $1
 type UpdateApartmentParams struct {
 	ID           int64          `json:"id"`
 	Price        pgtype.Numeric `json:"price"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
