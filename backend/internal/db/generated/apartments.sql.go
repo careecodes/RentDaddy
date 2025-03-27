@@ -28,7 +28,7 @@ type CreateApartmentParams struct {
 	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -82,7 +82,7 @@ type GetApartmentRow struct {
 	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -133,9 +133,9 @@ ORDER BY unit_number ASC
 
 type GetApartmentsWithoutLeaseRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   int16          `json:"unit_number"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
-	Size         int16          `json:"size"`
+	Size         pgtype.Int2    `json:"size"`
 	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
@@ -183,7 +183,7 @@ type ListApartmentsRow struct {
 	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 
@@ -234,9 +234,9 @@ type ListApartmentsWithoutLeaseParams struct {
 
 type ListApartmentsWithoutLeaseRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   int16          `json:"unit_number"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
-	Size         int16          `json:"size"`
+	Size         pgtype.Int2    `json:"size"`
 	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 	LeaseID      pgtype.Int8    `json:"lease_id"`
@@ -258,6 +258,7 @@ func (q *Queries) ListApartmentsWithoutLease(ctx context.Context, arg ListApartm
 			&i.Size,
 			&i.ManagementID,
 			&i.Availability,
+			&i.LeaseID,
 		); err != nil {
 			return nil, err
 		}
@@ -281,7 +282,7 @@ WHERE id = $1
 type UpdateApartmentParams struct {
 	ID           int64          `json:"id"`
 	Price        pgtype.Numeric `json:"price"`
-	ManagementID pgtype.Int8    `json:"management_id"`
+	ManagementID int64          `json:"management_id"`
 	Availability bool           `json:"availability"`
 }
 

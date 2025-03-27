@@ -70,14 +70,12 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (Lease
 		&i.LeaseNumber,
 		&i.ExternalDocID,
 		&i.LeasePdfS3,
-		&i.LeasePdfS3,
 		&i.TenantID,
 		&i.LandlordID,
 		&i.ApartmentID,
 		&i.LeaseStartDate,
 		&i.LeaseEndDate,
 		&i.RentAmount,
-		&i.Status,
 		&i.Status,
 		&i.CreatedBy,
 		&i.UpdatedBy,
@@ -233,7 +231,7 @@ SELECT id,lease_number, external_doc_id, lease_pdf_s3,
   tenant_id, landlord_id, apartment_id,
   lease_start_date, lease_end_date, rent_amount,
   status, created_by, updated_by,
-  previous_lease_id, tenant_signing_url FROM leases
+  previous_lease_id, tenant_signing_url, landlord_signing_url FROM leases
 WHERE tenant_id = $1
   AND apartment_id = $2
   AND status = $3
@@ -247,21 +245,22 @@ type GetDuplicateLeaseParams struct {
 }
 
 type GetDuplicateLeaseRow struct {
-	ID               int64          `json:"id"`
-	LeaseNumber      int64          `json:"lease_number"`
-	ExternalDocID    string         `json:"external_doc_id"`
-	LeasePdfS3       pgtype.Text    `json:"lease_pdf_s3"`
-	TenantID         int64          `json:"tenant_id"`
-	LandlordID       int64          `json:"landlord_id"`
-	ApartmentID      int64          `json:"apartment_id"`
-	LeaseStartDate   pgtype.Date    `json:"lease_start_date"`
-	LeaseEndDate     pgtype.Date    `json:"lease_end_date"`
-	RentAmount       pgtype.Numeric `json:"rent_amount"`
-	Status           LeaseStatus    `json:"status"`
-	CreatedBy        int64          `json:"created_by"`
-	UpdatedBy        int64          `json:"updated_by"`
-	PreviousLeaseID  pgtype.Int8    `json:"previous_lease_id"`
-	TenantSigningUrl pgtype.Text    `json:"tenant_signing_url"`
+	ID                 int64          `json:"id"`
+	LeaseNumber        int64          `json:"lease_number"`
+	ExternalDocID      string         `json:"external_doc_id"`
+	LeasePdfS3         pgtype.Text    `json:"lease_pdf_s3"`
+	TenantID           int64          `json:"tenant_id"`
+	LandlordID         int64          `json:"landlord_id"`
+	ApartmentID        int64          `json:"apartment_id"`
+	LeaseStartDate     pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate       pgtype.Date    `json:"lease_end_date"`
+	RentAmount         pgtype.Numeric `json:"rent_amount"`
+	Status             LeaseStatus    `json:"status"`
+	CreatedBy          int64          `json:"created_by"`
+	UpdatedBy          int64          `json:"updated_by"`
+	PreviousLeaseID    pgtype.Int8    `json:"previous_lease_id"`
+	TenantSigningUrl   pgtype.Text    `json:"tenant_signing_url"`
+	LandlordSigningUrl pgtype.Text    `json:"landlord_signing_url"`
 }
 
 func (q *Queries) GetDuplicateLease(ctx context.Context, arg GetDuplicateLeaseParams) (GetDuplicateLeaseRow, error) {
@@ -283,6 +282,7 @@ func (q *Queries) GetDuplicateLease(ctx context.Context, arg GetDuplicateLeasePa
 		&i.UpdatedBy,
 		&i.PreviousLeaseID,
 		&i.TenantSigningUrl,
+		&i.LandlordSigningUrl,
 	)
 	return i, err
 }
@@ -567,14 +567,12 @@ func (q *Queries) ListActiveLeases(ctx context.Context) (ListActiveLeasesRow, er
 		&i.LeaseNumber,
 		&i.ExternalDocID,
 		&i.LeasePdfS3,
-		&i.LeasePdfS3,
 		&i.TenantID,
 		&i.LandlordID,
 		&i.ApartmentID,
 		&i.LeaseStartDate,
 		&i.LeaseEndDate,
 		&i.RentAmount,
-		&i.Status,
 		&i.Status,
 		&i.CreatedBy,
 		&i.UpdatedBy,
@@ -632,14 +630,12 @@ func (q *Queries) ListLeases(ctx context.Context) ([]ListLeasesRow, error) {
 			&i.LeaseNumber,
 			&i.ExternalDocID,
 			&i.LeasePdfS3,
-			&i.LeasePdfS3,
 			&i.TenantID,
 			&i.LandlordID,
 			&i.ApartmentID,
 			&i.LeaseStartDate,
 			&i.LeaseEndDate,
 			&i.RentAmount,
-			&i.Status,
 			&i.Status,
 			&i.CreatedBy,
 			&i.UpdatedBy,
@@ -851,7 +847,6 @@ type UpdateLeaseParams struct {
 func (q *Queries) UpdateLease(ctx context.Context, arg UpdateLeaseParams) error {
 	_, err := q.db.Exec(ctx, updateLease,
 		arg.TenantID,
-		arg.Status,
 		arg.Status,
 		arg.LeaseStartDate,
 		arg.LeaseEndDate,

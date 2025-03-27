@@ -82,23 +82,22 @@ func (q *Queries) DeleteUser(ctx context.Context, clerkID string) error {
 }
 
 const getTenantsWithNoLease = `-- name: GetTenantsWithNoLease :many
-SELECT id, clerk_id, first_name, last_name, email, phone, image_url, unit_number, role, status
+SELECT id, clerk_id, first_name, last_name, email, phone, image_url, role, status
 FROM users
 WHERE role = 'tenant' 
 AND id NOT IN (SELECT tenant_id FROM leases)
 `
 
 type GetTenantsWithNoLeaseRow struct {
-	ID         int64         `json:"id"`
-	ClerkID    string        `json:"clerk_id"`
-	FirstName  string        `json:"first_name"`
-	LastName   string        `json:"last_name"`
-	Email      string        `json:"email"`
-	Phone      pgtype.Text   `json:"phone"`
-	ImageUrl   pgtype.Text   `json:"image_url"`
-	UnitNumber pgtype.Int2   `json:"unit_number"`
-	Role       Role          `json:"role"`
-	Status     AccountStatus `json:"status"`
+	ID        int64         `json:"id"`
+	ClerkID   string        `json:"clerk_id"`
+	FirstName string        `json:"first_name"`
+	LastName  string        `json:"last_name"`
+	Email     string        `json:"email"`
+	Phone     pgtype.Text   `json:"phone"`
+	ImageUrl  pgtype.Text   `json:"image_url"`
+	Role      Role          `json:"role"`
+	Status    AccountStatus `json:"status"`
 }
 
 func (q *Queries) GetTenantsWithNoLease(ctx context.Context) ([]GetTenantsWithNoLeaseRow, error) {
@@ -118,7 +117,6 @@ func (q *Queries) GetTenantsWithNoLease(ctx context.Context) ([]GetTenantsWithNo
 			&i.Email,
 			&i.Phone,
 			&i.ImageUrl,
-			&i.UnitNumber,
 			&i.Role,
 			&i.Status,
 		); err != nil {
@@ -168,6 +166,42 @@ func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, erro
 	return i, err
 }
 
+const getUserByID = `-- name: GetUserByID :one
+SELECT id, clerk_id, first_name, last_name, email, phone, image_url, role, status
+FROM users
+WHERE id = $1
+LIMIT 1
+`
+
+type GetUserByIDRow struct {
+	ID        int64         `json:"id"`
+	ClerkID   string        `json:"clerk_id"`
+	FirstName string        `json:"first_name"`
+	LastName  string        `json:"last_name"`
+	Email     string        `json:"email"`
+	Phone     pgtype.Text   `json:"phone"`
+	ImageUrl  pgtype.Text   `json:"image_url"`
+	Role      Role          `json:"role"`
+	Status    AccountStatus `json:"status"`
+}
+
+func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, error) {
+	row := q.db.QueryRow(ctx, getUserByID, id)
+	var i GetUserByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.ClerkID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.Phone,
+		&i.ImageUrl,
+		&i.Role,
+		&i.Status,
+	)
+	return i, err
+}
+
 const listTenantsWithLeases = `-- name: ListTenantsWithLeases :many
 SELECT 
     users.id,
@@ -177,10 +211,9 @@ SELECT
     users.email,
     users.phone,
     users.role,
-    users.unit_number,
     users.status,
     users.created_at,
-    leases.lease_status,
+    leases.status,
     leases.lease_start_date,
     leases.lease_end_date
 FROM users
@@ -198,10 +231,9 @@ type ListTenantsWithLeasesRow struct {
 	Email          string           `json:"email"`
 	Phone          pgtype.Text      `json:"phone"`
 	Role           Role             `json:"role"`
-	UnitNumber     pgtype.Int2      `json:"unit_number"`
 	Status         AccountStatus    `json:"status"`
 	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	LeaseStatus    NullLeaseStatus  `json:"lease_status"`
+	Status_2       NullLeaseStatus  `json:"status_2"`
 	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
 	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
 }
@@ -223,10 +255,9 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 			&i.Email,
 			&i.Phone,
 			&i.Role,
-			&i.UnitNumber,
 			&i.Status,
 			&i.CreatedAt,
-			&i.LeaseStatus,
+			&i.Status_2,
 			&i.LeaseStartDate,
 			&i.LeaseEndDate,
 		); err != nil {
@@ -238,44 +269,6 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 		return nil, err
 	}
 	return items, nil
-}
-
-const getUserByID = `-- name: GetUserByID :one
-SELECT id, clerk_id, first_name, last_name, email, phone, image_url, unit_number, role, status
-FROM users
-WHERE id = $1
-LIMIT 1
-`
-
-type GetUserByIDRow struct {
-	ID         int64         `json:"id"`
-	ClerkID    string        `json:"clerk_id"`
-	FirstName  string        `json:"first_name"`
-	LastName   string        `json:"last_name"`
-	Email      string        `json:"email"`
-	Phone      pgtype.Text   `json:"phone"`
-	ImageUrl   pgtype.Text   `json:"image_url"`
-	UnitNumber pgtype.Int2   `json:"unit_number"`
-	Role       Role          `json:"role"`
-	Status     AccountStatus `json:"status"`
-}
-
-func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, error) {
-	row := q.db.QueryRow(ctx, getUserByID, id)
-	var i GetUserByIDRow
-	err := row.Scan(
-		&i.ID,
-		&i.ClerkID,
-		&i.FirstName,
-		&i.LastName,
-		&i.Email,
-		&i.Phone,
-		&i.ImageUrl,
-		&i.UnitNumber,
-		&i.Role,
-		&i.Status,
-	)
-	return i, err
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many

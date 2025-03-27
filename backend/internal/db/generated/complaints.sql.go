@@ -19,11 +19,9 @@ INSERT INTO complaints (
     title,
     description,
     unit_number,
-    status,
-	updated_at,
-	created_at
+    status
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7,now(),now())
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, complaint_number, created_by, category, title, description, unit_number, status, updated_at, created_at
 `
 
