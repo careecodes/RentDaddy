@@ -38,18 +38,18 @@ const AuthenticatedLayout: React.FC = () => {
             <Sider style={siderStyle}>
                 {/* Logo and Title Container */}
                 <div className="logo-container flex flex-column align-items-center justify-content-center py-3 py-md-4">
-                    <Divider className="divider-text border-white" />
                     <Link
                         to="/"
-                        className="text-decoration-none">
-                        <h1 className="logo-title text-white mb-3 text-center">EZRA</h1>
+                        className="text-decoration-none d-flex gap-2 my-auto">
                         <img
                             src="/logo.png"
                             alt="EZRA Logo"
-                            className="logo-image mx-auto d-block bg-white rounded-5"
-                            width={64}
-                            height={64}
+                            className="logo-image mx-auto d-flex bg-white rounded-5"
+                            width={48}
+                            height={48}
                         />
+
+                        <h2 className="logo-title text-white my-1 text-center">EZRA</h2>
                     </Link>
                     <Divider className="divider-text border-white" />
                 </div>
@@ -58,16 +58,15 @@ const AuthenticatedLayout: React.FC = () => {
                 <SidebarLinks />
                 {/* Avatar and Login Container */}
                 <div className="avatar-container position-absolute bottom-0 w-100 pb-3 flex flex-column align-items-center justify-content-center">
-                    <Divider className="divider-text border-white" />
                     {isSignedIn ? (
                         <SignOutButton>
-                            <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
-                                <p className="login-text text-white m-0">Sign Out</p>
+                            <div className="flex align-items-center justify-content-center gap-2 bg-white mb-4 cursor-pointer btn">
                                 <Avatar
                                     className="avatar-icon"
-                                    size={48}
+                                    size={24}
                                     src={user?.imageUrl}
                                 />
+                                <p className="login-text text-black m-0">Sign Out</p>
                             </div>
                         </SignOutButton>
                     ) : (

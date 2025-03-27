@@ -56,7 +56,7 @@ const PreAuthedLayout: React.FC = () => {
                                 src="/logo.png"
                                 alt="logo"
                                 style={{ width: "56px", height: "56px" }}
-                                className="bg-white rounded"
+                                className="rounded"
                             />
                         </div>
                     </Link>
