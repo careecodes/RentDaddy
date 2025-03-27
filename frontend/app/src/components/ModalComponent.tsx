@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
 import { EditOutlined } from "@ant-design/icons";
@@ -41,29 +40,20 @@ interface ModalComponentProps {
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
     type:
-    |
         | "default"
-
-    | "Smart Locker"
-
-    | "Guest Parking"
-
-    | "Invite Tenant"
-
-    | "Edit Tenant"
-
-    | "View Tenant Complaints"
-
-    | "View Tenant Work Orders"
-
-    | "Send Tenant Lease"
-
-    | "Edit Apartment Building"
-    | "Update Password Locker"
-    | "Edit Tenant"
-    | "Admin Unlock Locker"
-    | "Update Password Locker"
-    | "Unlock Locker";
+        | "Smart Locker"
+        | "Guest Parking"
+        | "Invite Tenant"
+        | "Edit Tenant"
+        | "View Tenant Complaints"
+        | "View Tenant Work Orders"
+        | "Send Tenant Lease"
+        | "Edit Apartment Building"
+        | "Update Password Locker"
+        | "Edit Tenant"
+        | "Admin Unlock Locker"
+        | "Update Password Locker"
+        | "Unlock Locker";
     handleOkay: (data?: any) => Promise<void>;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
@@ -366,12 +356,12 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -552,7 +542,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                         onCancel={handleCancel}
                         // leases={leaseTemplates || []} // Add null check
                         okButtonProps={{ disabled: !props.leases?.length }}
-                    // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
+                        // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
                     >
                         <Form>
                             {/* Pick a Lease */}
@@ -585,8 +575,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <p>{props.content}</p>
@@ -607,8 +597,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <p>{props.content}</p>
@@ -637,8 +627,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <p>{props.content}</p>
@@ -659,8 +649,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                    // okButtonProps={{ hidden: true, disabled: true }}
-                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <p>{props.content}</p>
@@ -669,8 +659,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 <Input
                                     placeholder="Enter New Password"
                                     type="password"
-                                // value={password}
-                                // onChange={(e) => setPassword(e.target.value)}
+                                    // value={password}
+                                    // onChange={(e) => setPassword(e.target.value)}
                                 />
                             </Form.Item>
                         </Form>

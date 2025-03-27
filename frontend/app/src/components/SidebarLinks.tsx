@@ -88,11 +88,11 @@ const SidebarLinks = () => {
                             className={getLinkClass("/admin/admin-view-and-edit-smart-lockers") + " hover-lift transition-all"}>
                             Smart Lockers
                         </Link>
-                        <Link
+                        {/* <Link
                             to="/components/settings"
                             className={getLinkClass("/components/settings") + " hover-lift transition-all"}>
                             Settings
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
             )}
