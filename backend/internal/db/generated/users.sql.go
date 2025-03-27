@@ -18,11 +18,10 @@ INSERT INTO users (
     last_name,
     email,
     phone,
-    image_url,
     role,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, now()
+    $1, $2, $3, $4, $5, $6, now()
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at
 `
 
@@ -32,7 +31,6 @@ type CreateUserParams struct {
 	LastName  string      `json:"last_name"`
 	Email     string      `json:"email"`
 	Phone     pgtype.Text `json:"phone"`
-	ImageUrl  pgtype.Text `json:"image_url"`
 	Role      Role        `json:"role"`
 }
 
@@ -54,7 +52,6 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
-		arg.ImageUrl,
 		arg.Role,
 	)
 	var i CreateUserRow
@@ -322,7 +319,7 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersBy
 
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, image_url = $6, updated_at = now()
+SET first_name = $2, last_name = $3, email = $4, phone = $5, updated_at = now()
 WHERE clerk_id = $1
 `
 
@@ -332,7 +329,6 @@ type UpdateUserParams struct {
 	LastName  string      `json:"last_name"`
 	Email     string      `json:"email"`
 	Phone     pgtype.Text `json:"phone"`
-	ImageUrl  pgtype.Text `json:"image_url"`
 }
 
 func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
@@ -342,7 +338,6 @@ func (q *Queries) UpdateUser(ctx context.Context, arg UpdateUserParams) error {
 		arg.LastName,
 		arg.Email,
 		arg.Phone,
-		arg.ImageUrl,
 	)
 	return err
 }

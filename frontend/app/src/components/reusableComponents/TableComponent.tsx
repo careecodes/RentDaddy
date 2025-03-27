@@ -9,9 +9,10 @@ interface TableComponentProps<T> {
     onChange?: TableProps<T>["onChange"];
     icon?: React.ReactNode;
     style?: string;
-    pagination?: TablePaginationConfig;
+    pagination?: TablePaginationConfig | false;
     onRow?: (record: T) => { onClick: () => void };
-    loading?: boolean;
+    disabled?: boolean | undefined;
+    loading?: boolean | undefined;
     scroll?: TableProps<T>["scroll"];
 }
 const useStyle = createStyles(({ css, token }) => {

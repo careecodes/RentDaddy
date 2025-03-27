@@ -13,7 +13,6 @@ import (
 
 const createParkingPermit = `-- name: CreateParkingPermit :one
 INSERT INTO parking_permits (
-    permit_number,
     created_by,
     expires_at,
     updated_at
@@ -21,24 +20,21 @@ INSERT INTO parking_permits (
 VALUES (
     $1,
     $2,
-    $3,
     now()
 )
-RETURNING id, permit_number, created_by, updated_at, expires_at
+RETURNING id, created_by, updated_at, expires_at
 `
 
 type CreateParkingPermitParams struct {
-	PermitNumber int64            `json:"permit_number"`
-	CreatedBy    int64            `json:"created_by"`
-	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
+	CreatedBy int64            `json:"created_by"`
+	ExpiresAt pgtype.Timestamp `json:"expires_at"`
 }
 
 func (q *Queries) CreateParkingPermit(ctx context.Context, arg CreateParkingPermitParams) (ParkingPermit, error) {
-	row := q.db.QueryRow(ctx, createParkingPermit, arg.PermitNumber, arg.CreatedBy, arg.ExpiresAt)
+	row := q.db.QueryRow(ctx, createParkingPermit, arg.CreatedBy, arg.ExpiresAt)
 	var i ParkingPermit
 	err := row.Scan(
 		&i.ID,
-		&i.PermitNumber,
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
@@ -70,7 +66,7 @@ func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int6
 }
 
 const getParkingPermit = `-- name: GetParkingPermit :one
-SELECT id, permit_number, created_by, updated_at, expires_at
+SELECT id, created_by, updated_at, expires_at
 FROM parking_permits
 WHERE id = $1
 LIMIT 1
@@ -81,7 +77,6 @@ func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (ParkingPermit
 	var i ParkingPermit
 	err := row.Scan(
 		&i.ID,
-		&i.PermitNumber,
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
@@ -90,7 +85,7 @@ func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (ParkingPermit
 }
 
 const getTenantParkingPermits = `-- name: GetTenantParkingPermits :many
-SELECT id, permit_number, created_by, updated_at, expires_at
+SELECT id, created_by, updated_at, expires_at
 FROM parking_permits
 WHERE created_by = $1
 `
@@ -106,7 +101,6 @@ func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) 
 		var i ParkingPermit
 		if err := rows.Scan(
 			&i.ID,
-			&i.PermitNumber,
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.ExpiresAt,
@@ -122,7 +116,7 @@ func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) 
 }
 
 const listParkingPermits = `-- name: ListParkingPermits :many
-SELECT id, permit_number, created_by, updated_at, expires_at
+SELECT id, created_by, updated_at, expires_at
 FROM parking_permits
 ORDER BY created_by DESC
 `
@@ -138,7 +132,6 @@ func (q *Queries) ListParkingPermits(ctx context.Context) ([]ParkingPermit, erro
 		var i ParkingPermit
 		if err := rows.Scan(
 			&i.ID,
-			&i.PermitNumber,
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.ExpiresAt,

@@ -10,12 +10,12 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
+	"github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
-
-	"github.com/careecodes/RentDaddy/middleware"
+	"github.com/clerk/clerk-sdk-go/v2/session"
 
 	"github.com/go-chi/chi/v5"
 	chiMiddleware "github.com/go-chi/chi/v5/middleware"
@@ -87,6 +87,13 @@ func main() {
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 
+	// // Test routes - no auth required
+	// r.Post("/test/complaints", complaintHandler.CreateManyComplaintsForTestingHandler)
+
+	// r.Post("/test/work-orders", workOrderHandler.CreateManyWorkOrdersHandler)
+
+	// r.Post("/test/lockers", lockerHandler.CreateManyLockers)
+
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
@@ -94,7 +101,7 @@ func main() {
 
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
-			//a.Use(middleware.IsAdmin) // Clerk Admin middleware
+			r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
 
 			// Tenants
@@ -143,7 +150,6 @@ func main() {
 				// Used to change the user assigned to a locker or the status of a locker
 				r.Patch("/{id}", lockerHandler.UpdateLocker)
 				// Used to set up the initial lockers for an apartment
-				r.Post("/", lockerHandler.CreateManyLockers)
 			})
 			// End of Locker Handlers
 
@@ -189,15 +195,18 @@ func main() {
 		// End Admin
 
 		// Tenant Endpoints
-		r.Route("/", func(r chi.Router) {
+		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", userHandler.GetUserByClerkId)
-			r.Get("/documents", userHandler.GetTenantDocuments)
-			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
-			r.Get("/complaints", userHandler.GetTenantComplaints)
+			r.Get("/apartment", userHandler.TenantGetApartment)
+			r.Get("/documents", userHandler.TenantGetDocuments)
+			r.Get("/work_orders", userHandler.TenantGetWorkOrders)
+			r.Post("/work_orders", userHandler.TenantCreateWorkOrder)
+			r.Get("/complaints", userHandler.TenantGetComplaints)
+			r.Post("/complaints", userHandler.TenantCreateComplaint)
 
 			// Locker Endpoints
-			r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
-			r.Post("/lockers/{user_id}/unlock", lockerHandler.UnlockLocker)
+			r.Get("/lockers", lockerHandler.GetLockerByUserId)
+			r.Post("/lockers/unlock", lockerHandler.UnlockLocker)
 
 			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {
@@ -212,6 +221,46 @@ func main() {
 				})
 			})
 		})
+		// NOTE: Destory session / ctx on sign out
+		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := clerk.SessionClaimsFromContext(r.Context())
+			if !ok {
+				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
+				http.Error(w, "Error destorying session", http.StatusInternalServerError)
+				return
+			}
+			_, err := session.Revoke(r.Context(), &session.RevokeParams{
+				ID: claims.ID,
+			})
+			if err != nil {
+				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
+				http.Error(w, "Error revoking session", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Session revoked successfully"))
+		})
+		// NOTE: Destory session / ctx on sign out
+		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := clerk.SessionClaimsFromContext(r.Context())
+			if !ok {
+				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
+				http.Error(w, "Error destorying session", http.StatusInternalServerError)
+				return
+			}
+			_, err := session.Revoke(r.Context(), &session.RevokeParams{
+				ID: claims.ID,
+			})
+			if err != nil {
+				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
+				http.Error(w, "Error revoking session", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Session revoked successfully"))
+		})
 	})
 
 	// ChatBot routes
@@ -219,6 +268,7 @@ func main() {
 		r.Post("/", chatbotHandler.ChatHandler)
 		r.Get("/", chatbotHandler.ChatGetHandler)
 	})
+
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{

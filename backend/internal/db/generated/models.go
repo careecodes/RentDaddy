@@ -390,16 +390,15 @@ type ApartmentTenant struct {
 }
 
 type Complaint struct {
-	ID              int64             `json:"id"`
-	ComplaintNumber int64             `json:"complaint_number"`
-	CreatedBy       int64             `json:"created_by"`
-	Category        ComplaintCategory `json:"category"`
-	Title           string            `json:"title"`
-	Description     string            `json:"description"`
-	UnitNumber      pgtype.Int2       `json:"unit_number"`
-	Status          Status            `json:"status"`
-	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
-	CreatedAt       pgtype.Timestamp  `json:"created_at"`
+	ID          int64             `json:"id"`
+	CreatedBy   int64             `json:"created_by"`
+	Category    ComplaintCategory `json:"category"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	UnitNumber  pgtype.Int2       `json:"unit_number"`
+	Status      Status            `json:"status"`
+	UpdatedAt   pgtype.Timestamp  `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp  `json:"created_at"`
 }
 
 type Lease struct {
@@ -453,10 +452,9 @@ type Locker struct {
 }
 
 type ParkingPermit struct {
-	ID           int64            `json:"id"`
-	PermitNumber int64            `json:"permit_number"`
-	CreatedBy    int64            `json:"created_by"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID        int64            `json:"id"`
+	CreatedBy int64            `json:"created_by"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 	// 5 days long
 	ExpiresAt pgtype.Timestamp `json:"expires_at"`
 }
@@ -469,7 +467,6 @@ type User struct {
 	LastName  string           `json:"last_name"`
 	Email     string           `json:"email"`
 	Phone     pgtype.Text      `json:"phone"`
-	ImageUrl  pgtype.Text      `json:"image_url"`
 	Role      Role             `json:"role"`
 	Status    AccountStatus    `json:"status"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`
@@ -479,7 +476,6 @@ type User struct {
 type WorkOrder struct {
 	ID          int64            `json:"id"`
 	CreatedBy   int64            `json:"created_by"`
-	OrderNumber int64            `json:"order_number"`
 	Category    WorkCategory     `json:"category"`
 	Title       string           `json:"title"`
 	Description string           `json:"description"`

@@ -1,18 +1,16 @@
 -- name: CreateWorkOrder :one
 INSERT INTO work_orders (
     created_by,
-    order_number,
     category,
     title,
     description,
-    unit_number,
-    status
+    unit_number
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetWorkOrder :one
-SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by,category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 WHERE id = $1
 LIMIT 1;

@@ -1,9 +1,8 @@
 
 import { useState } from "react";
 import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
-import { EditOutlined, PlusOutlined } from "@ant-design/icons";
+import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
-import { useMutation } from "@tanstack/react-query";
 
 type InviteTenant = {
     email: string;
@@ -11,9 +10,24 @@ type InviteTenant = {
     management_id: string;
 };
 
+import { useUser } from "@clerk/react-router";
+
 interface Lease {
     id: string | number;
     title: string;
+}
+
+export interface Tenant {
+    id: number;
+    clerk_id: string;
+    first_name: string;
+    last_name: string;
+    email: string;
+    phone: string;
+    unit_number: number;
+    status: string;
+    created_at: string;
+    role: string;
 }
 
 type Building = {
@@ -26,32 +40,56 @@ interface ModalComponentProps {
     buttonTitle: string;
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
-    type: "default" | "Smart Locker" | "Guest Parking" | "Invite Tenant" | "Edit Tenant" | "View Tenant Complaints" | "View Tenant Work Orders" | "Send Tenant Lease" | "Edit Apartment Building";
-    handleOkay: (data?: any) => void;
+    type:
+    |
+        | "default"
+
+    | "Smart Locker"
+
+    | "Guest Parking"
+
+    | "Invite Tenant"
+
+    | "Edit Tenant"
+
+    | "View Tenant Complaints"
+
+    | "View Tenant Work Orders"
+
+    | "Send Tenant Lease"
+
+    | "Edit Apartment Building"
+    | "Update Password Locker"
+    | "Edit Tenant"
+    | "Admin Unlock Locker"
+    | "Update Password Locker"
+    | "Unlock Locker";
+    handleOkay: (data?: any) => Promise<void>;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
-    apartmentBuildingSetEditBuildingState: React.Dispatch<React.SetStateAction<Building>>;
+    apartmentBuildingSetEditBuildingState?: React.Dispatch<React.SetStateAction<Building>>;
     userRole?: string;
     leases?: Lease[];
     isModalOpen?: boolean;
     onCancel?: () => void;
+    locker?: number;
+    tenant?: Tenant[];
+    setUserId: (userId: string) => void;
+    setAccessCode: (accessCode: string) => void;
+    selectedUserId: string;
+    accessCode: string;
 }
-
-const onFinish: FormProps<any>["onFinish"] = (values: any) => {
-    console.log("Success:", values);
-    props;
-};
 
 // In code we are sending management_id
 
 const ModalComponent = (props: ModalComponentProps) => {
+    const { user } = useUser();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
 
     const isModalOpen = props.isModalOpen !== undefined ? props.isModalOpen : internalModalOpen;
 
     const onFinish: FormProps<any>["onFinish"] = (values: any) => {
         console.log("Success:", values);
-        props;
     };
 
     if (props.userRole === "") {
@@ -73,10 +111,10 @@ const ModalComponent = (props: ModalComponentProps) => {
         }
     };
 
-    const titles = {
+    const titles: Record<string, string> = {
         default: "Default Modal",
         "Smart Locker": "Smart Locker Modal",
-        "Guest Parking": "Register someone in Guest Parking",
+        "Guest Parking": "Create a parking pass",
         "Invite Tenant": "Invite Tenant",
         "Edit Tenant": "Edit Tenant",
         "View Tenant Complaints": "View Tenant Complaints",
@@ -87,50 +125,60 @@ const ModalComponent = (props: ModalComponentProps) => {
     const getAdminSmartLocker = () => {
         return (
             <>
-                <Button
+                <ButtonComponent
+                    title={props.buttonTitle}
                     type="primary"
-                    onClick={showModal}>
-                    {props.buttonTitle}
-                </Button>
+                    onClick={showModal}
+                />
                 <Modal
                     className="p-3 flex-wrap-row"
-                    title={<h3>{titles[props.type]}</h3>}
+                    title={<h3>{props.modalTitle}</h3>}
                     open={isModalOpen}
-                    onOk={props.handleOkay}
-                    onCancel={handleCancel}
-                    okButtonProps={{ hidden: true, disabled: true }}
-                    cancelButtonProps={{ hidden: true, disabled: true }}>
+                    onOk={async () => {
+                        try {
+                            if (props.accessCode && props.accessCode) {
+                                props.setUserId(props.selectedUserId);
+                                props.setAccessCode(props.accessCode);
+                                await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
+                                setInternalModalOpen(false);
+                            } else {
+                                console.error("Missing required fields");
+                            }
+                        } catch (error) {
+                            console.error("Error in modal onOk:", error);
+                            // Keep modal open if there's an error
+                        }
+                    }}
+                    onCancel={handleCancel}>
                     <Divider />
-                    <Form>
-                        <Form.Item name="search">
-                            <Input placeholder="Search for a Tenant" />
+                    <Form layout="vertical">
+                        <Form.Item
+                            name="userId"
+                            label="Tenant"
+                            rules={[{ required: true, message: "Please pick a tenant" }]}>
+                            <Select
+                                placeholder="Please pick a tenant"
+                                onChange={(value: string) => {
+                                    console.log("Selected value:", value);
+                                    props.setUserId(value);
+                                }}
+                                options={props.tenant?.map((tenant) => ({
+                                    value: tenant.clerk_id,
+                                    label: `${tenant.first_name} ${tenant.last_name}`,
+                                }))}
+                            />
                         </Form.Item>
-                        <Form.Item name="locker-number">
-                            <Input
-                                placeholder="Locker Number"
-                                type="number"
+                        <Form.Item
+                            name="accessCode"
+                            label="Access Code"
+                            rules={[{ required: true, message: "Please enter an access code" }]}>
+                            <Input.Password
+                                placeholder="Enter access code"
+                                maxLength={8}
+                                onChange={(e) => props.setAccessCode(e.target.value)}
                             />
                         </Form.Item>
                         <Divider />
-                        <div className="flex justify-content-end gap-2">
-                            {/* Cancel button */}
-                            <Form.Item name="cancel">
-                                <Button
-                                    type="default"
-                                    onClick={() => {
-                                        handleCancel();
-                                    }}>
-                                    Cancel
-                                </Button>
-                            </Form.Item>
-                            <Form.Item name="submit">
-                                <Button
-                                    type="primary"
-                                    htmlType="submit">
-                                    Submit
-                                </Button>
-                            </Form.Item>
-                        </div>
                     </Form>
                 </Modal>
             </>
@@ -149,7 +197,10 @@ const ModalComponent = (props: ModalComponentProps) => {
                     className="p-3 flex-wrap-row"
                     title={<h3>{titles[props.type]}</h3>}
                     open={isModalOpen}
-                    onOk={props.handleOkay}
+                    onOk={() => {
+                        props.handleOkay();
+                        setInternalModalOpen(false);
+                    }}
                     onCancel={handleCancel}
                     okButtonProps={{ hidden: true, disabled: true }}
                     cancelButtonProps={{ hidden: true, disabled: true }}>
@@ -169,6 +220,37 @@ const ModalComponent = (props: ModalComponentProps) => {
                 </Modal>
             </>
         );
+    };
+
+    // Update the apartment building form handlers
+    const handleBuildingNumberChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const updatedValue = Number(e.target.value);
+        if (props.apartmentBuildingSetEditBuildingState) {
+            props.apartmentBuildingSetEditBuildingState({
+                ...props.apartmentBuildingEditProps!,
+                buildingNumber: updatedValue,
+            });
+        }
+    };
+
+    const handleFloorNumbersChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const updatedValue = Number(e.target.value);
+        if (props.apartmentBuildingSetEditBuildingState) {
+            props.apartmentBuildingSetEditBuildingState({
+                ...props.apartmentBuildingEditProps!,
+                floorNumbers: updatedValue,
+            });
+        }
+    };
+
+    const handleRoomsChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+        const updatedValue = Number(e.target.value);
+        if (props.apartmentBuildingSetEditBuildingState) {
+            props.apartmentBuildingSetEditBuildingState({
+                ...props.apartmentBuildingEditProps!,
+                numberOfRooms: updatedValue,
+            });
+        }
     };
 
     return (
@@ -205,7 +287,7 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Modal>
                 </>
             )}
-            {props.type === "Smart Locker" && <>{props.userRole === "admin " ? getAdminSmartLocker() : getTenantSmartLocker()}</>}
+            {props.type === "Smart Locker" && <>{user?.publicMetadata.role === "admin" ? getAdminSmartLocker() : getTenantSmartLocker()}</>}
             {props.type === "Guest Parking" && (
                 <>
                     <Button
@@ -222,21 +304,31 @@ const ModalComponent = (props: ModalComponentProps) => {
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}>
                         <Divider />
-                        <Form onFinish={onFinish}>
-                            <Form.Item name="tenant-name">
-                                <Input placeholder="Tenant Name" />
+                        <Form>
+                            <p className="fs-6">Guest Name</p>
+                            <Form.Item
+                                name="tenant-name"
+                                required={true}>
+                                <Input placeholder="John Doe" />
                             </Form.Item>
-                            <Form.Item name="license-plate-number">
-                                <Input placeholder="License Plate Number" />
+                            <p className="fs-6">Car Color</p>
+                            <Form.Item
+                                name="car-color"
+                                required={true}>
+                                <Input placeholder="Blue" />
                             </Form.Item>
-                            <Form.Item name="car-color">
-                                <Input placeholder="Car Color" />
-                            </Form.Item>
-                            <Form.Item name="car-make">
+                            <p className="fs-6">Car Model</p>
+                            <Form.Item
+                                name="car-make"
+                                required={true}>
                                 <Input placeholder="Car Make" />
                             </Form.Item>
-
-                            <Divider />
+                            <p className="fs-6">License Plate</p>
+                            <Form.Item
+                                name="license-plate-number"
+                                required={true}>
+                                <Input placeholder="3ha3-3213" />
+                            </Form.Item>
                             <div className="flex justify-content-end gap-2">
                                 {/* Cancel button */}
                                 <Form.Item name="cancel">
@@ -287,42 +379,21 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 <Input
                                     placeholder={props.apartmentBuildingEditProps?.buildingNumber.toString() || ""}
                                     type="number"
-                                    onChange={(e) => {
-                                        const updatedValue = Number(e.target.value);
-
-                                        props.apartmentBuildingSetEditBuildingState({
-                                            ...props.apartmentBuildingEditProps!,
-                                            buildingNumber: updatedValue,
-                                        });
-                                    }}
+                                    onChange={handleBuildingNumberChange}
                                 />
                             </Form.Item>
                             <Form.Item name="Amount of Floors">
                                 <Input
                                     placeholder={props.apartmentBuildingEditProps?.floorNumbers.toString() || ""}
                                     type="number"
-                                    onChange={(e) => {
-                                        const updatedValue = Number(e.target.value);
-
-                                        props.apartmentBuildingSetEditBuildingState({
-                                            ...props.apartmentBuildingEditProps!,
-                                            floorNumbers: updatedValue,
-                                        });
-                                    }}
+                                    onChange={handleFloorNumbersChange}
                                 />
                             </Form.Item>
                             <Form.Item name="# of Rooms/Floor">
                                 <Input
                                     placeholder={props.apartmentBuildingEditProps?.numberOfRooms.toString() || ""}
                                     type="number"
-                                    onChange={(e) => {
-                                        const updatedValue = Number(e.target.value);
-
-                                        props.apartmentBuildingSetEditBuildingState({
-                                            ...props.apartmentBuildingEditProps!,
-                                            numberOfRooms: updatedValue,
-                                        });
-                                    }}
+                                    onChange={handleRoomsChange}
                                 />
                             </Form.Item>
                             <Divider />
@@ -498,6 +569,124 @@ const ModalComponent = (props: ModalComponentProps) => {
                             </Form.Item>
                             <p>Please go create a template in Documenso.</p>
                         </Form>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Admin Unlock Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Divider />
+                    </Modal>
+                </>
+            )}
+            {props.type === "Update Password Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Form>
+                            <Form.Item name="password">
+                                <Input
+                                    placeholder="New Password"
+                                    maxLength={4}
+                                />
+                            </Form.Item>
+                        </Form>
+                        <Divider />
+                    </Modal>
+                </>
+            )}
+            {props.type === "Unlock Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Divider />
+                    </Modal>
+                </>
+            )}
+            {props.type === "Update Password Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Form>
+                            <Form.Item>
+                                <Input
+                                    placeholder="Enter New Password"
+                                    type="password"
+                                // value={password}
+                                // onChange={(e) => setPassword(e.target.value)}
+                                />
+                            </Form.Item>
+                        </Form>
+                        <Divider />
+                        {/* <div className="flex justify-content-end gap-2">
+                            <Button
+                                type="default"
+                                onClick={handleCancel}>
+                                Cancel
+                            </Button>
+                            <Button
+                                type="primary"
+                                onClick={props.handleOkay}>
+                                Confirm
+                            </Button>
+                        </div> */}
                     </Modal>
                 </>
             )}

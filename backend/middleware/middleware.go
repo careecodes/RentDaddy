@@ -92,12 +92,12 @@ func GetUserCtx(r *http.Request) *clerk.User {
 	return user
 }
 
-func GetClerkUser(r *http.Request) (*clerk.User, error) {
+func getClerkUser(r *http.Request) (*clerk.User, error) {
 	userCtx := r.Context().Value("user")
 	clerkUser, ok := userCtx.(*clerk.User)
 	if !ok {
 		log.Printf("[CLERK_MIDDLEWARE] No user CTX")
-		return nil, http.ErrNoCookie // Use a relevant error
+		return nil, http.ErrNoCookie
 	}
 	return clerkUser, nil
 }

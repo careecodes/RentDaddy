@@ -7,8 +7,8 @@ import { ColumnsType } from "antd/es/table";
 import ModalComponent, { Tenant } from "../components/ModalComponent";
 import { useState } from "react";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
-import { ArrowRightOutlined, UnlockOutlined } from "@ant-design/icons";
-import { Button, Dropdown, MenuProps } from "antd";
+import { ArrowRightOutlined } from "@ant-design/icons";
+import { Button, Dropdown, MenuProps, Modal } from "antd";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -31,6 +31,7 @@ interface UpdatePasswordModalProps {
     password: string;
     handleOkay: UseMutateFunction<Locker, Error, void, unknown>;
     setLockerId: (id: number) => void;
+    setAccessCode: (code: string) => void;
 }
 
 interface UnlockLockerModalProps {
@@ -108,7 +109,7 @@ const AdminViewEditSmartLockers = () => {
                 content={`Current password: ${password}`}
                 type="Update Password Locker"
                 locker={lockerId}
-                setLockerId={setLockerId}
+                // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 handleOkay={async () => {
                     await handleOkay();
@@ -124,8 +125,8 @@ const AdminViewEditSmartLockers = () => {
                 buttonType="primary"
                 modalTitle="Unlock Locker"
                 content="Are you sure that you would like to unlock the locker?"
-                type="Unlock Locker"
-                setLockerId={setLockerId}
+                type="Admin Unlock Locker"
+                // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 locker={lockerId}
                 handleOkay={async () => {
@@ -144,7 +145,7 @@ const AdminViewEditSmartLockers = () => {
                         lockerId={props.lockerId}
                         password={props.password}
                         handleOkay={updatePassword}
-                        setLockerId={setSelectedUserId}
+                        setLockerId={(id: number) => setSelectedUserId(id.toString())}
                         setAccessCode={setAccessCode}
                     />
                 ),
@@ -155,7 +156,7 @@ const AdminViewEditSmartLockers = () => {
                     <UnlockLockerModal
                         lockerId={props.lockerId}
                         handleOkay={unlockLocker}
-                        setLockerId={setSelectedUserId}
+                        // setLockerId={setSelectedUserId}
                         setAccessCode={setAccessCode}
                     />
                 ),
@@ -344,20 +345,22 @@ const AdminViewEditSmartLockers = () => {
     };
 
     const columns: ColumnsType<Locker> = [
-        {
-            title: "ID",
-            dataIndex: "id",
-            key: "id",
-        },
+        // {
+        //     title: "ID",
+        //     dataIndex: "id",
+        //     key: "id",
+        // },
         {
             title: "User ID",
             dataIndex: "user_id",
             key: "user_id",
+            render: (userId: string | null) => <span>{userId ?? "N/A"}</span>,
         },
         {
             title: "Access Code",
             dataIndex: "access_code",
             key: "access_code",
+            render: (accessCode: string | null) => <span>{accessCode ?? "N/A"}</span>,
         },
         {
             title: "In Use",

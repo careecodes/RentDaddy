@@ -1,6 +1,5 @@
 -- name: CreateParkingPermit :one
 INSERT INTO parking_permits (
-    permit_number,
     created_by,
     expires_at,
     updated_at
@@ -8,7 +7,6 @@ INSERT INTO parking_permits (
 VALUES (
     $1,
     $2,
-    $3,
     now()
 )
 RETURNING *;
