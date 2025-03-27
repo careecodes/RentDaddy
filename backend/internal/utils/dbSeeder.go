@@ -5,16 +5,12 @@ import (
 	_ "database/sql"
 	"errors"
 	"fmt"
-	"log"
-	"math/big"
-	"math/rand"
-	"strconv"
-	"time"
-
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/go-faker/faker/v4"
-	"github.com/jackc/pgx/v5/pgtype"
+	_ "github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"log"
+	"math/rand"
 )
 
 func RandomWorkCategory() db.WorkCategory {
@@ -61,14 +57,17 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 	}
 
 	for i := 0; i < 10; i++ {
+		orderNum := user.ID + int64(rand.Intn(1000))
 		_, err := queries.CreateWorkOrder(context.Background(), db.CreateWorkOrderParams{
 			CreatedBy:   user.ID,
+			OrderNumber: orderNum,
 			Category:    RandomWorkCategory(),
 			Title:       faker.Sentence(),
 			Description: faker.Paragraph(),
+			Status:      RandomStatus(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %d %v", i, err.Error()))
+			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %d %v", orderNum, err.Error()))
 		}
 	}
 
@@ -79,70 +78,21 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
 	for i := 0; i < 10; i++ {
+		complaintNum := user.ID + int64(rand.Intn(1000))
 		_, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
-			CreatedBy:   user.ID,
-			Category:    RandomComplaintCategory(),
-			Title:       faker.Sentence(),
-			Description: faker.Paragraph(),
+			CreatedBy:       user.ID,
+			ComplaintNumber: complaintNum,
+			Category:        RandomComplaintCategory(),
+			Title:           faker.Sentence(),
+			Description:     faker.Paragraph(),
+			Status:          RandomStatus(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %d %v", i, err.Error()))
+			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %d %v", complaintNum, err.Error()))
 		}
 	}
 
 	log.Println("[SEEDER] complaints seeded successfully")
-	return nil
-}
-
-func createParkingPermits(queries *db.Queries, user db.User, createCount int, ctx context.Context) error {
-	for i := 0; i < createCount; i++ {
-		_, err := queries.CreateParkingPermit(ctx, db.CreateParkingPermitParams{
-			CreatedBy: user.ID,
-			ExpiresAt: pgtype.Timestamp{Time: time.Now().AddDate(0, 0, 2), Valid: true},
-		})
-		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating parking permit: %d %v", user.ID, err.Error()))
-		}
-	}
-
-	log.Println("[SEEDER] parking permits seeded successfully")
-	return nil
-}
-
-func convertToPgTypeNumeric(value int) pgtype.Numeric {
-	var numeric pgtype.Numeric
-	numeric.Int = big.NewInt(int64(value))
-	numeric.Valid = true
-	return numeric
-}
-
-func createApartments(queries *db.Queries, adminID int64, ctx context.Context) error {
-	log.Println("adminID: ", adminID)
-	for i := 0; i < 4; i++ {
-		for j := range 54 {
-			sqft, err := faker.RandomInt(500, 2000)
-			if err != nil {
-				return errors.New("[SEEDER] error creating apartment: " + err.Error())
-			}
-
-			unitNum, err := strconv.Atoi(fmt.Sprintf("%d%d", i+1, j+1))
-			if err != nil {
-				return errors.New("[SEEDER] error creating apartment: " + err.Error())
-			}
-
-			_, err = queries.CreateApartment(ctx, db.CreateApartmentParams{
-				UnitNumber:   pgtype.Int2{Int16: int16(unitNum), Valid: true},
-				Price:        convertToPgTypeNumeric(2 * sqft[0]),
-				Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
-				ManagementID: adminID,
-			})
-			if err != nil {
-				return errors.New(fmt.Sprintf("[SEEDER] error creating apartment: %d %v", adminID, err.Error()))
-			}
-		}
-	}
-
-	log.Printf("[SEEDER] apartments seeded successfully: %d apartments created", 4*54)
 	return nil
 }
 
@@ -167,7 +117,8 @@ func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx 
 		err := queries.UpdateApartment(ctx, db.UpdateApartmentParams{
 			ID:           apartment.ID,
 			Price:        apartment.Price,
-			ManagementID: apartment.ManagementID, Availability: false,
+			ManagementID: apartment.ManagementID,
+			Availability: false,
 		})
 		if err != nil {
 			return errors.New("[SEEDER] error updating apartment availability: " + err.Error())
@@ -177,47 +128,8 @@ func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx 
 	return nil
 }
 
-func createLockers(queries *db.Queries, tenants []db.User, ctx context.Context) error {
-	//for tenant := range tenants {
-	//	// create 2 lockers for each tenant
-	//	for i := 0; i < 2; i++ {
-	//		_, err := queries.CreateLocker(ctx, db.CreateLockerParams{
-	//			CreatedBy: tenants[tenant].ID,
-	//			Code:      tenants[tenant].ID + int64(i),
-	//		})
-	//		if err != nil {
-	//			return errors.New(fmt.Sprintf("[SEEDER] error creating locker: %d %v", tenants[tenant].ID, err.Error()))
-	//		}
-	//	}
-	//}
-
-	return nil
-}
-
 func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 	ctx := context.Background()
-
-	log.Println("[SEEDER] seeding work orders")
-
-	apartments, err := pool.Query(ctx, "SELECT COUNT(*) FROM apartments")
-	if err != nil {
-		return errors.New("[SEEDER] error counting apartments: " + err.Error())
-	}
-	defer apartments.Close()
-	if apartments.Next() {
-		var aCount int
-		if err := apartments.Scan(&aCount); err != nil {
-			return errors.New("[SEEDER] error scanning apartments: " + err.Error())
-		}
-		if aCount < 100 {
-			err := createApartments(queries, int64(adminID), ctx)
-			if err != nil {
-				return errors.New("[SEEDER] error creating apartments: " + err.Error())
-			}
-		} else {
-			log.Println("[SEEDER] no apartments created")
-		}
-	}
 
 	// count users
 	users, err := queries.ListUsersByRole(ctx, db.RoleTenant)
@@ -276,17 +188,6 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 			}
 		}
 
-		pCount, err := queries.GetTenantParkingPermits(ctx, u.ID)
-		if err != nil {
-			log.Println("[SEEDER] error counting parking permits: " + err.Error())
-		}
-		if len(pCount) < 2 {
-			// create up to 2 parking permits for the tenant
-			err = createParkingPermits(queries, u, 2-len(pCount), ctx)
-			if err != nil {
-				return errors.New("[SEEDER] error creating parking permits: " + err.Error())
-			}
-		}
 	}
 
 	return nil

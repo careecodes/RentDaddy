@@ -17,7 +17,17 @@ import (
 )
 
 type CreateParkingPermitRequest struct {
-	TenantClerkId string `json:"tenant_clerk_id"`
+	LicensePlate string `json:"license_plate"`
+	CarColor     string `json:"car_color"`
+	CarMake      string `json:"car_make"`
+	CreatedBy    string `json:"created_by"`
+}
+
+type UpdateParkingPermitRequest struct {
+	LicensePlate string `json:"license_plate"`
+	CarColor     string `json:"car_color"`
+	CarMake      string `json:"car_make"`
+	CreatedBy    string `json:"created_by"`
 }
 
 type ParkingPermitHandler struct {
@@ -49,7 +59,7 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 		return
 	}
 
-	userCtx, err := user.Get(r.Context(), parkingPermitReq.TenantClerkId)
+	userCtx, err := user.Get(r.Context(), parkingPermitReq.CreatedBy)
 	if err != nil {
 		log.Println("[PARKING_HANDLER] Failed user not found")
 		http.Error(w, "Error user not found", http.StatusNotFound)
@@ -64,7 +74,8 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 		return
 	}
 
-	tenantParkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), int64(userMetadata.DbId))
+	dbID := pgtype.Int8{Int64: int64(userMetadata.DbId), Valid: true}
+	tenantParkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), dbID)
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed querying parking permits for user: %v", err)
 		http.Error(w, "Error querying parking permits", http.StatusInternalServerError)
@@ -76,8 +87,15 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 		var validPermits []db.ParkingPermit
 		for _, permit := range tenantParkingPermits {
 			if permit.ExpiresAt.Valid && permit.ExpiresAt.Time.Before(today) {
-				log.Printf("Parking permit expired deleting: %d", permit.ID)
-				if err := p.queries.DeleteParkingPermit(r.Context(), permit.ID); err != nil {
+				log.Printf("Parking permit expired refreshing: %d", permit.ID)
+				if err := p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
+					ID:           0,
+					LicensePlate: pgtype.Text{},
+					CarMake:      pgtype.Text{},
+					CarColor:     pgtype.Text{},
+					CreatedBy:    pgtype.Int8{},
+					ExpiresAt:    pgtype.Timestamp{},
+				}); err != nil {
 					log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", len(tenantParkingPermits), err)
 					http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
 					return
@@ -91,17 +109,19 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 			log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", len(validPermits), err)
 			http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
 			return
-
 		}
 	}
 
-	res, err := p.queries.CreateParkingPermit(r.Context(), db.CreateParkingPermitParams{
-		CreatedBy: int64(userMetadata.DbId),
+	err = p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
+		LicensePlate: pgtype.Text{String: parkingPermitReq.LicensePlate, Valid: true},
+		CarMake:      pgtype.Text{String: parkingPermitReq.CarMake, Valid: true},
+		CarColor:     pgtype.Text{String: parkingPermitReq.CarColor, Valid: true},
+		CreatedBy:    pgtype.Int8{Int64: int64(userMetadata.DbId), Valid: true},
 		ExpiresAt: pgtype.Timestamp{
-			Time:  time.Now().UTC().Add(time.Duration(2) * 24 * time.Hour),
-			Valid: true,
+			Time: time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
 		},
 	})
+
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed creating parking permit: %v", err)
 		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
@@ -109,7 +129,7 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(parkingPermitReq)
 }
 
 func (p ParkingPermitHandler) GetParkingPermits(w http.ResponseWriter, r *http.Request) {
@@ -182,7 +202,7 @@ func (p ParkingPermitHandler) DeleteParkingPermit(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err = p.queries.DeleteParkingPermit(r.Context(), int64(parkingPermitId)); err != nil {
+	if err = p.queries.ClearParkingPermit(r.Context(), int64(parkingPermitId)); err != nil {
 		log.Printf("[PARKING_HANDLER] Failed deleting parking permit: %v", err)
 		http.Error(w, "Error deleting parking permit", http.StatusInternalServerError)
 		return
@@ -203,8 +223,8 @@ func (p ParkingPermitHandler) TenantGetParkingPermit(w http.ResponseWriter, r *h
 		return
 	}
 
-	userCtx := middleware.GetUserCtx(r)
-	if userCtx == nil {
+	userCtx, err := middleware.GetClerkUser(r)
+	if err != nil {
 		log.Println("[PARKING_HANDLER] Failed no user CTX")
 		http.Error(w, "Error no user CTX", http.StatusNotFound)
 		return
@@ -230,8 +250,8 @@ func (p ParkingPermitHandler) TenantGetParkingPermit(w http.ResponseWriter, r *h
 }
 
 func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *http.Request) {
-	userCtx := middleware.GetUserCtx(r)
-	if userCtx == nil {
+	userCtx, err := middleware.GetClerkUser(r)
+	if err != nil {
 		log.Printf("[USER_HANDLER] No user CTX")
 		http.Error(w, "Error No user CTX", http.StatusUnauthorized)
 		return
@@ -274,7 +294,18 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		return
 	}
 
-	tenantParkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), int64(userMetadata.DbId))
+	permitNumberStr := chi.URLParam(r, "permit_number")
+	permitNumber, err := strconv.Atoi(permitNumberStr)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
+		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
+		return
+	}
+
+	var parkingPermitReq UpdateParkingPermitRequest
+	_ = json.NewDecoder(r.Body).Decode(&parkingPermitReq)
+
+	tenantParkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), pgtype.Int8{Int64: int64(userMetadata.DbId), Valid: true})
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed querying parking permits for user: %v", err)
 		http.Error(w, "Error querying parking permits", http.StatusInternalServerError)
@@ -287,7 +318,7 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		for _, permit := range tenantParkingPermits {
 			if permit.ExpiresAt.Valid && permit.ExpiresAt.Time.Before(today) {
 				log.Printf("Parking permit expired deleting: %d", permit.ID)
-				if err := p.queries.DeleteParkingPermit(r.Context(), permit.ID); err != nil {
+				if err := p.queries.ClearParkingPermit(r.Context(), int64(permitNumber)); err != nil {
 					log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", len(tenantParkingPermits), err)
 					http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
 					return
@@ -305,19 +336,30 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		}
 	}
 
-	res, err := p.queries.CreateParkingPermit(r.Context(), db.CreateParkingPermitParams{
-		CreatedBy: int64(userMetadata.DbId),
+	newPermit, err := p.queries.GetAvailableParkingPermit(r.Context())
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed getting available parking permit: %v", err)
+		http.Error(w, "Failed to get available parking permit", http.StatusInternalServerError)
+		return
+	}
+
+	err = p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
+		ID:           newPermit.ID,
+		LicensePlate: pgtype.Text{String: parkingPermitReq.LicensePlate, Valid: true},
+		CarMake:      pgtype.Text{String: parkingPermitReq.CarMake, Valid: true},
+		CarColor:     pgtype.Text{String: parkingPermitReq.CarColor, Valid: true},
+		CreatedBy:    pgtype.Int8{Int64: int64(userMetadata.DbId), Valid: true},
 		ExpiresAt: pgtype.Timestamp{
 			Time:  time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
 			Valid: true,
 		},
 	})
 	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed creating parking permit: %v", err)
+		log.Printf("[PARKING_HANDLER] Failed up parking permit: %v", err)
 		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
 		return
 	}
 
 	w.WriteHeader(http.StatusCreated)
-	json.NewEncoder(w).Encode(res)
+	json.NewEncoder(w).Encode(newPermit)
 }

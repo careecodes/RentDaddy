@@ -4,10 +4,12 @@ INSERT INTO apartments (
     price,
     size,
     management_id,
+    building_id,
     availability,
     created_at,
     updated_at
-  ) VALUES ($1, $2, $3, $4, $5, now(), now())
+  ) VALUES ($1, $2, $3, $4, $5, $6, now(), now())
+
 RETURNING *;
 
 -- name: GetApartmentByUnitNumber :one
