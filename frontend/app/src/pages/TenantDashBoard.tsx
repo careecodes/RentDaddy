@@ -1,9 +1,5 @@
 import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
-import { Tag, Modal, Button } from "antd";
-import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { TenantLeaseStatusAndURL } from "../types/types";
-import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
 import ModalComponent from "../components/ModalComponent";
@@ -13,13 +9,8 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQuery } from "@tanstack/react-query";
-
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
-
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
+
 import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
@@ -27,8 +18,6 @@ const absoluteServerUrl = `${serverUrl}`;
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
-    const { user } = useUser();
-    const userId = user?.publicMetadata["db_id"];
     const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
