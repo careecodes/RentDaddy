@@ -1,3 +1,8 @@
+import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
+import { Tag, Modal, Button } from "antd";
+import React, { useState, useEffect } from "react";
+import { Link } from "react-router";
+import { TenantLeaseStatusAndURL } from "../types/types";
 import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
@@ -8,6 +13,12 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
+import { useQuery } from "@tanstack/react-query";
+
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
 
@@ -16,6 +27,8 @@ const absoluteServerUrl = `${serverUrl}`;
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
+    const { user } = useUser();
+    const userId = user?.publicMetadata["db_id"];
     const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
@@ -137,26 +150,26 @@ export const TenantDashBoard = () => {
 
     // This is the recommended approach in newer versions of TanStack Query. `onSuccess` is deprecated
     useEffect(() => {
-        if (leaseStatus) {
-            console.log("Lease status updated:", leaseStatus);
-            if (["pending_approval", "terminated", "expired"].includes(leaseStatus)) {
+        if (leaseData && leaseData.status) {
+            console.log("Lease status updated:", leaseData.status);
+            if (["pending_approval", "terminated", "expired"].includes(leaseData.status)) {
                 console.log("Setting modal visible based on lease status");
                 setSigningModalVisible(true);
             }
         }
-    }, [leaseStatus]);
+    }, [leaseData]);
 
+    // This is used to redirect to signing URL when button is clicked
     const handleOk = () => {
-        // Redirect to the lease signing page (THIS ISNT IT AT ALL, NEEDS documenso uri. TMP for now)
-        window.location.href = "/tenant/sign-lease";
+        if (leaseData && leaseData.url) {
+            window.location.href = leaseData.url;
+        } else {
+            console.error("No signing URL available");
+        }
     };
 
     if (isLoading) {
         return <div>Loading...</div>;
-    }
-
-    if (isError) {
-        return <div>Error fetching tenant's lease status. Please try again later.</div>;
     }
 
     return (
@@ -181,6 +194,15 @@ export const TenantDashBoard = () => {
                     description="Something not working right or disturbing you? Let us know."
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
+                    button={
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
+                            <ButtonComponent
+                                title="View All"
+                                type="primary"
+                                onClick={() => { }}
+                            />
+                        </Link>
+                    }
                     button={<TenantCreateComplaintsModal />}
                 />
                 <CardComponent
@@ -197,6 +219,15 @@ export const TenantDashBoard = () => {
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
+                    button={
+                        <ModalComponent
+                            type="Guest Parking"
+                            buttonTitle="Add Guest"
+                            content="Add guest to be able to park in the complex"
+                            buttonType="primary"
+                            handleOkay={() => { }}
+                        />
+                    }
                     button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
@@ -214,7 +245,7 @@ export const TenantDashBoard = () => {
                             buttonTitle="View Lease"
                             content="Lease should go here"
                             buttonType="primary"
-                            handleOkay={() => {}}
+                            handleOkay={() => { }}
                         />
                     }
                 />
@@ -222,6 +253,15 @@ export const TenantDashBoard = () => {
                     title="Work Orders"
                     description={"View your work orders here."}
                     hoverable={true}
+                    button={
+                        <Link to="/tenant/tenant-work-orders-and-complaints">
+                            <ButtonComponent
+                                title="View all workorders"
+                                type="primary"
+                                onClick={() => { }}
+                            />
+                        </Link>
+                    }
                     value={workOrders.data?.length}
                     button={<TenantViewWorkOrdersModal data={workOrders.data} />}
                 />
@@ -229,6 +269,15 @@ export const TenantDashBoard = () => {
                     title="Complaints"
                     description={"View your complaints here."}
                     hoverable={true}
+                    button={
+                        <ModalComponent
+                            type="default"
+                            buttonTitle="View all complaints"
+                            content="Complaint should go here"
+                            buttonType="primary"
+                            handleOkay={() => { }}
+                        />
+                    }
                     value={complaints.data?.length}
                     button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
@@ -241,7 +290,7 @@ export const TenantDashBoard = () => {
                 title="Action Required: Lease Signing"
                 open={isSigningModalVisible}
                 onOk={handleOk}
-                onCancel={() => {}} // Empty function prevents closing
+                onCancel={() => { }} // Empty function prevents closing
                 maskClosable={false} // Prevents closing when clicking outside
                 keyboard={false} // Prevents closing with ESC key
                 closable={false} // Removes the X button
@@ -401,7 +450,7 @@ function TenantViewWorkOrdersModal(props: WorkOrderModalProps) {
                 className="p-3 flex-wrap-row"
                 title={<h3>Complaints</h3>}
                 open={internalModalOpen}
-                onOk={() => {}}
+                onOk={() => { }}
                 onCancel={handleCancel}
                 okButtonProps={{ hidden: true, disabled: true }}
                 cancelButtonProps={{ hidden: true, disabled: true }}>

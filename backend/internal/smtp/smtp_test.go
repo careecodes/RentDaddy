@@ -3,12 +3,26 @@ package smtp
 import (
 	"crypto/tls"
 	"fmt"
+	"log"
 	"net/smtp"
 	"os"
 	"testing"
+
+	"github.com/joho/godotenv"
 )
 
 func TestSMTPConnection(t *testing.T) {
+	if os.Getenv("SMTP_TEST_EMAIL") == "" {
+		err := godotenv.Load("../../../.env") // Load only if not already set
+		if err != nil {
+			log.Println("No .env file found, proceeding without loading environment variables.")
+		} else {
+			log.Println(".env file loaded successfully.")
+		}
+	} else {
+		log.Println("Environment variables already set, skipping .env loading.")
+	}
+
 	config, err := LoadSMTPConfig()
 	if err != nil {
 		t.Fatalf("Failed to load SMTP config: %v", err)

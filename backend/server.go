@@ -10,16 +10,15 @@ import (
 	"time"
 
 	"github.com/careecodes/RentDaddy/internal/db"
-	mymiddleware "github.com/careecodes/RentDaddy/middleware"
+	"github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
-
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
 	"github.com/clerk/clerk-sdk-go/v2/session"
 
 	"github.com/go-chi/chi/v5"
-	"github.com/go-chi/chi/v5/middleware"
+	chiMiddleware "github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
 )
 
@@ -56,8 +55,7 @@ func main() {
 	clerk.SetKey(clerkSecretKey)
 
 	r := chi.NewRouter()
-	r.Use(middleware.Logger)
-
+	r.Use(chiMiddleware.Logger)
 	r.Use(cors.Handler(cors.Options{
 		AllowedOrigins: []string{"*"},
 		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
@@ -67,6 +65,9 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+	// Added to make this work for testing.
+	r.Use(clerkhttp.WithHeaderAuthorization())
+	r.Use(middleware.ClerkAuthMiddleware)
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
@@ -84,6 +85,7 @@ func main() {
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
+	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 
 	// // Test routes - no auth required
 	// r.Post("/test/complaints", complaintHandler.CreateManyComplaintsForTestingHandler)
@@ -95,7 +97,7 @@ func main() {
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
-		r.Use(clerkhttp.WithHeaderAuthorization(), mymiddleware.ClerkAuthMiddleware)
+		r.Use(clerkhttp.WithHeaderAuthorization(), middleware.ClerkAuthMiddleware)
 
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
@@ -180,6 +182,22 @@ func main() {
 					})
 				})
 			})
+
+			// Leases
+			r.Route("/leases", func(r chi.Router) {
+				r.Get("/", leaseHandler.GetLeases)
+				r.Post("/create", leaseHandler.CreateLease)
+				r.Post("/send/{leaseID}", leaseHandler.SendLease)
+				r.Post("/renew", leaseHandler.RenewLease)
+				r.Post("/amend", leaseHandler.AmendLease)
+				r.Post("/terminate/{leaseID}", leaseHandler.TerminateLease)
+				r.Get("/without-lease", leaseHandler.GetTenantsWithoutLease)
+				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
+				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
+				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
+				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+				r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
+			})
 		})
 		// End Admin
 
@@ -203,6 +221,32 @@ func main() {
 				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
 				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
 			})
+			r.Route("/leases", func(r chi.Router) {
+				r.Get("/{user_id}/signing-url", func(w http.ResponseWriter, r *http.Request) {
+					leaseHandler := handlers.NewLeaseHandler(pool, queries)
+					leaseHandler.GetTenantLeaseStatusAndURLByUserID(w, r)
+				})
+			})
+		})
+		// NOTE: Destory session / ctx on sign out
+		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := clerk.SessionClaimsFromContext(r.Context())
+			if !ok {
+				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
+				http.Error(w, "Error destorying session", http.StatusInternalServerError)
+				return
+			}
+			_, err := session.Revoke(r.Context(), &session.RevokeParams{
+				ID: claims.ID,
+			})
+			if err != nil {
+				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
+				http.Error(w, "Error revoking session", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Session revoked successfully"))
 		})
 		// NOTE: Destory session / ctx on sign out
 		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {

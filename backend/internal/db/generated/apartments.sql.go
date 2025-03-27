@@ -118,6 +118,60 @@ func (q *Queries) GetApartmentByUnitNumber(ctx context.Context, unitNumber pgtyp
 	return id, err
 }
 
+const getApartmentsWithoutLease = `-- name: GetApartmentsWithoutLease :many
+SELECT 
+  id,
+  unit_number,
+  price,
+  size,
+  management_id,
+  availability
+FROM apartments
+WHERE 
+  id NOT IN (
+    SELECT apartment_id FROM leases 
+    WHERE status = 'active' AND apartment_id IS NOT NULL
+  )
+  AND availability = true
+ORDER BY unit_number ASC
+`
+
+type GetApartmentsWithoutLeaseRow struct {
+	ID           int64          `json:"id"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	Price        pgtype.Numeric `json:"price"`
+	Size         pgtype.Int2    `json:"size"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+}
+
+func (q *Queries) GetApartmentsWithoutLease(ctx context.Context) ([]GetApartmentsWithoutLeaseRow, error) {
+	rows, err := q.db.Query(ctx, getApartmentsWithoutLease)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetApartmentsWithoutLeaseRow
+	for rows.Next() {
+		var i GetApartmentsWithoutLeaseRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UnitNumber,
+			&i.Price,
+			&i.Size,
+			&i.ManagementID,
+			&i.Availability,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const listApartments = `-- name: ListApartments :many
 SELECT id,
   unit_number,
@@ -154,6 +208,62 @@ func (q *Queries) ListApartments(ctx context.Context) ([]ListApartmentsRow, erro
 			&i.Size,
 			&i.ManagementID,
 			&i.Availability,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const listApartmentsWithoutLease = `-- name: ListApartmentsWithoutLease :many
+SELECT id,
+  unit_number,
+  price,
+  size,
+  management_id,
+  availability,
+  lease_id
+FROM apartments
+ORDER BY unit_number DESC
+LIMIT $1 OFFSET $2
+`
+
+type ListApartmentsWithoutLeaseParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+type ListApartmentsWithoutLeaseRow struct {
+	ID           int64          `json:"id"`
+	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	Price        pgtype.Numeric `json:"price"`
+	Size         pgtype.Int2    `json:"size"`
+	ManagementID int64          `json:"management_id"`
+	Availability bool           `json:"availability"`
+	LeaseID      pgtype.Int8    `json:"lease_id"`
+}
+
+func (q *Queries) ListApartmentsWithoutLease(ctx context.Context, arg ListApartmentsWithoutLeaseParams) ([]ListApartmentsWithoutLeaseRow, error) {
+	rows, err := q.db.Query(ctx, listApartmentsWithoutLease, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []ListApartmentsWithoutLeaseRow
+	for rows.Next() {
+		var i ListApartmentsWithoutLeaseRow
+		if err := rows.Scan(
+			&i.ID,
+			&i.UnitNumber,
+			&i.Price,
+			&i.Size,
+			&i.ManagementID,
+			&i.Availability,
+			&i.LeaseID,
 		); err != nil {
 			return nil, err
 		}

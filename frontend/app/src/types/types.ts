@@ -1,3 +1,4 @@
+import dayjs from 'dayjs';
 export type GetApartment = {
     id: number;
     unitNumber: number | null;
@@ -6,11 +7,11 @@ export type GetApartment = {
     managementId: number;
     availability: boolean;
 };
-
-export type LeaseStatus = "draft" | "pending_approval" | "active" | "expired" | "terminated" | "renewed";
-
 export interface LeaseData {
-    key: number;
+    id: number;
+    tenantId: number;
+    apartmentId: number;
+    tenantEmail: string;
     tenantName: string;
     apartment: string;
     leaseStartDate: string;

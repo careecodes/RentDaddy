@@ -358,6 +358,10 @@ const ModalComponent = (props: ModalComponentProps) => {
                         onCancel={handleCancel}
                         // okButtonProps={{ hidden: true, disabled: true }}
                         // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
