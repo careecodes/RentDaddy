@@ -216,5 +216,5 @@ func (h *ComplaintHandler) UpdateComplaintStatusHandler(w http.ResponseWriter, r
 		return
 	}
 
-	log.Printf("Work order status for %d updated successfully", complaintId)
+	log.Printf("Complaint status for %d updated successfully", complaintId)
 }
