@@ -60,7 +60,7 @@ func (h WorkOrderHandler) GetWorkOrderHandler(w http.ResponseWriter, r *http.Req
 func (h WorkOrderHandler) ListWorkOrdersHandler(w http.ResponseWriter, r *http.Request) {
 	url := r.URL.Query()
 	if url.Get("q") == "iam" {
-		http.Error(w, "I'm a teapot", http.StatusTeapot)
+		http.Error(w, "I'm a teapot", http.StatusTeapot) // I found it!!!!!
 		return
 	}
 
@@ -172,6 +172,49 @@ func (h *WorkOrderHandler) UpdateWorkOrderHandler(w http.ResponseWriter, r *http
 	}
 
 	log.Printf("Work order %d updated successfully", workOrderId)
+}
+
+func (h *WorkOrderHandler) UpdateWorkOrderStatusHandler(w http.ResponseWriter, r *http.Request) {
+	param := chi.URLParam(r, "order_id")
+	workOrderId, err := strconv.Atoi(param)
+	if err != nil {
+		log.Printf("Error parsing work order number: %v", err)
+		http.Error(w, "Invalid work order number", http.StatusBadRequest)
+		return
+	}
+
+	var updateParams db.UpdateWorkOrderStatusParams
+	if err := json.NewDecoder(r.Body).Decode(&updateParams); err != nil {
+		log.Printf("Error decoding request body: %v", err)
+		http.Error(w, "Invalid request payload", http.StatusBadRequest)
+		return
+	}
+
+	updateParams.ID = int64(workOrderId)
+	err = h.queries.UpdateWorkOrderStatus(r.Context(), updateParams)
+	if err != nil {
+		log.Printf("Error updating work order status %d: %v", workOrderId, err)
+		http.Error(w, "Failed to update work order status", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	jsonRes, err := json.Marshal(map[string]string{"message": "Work order updated successfully"})
+	if err != nil {
+		log.Printf("Error marshalling response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+
+	_, err = w.Write(jsonRes)
+	if err != nil {
+		log.Printf("Error writing response from UpdateWorkOrderStatusHandler: %v", err)
+		http.Error(w, "Failed to write response", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("Work order status for %d updated successfully", workOrderId)
 }
 
 func (h *WorkOrderHandler) DeleteWorkOrderHandler(w http.ResponseWriter, r *http.Request) {
