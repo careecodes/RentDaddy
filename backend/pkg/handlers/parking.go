@@ -202,13 +202,7 @@ func (p ParkingPermitHandler) DeleteParkingPermit(w http.ResponseWriter, r *http
 		return
 	}
 
-	if err = p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
-		ID:           int64(parkingPermitId),
-		ExpiresAt:    pgtype.Timestamp{},
-		LicensePlate: pgtype.Text{},
-		CarMake:      pgtype.Text{},
-		CarColor:     pgtype.Text{},
-	}); err != nil {
+	if err = p.queries.ClearParkingPermit(r.Context(), int64(parkingPermitId)); err != nil {
 		log.Printf("[PARKING_HANDLER] Failed deleting parking permit: %v", err)
 		http.Error(w, "Error deleting parking permit", http.StatusInternalServerError)
 		return
@@ -300,6 +294,14 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		return
 	}
 
+	permitNumberStr := chi.URLParam(r, "permit_number")
+	permitNumber, err := strconv.Atoi(permitNumberStr)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
+		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
+		return
+	}
+
 	var parkingPermitReq UpdateParkingPermitRequest
 	_ = json.NewDecoder(r.Body).Decode(&parkingPermitReq)
 
@@ -316,13 +318,7 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		for _, permit := range tenantParkingPermits {
 			if permit.ExpiresAt.Valid && permit.ExpiresAt.Time.Before(today) {
 				log.Printf("Parking permit expired deleting: %d", permit.ID)
-				if err := p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
-					ID:           permit.ID,
-					ExpiresAt:    pgtype.Timestamp{},
-					LicensePlate: pgtype.Text{},
-					CarMake:      pgtype.Text{},
-					CarColor:     pgtype.Text{},
-				}); err != nil {
+				if err := p.queries.ClearParkingPermit(r.Context(), int64(permitNumber)); err != nil {
 					log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", len(tenantParkingPermits), err)
 					http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
 					return
