@@ -138,7 +138,7 @@ ORDER BY unit_number ASC
 
 type GetApartmentsWithoutLeaseRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	UnitNumber   pgtype.Int8    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
 	ManagementID int64          `json:"management_id"`
@@ -239,7 +239,7 @@ type ListApartmentsWithoutLeaseParams struct {
 
 type ListApartmentsWithoutLeaseRow struct {
 	ID           int64          `json:"id"`
-	UnitNumber   pgtype.Int2    `json:"unit_number"`
+	UnitNumber   pgtype.Int8    `json:"unit_number"`
 	Price        pgtype.Numeric `json:"price"`
 	Size         pgtype.Int2    `json:"size"`
 	ManagementID int64          `json:"management_id"`
