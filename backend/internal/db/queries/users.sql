@@ -5,11 +5,10 @@ INSERT INTO users (
     last_name,
     email,
     phone,
-    image_url,
     role,
     updated_at
 ) VALUES (
-    $1, $2, $3, $4, $5, $6, $7, now()
+    $1, $2, $3, $4, $5, $6, now()
 ) RETURNING id, clerk_id, first_name, last_name, email, phone, role, created_at;
 
 
@@ -34,10 +33,9 @@ SELECT
     users.email,
     users.phone,
     users.role,
-    users.unit_number,
     users.status,
     users.created_at,
-    leases.lease_status,
+    leases.status,
     leases.lease_start_date,
     leases.lease_end_date
 FROM users
@@ -48,12 +46,9 @@ ORDER BY users.created_at DESC;
 
 -- name: UpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, image_url = $6, updated_at = now()
+SET first_name = $2, last_name = $3, email = $4, phone = $5, updated_at = now()
 WHERE clerk_id = $1;
 
 -- name: DeleteUser :exec
 DELETE FROM users
 WHERE clerk_id = $1;
-
-
-

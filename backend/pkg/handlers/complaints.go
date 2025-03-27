@@ -176,3 +176,32 @@ func (h *ComplaintHandler) DeleteComplaintHandler(w http.ResponseWriter, r *http
 		return
 	}
 }
+
+// Using this for testing only, commenting out for PR
+// func (h *ComplaintHandler) CreateManyComplaintsForTestingHandler(w http.ResponseWriter, r *http.Request) {
+// 	var req struct {
+// 		Count int32 `json:"count"`
+// 	}
+
+// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+// 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	if req.Count <= 0 {
+// 		http.Error(w, "Count must be greater than 0", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	_, err := h.queries.CreateManyComplaintsForTesting(r.Context(), req.Count)
+// 	if err != nil {
+// 		log.Printf("Error creating complaints: %v", err)
+// 		http.Error(w, "Failed to create complaints", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.WriteHeader(http.StatusCreated)
+// 	json.NewEncoder(w).Encode(map[string]string{
+// 		"message": fmt.Sprintf("Successfully created %d complaints", req.Count),
+// 	})
+// }

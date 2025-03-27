@@ -168,7 +168,6 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		Email:     primaryUserEmail,
 		Phone:     pgtype.Text{String: utils.CreatePhoneNumber(), Valid: true},
 		Role:      userRole,
-		ImageUrl:  pgtype.Text{String: userData.ProfileImage, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed inserting user in DB: %v", err)
@@ -209,7 +208,6 @@ func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 		FirstName: userData.FirstName,
 		LastName:  userData.LastName,
 		Email:     primaryUserEmail,
-		ImageUrl:  pgtype.Text{String: userData.ProfileImage, Valid: true},
 	}); err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed updating user %s: %v", userData.ID, err)
 		http.Error(w, "Error updating user data", http.StatusInternalServerError)
