@@ -1,4 +1,4 @@
-import { HomeOutlined, UserOutlined } from "@ant-design/icons";
+import { UserOutlined } from "@ant-design/icons";
 import { Link, useLocation } from "react-router";
 
 {
@@ -127,9 +127,14 @@ const SidebarLinks = () => {
                             View Digital Leases
                         </Link>
                         <Link
-                            to="/tenant/tenant-work-orders-and-complaints"
+                            to="/tenant/tenant-complaints"
                             className={getLinkClass("/tenant/tenant-work-orders-and-complaints") + " hover-lift transition-all"}>
-                            Work Orders & Complaints
+                            Complaints
+                        </Link>
+                        <Link
+                            to="/tenant/tenant-work-orders"
+                            className={getLinkClass("/tenant/tenant-work-orders-and-complaints") + " hover-lift transition-all"}>
+                            Work Orders
                         </Link>
                         {/* <Link
                             to="/tenant/settings"

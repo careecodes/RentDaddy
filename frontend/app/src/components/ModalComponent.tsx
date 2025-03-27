@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
+import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
 type InviteTenant = {
@@ -85,7 +86,7 @@ const ModalComponent = (props: ModalComponentProps) => {
     const titles = {
         default: "Default Modal",
         "Smart Locker": "Smart Locker Modal",
-        "Guest Parking": "Register someone in Guest Parking",
+        "Guest Parking": "Create a parking pass",
         "Invite Tenant": "Invite Tenant",
         "Edit Tenant": "Edit Tenant",
         "View Tenant Complaints": "View Tenant Complaints",
@@ -231,21 +232,31 @@ const ModalComponent = (props: ModalComponentProps) => {
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}>
                         <Divider />
-                        <Form onFinish={onFinish}>
-                            <Form.Item name="tenant-name">
-                                <Input placeholder="Tenant Name" />
+                        <Form>
+                            <p className="fs-6">Guest Name</p>
+                            <Form.Item
+                                name="tenant-name"
+                                required={true}>
+                                <Input placeholder="John Doe" />
                             </Form.Item>
-                            <Form.Item name="license-plate-number">
-                                <Input placeholder="License Plate Number" />
+                            <p className="fs-6">Car Color</p>
+                            <Form.Item
+                                name="car-color"
+                                required={true}>
+                                <Input placeholder="Blue" />
                             </Form.Item>
-                            <Form.Item name="car-color">
-                                <Input placeholder="Car Color" />
-                            </Form.Item>
-                            <Form.Item name="car-make">
+                            <p className="fs-6">Car Model</p>
+                            <Form.Item
+                                name="car-make"
+                                required={true}>
                                 <Input placeholder="Car Make" />
                             </Form.Item>
-
-                            <Divider />
+                            <p className="fs-6">License Plate</p>
+                            <Form.Item
+                                name="license-plate-number"
+                                required={true}>
+                                <Input placeholder="3ha3-3213" />
+                            </Form.Item>
                             <div className="flex justify-content-end gap-2">
                                 {/* Cancel button */}
                                 <Form.Item name="cancel">

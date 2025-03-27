@@ -60,7 +60,7 @@ func (r CreateLeaseRequest) ToCreateLeaseParams() db.CreateLeaseParams {
 		ExternalDocID:  "",
 		TenantID:       r.TenantID,
 		LandlordID:     r.LandlordID,
-		ApartmentID:    pgtype.Int8{Int64: 0, Valid: false}, // Default empty
+		ApartmentID:    pgtype.Int8{Int64: 0, Valid: true}, // Default empty
 		LeaseStartDate: pgtype.Date{Time: r.StartDate, Valid: true},
 		LeaseEndDate:   pgtype.Date{Time: r.EndDate, Valid: true},
 		RentAmount:     floatToPgNumeric(r.RentAmount),
