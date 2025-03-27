@@ -3,6 +3,12 @@ import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
+type InviteTenant = {
+    email: string;
+    unitNumber: number;
+    management_id: string;
+};
+
 import { useUser } from "@clerk/react-router";
 
 interface Lease {
@@ -34,15 +40,27 @@ interface ModalComponentProps {
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
     type:
+        |
         | "default"
+       
         | "Smart Locker"
+       
         | "Guest Parking"
+       
         | "Invite Tenant"
+       
         | "Edit Tenant"
+       
         | "View Tenant Complaints"
+       
         | "View Tenant Work Orders"
+       
         | "Send Tenant Lease"
+       
         | "Edit Apartment Building"
+        | "Update Password Locker"
+        | "Edit Tenant"
+        | "Admin Unlock Locker"
         | "Update Password Locker"
         | "Unlock Locker";
     handleOkay: (data?: any) => Promise<void>;
@@ -546,6 +564,58 @@ const ModalComponent = (props: ModalComponentProps) => {
                             </Form.Item>
                             <p>Please go create a template in Documenso.</p>
                         </Form>
+                    </Modal>
+                </>
+            )}
+            {props.type === "Admin Unlock Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Divider />
+                    </Modal>
+                </>
+            )}
+            {props.type === "Update Password Locker" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{props.modalTitle}</h3>}
+                        open={isModalOpen}
+                        onOk={props.handleOkay}
+                        onCancel={handleCancel}
+                        // okButtonProps={{ hidden: true, disabled: true }}
+                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    >
+                        <Divider />
+                        <p>{props.content}</p>
+                        <Form>
+                            <Form.Item name="password">
+                                <Input
+                                    placeholder="New Password"
+                                    maxLength={4}
+                                />
+                            </Form.Item>
+                        </Form>
+                        <Divider />
                     </Modal>
                 </>
             )}
