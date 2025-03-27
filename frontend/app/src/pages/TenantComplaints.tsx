@@ -109,6 +109,7 @@ const TenantComplaintsAndWorkOrders = () => {
                     <Table
                         columns={complaintColumns}
                         dataSource={complaints.data}
+                        loading={complaints.isPending}
                         pagination={{ pageSize: 25 }}
                     />
                 </div>

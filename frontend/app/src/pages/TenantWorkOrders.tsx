@@ -105,6 +105,7 @@ export default function WorkOrders() {
                     <Table
                         columns={workOrderColumns}
                         dataSource={workOrders.data}
+                        loading={workOrders.isPending}
                         pagination={{ pageSize: 25 }}
                     />
                 </div>
