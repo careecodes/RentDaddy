@@ -648,7 +648,7 @@ func (h *LeaseHandler) GetApartmentsWithoutLease(w http.ResponseWriter, r *http.
 	// For debugging purposes, log the first few apartments
 	if len(apartments) > 0 {
 		log.Printf("First apartment: ID=%d, Unit=%s, Price=%v",
-			apartments[0].ID, strconv.Itoa(int(apartments[0].UnitNumber.Int16)), apartments[0].Price)
+			apartments[0].ID, strconv.Itoa(int(apartments[0].UnitNumber.Int64)), apartments[0].Price)
 	}
 
 	// Convert to JSON response
@@ -1069,7 +1069,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	ctx := r.Context()
 	// Get landlord ID and email from middleware-injected context
 	// landlordID, landlordEmail, landlordName, err := middleware.GetLandlordFromContext(ctx)
-	landlordContext, err := middleware.GetClerkUser(r)
+	_, landlordName, landlordEmail, err := h.GetLandlordInfo(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -1079,7 +1079,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	// 4. Generate the full lease PDF
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
-		fmt.Sprintf("%s %s", *landlordContext.FirstName, *landlordContext.LastName),
+		landlordName,
 		req.TenantName,
 		req.PropertyAddress,
 		req.RentAmount,
@@ -1092,12 +1092,11 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		return
 	}
 
-	landlordEmail := h.extractEmailFromContext(landlordContext.EmailAddresses, *landlordContext.PrimaryEmailAddressID)
 	//5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
 	docID, _, tenantSigningURL, landlordSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		req,
-		fmt.Sprintf("%s %s", *landlordContext.FirstName, *landlordContext.LastName),
+		landlordName,
 		landlordEmail,
 	)
 	if err != nil {
@@ -1115,28 +1114,25 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 	maxLeaseNumber := maxLeaseNumberRaw.(int64)
 	maxLeaseNumber = maxLeaseNumber + 1
 
-	var landlordMetaData ClerkUserPublicMetaData
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-
 	// 9. Create the lease record in the database
 	leaseParams := db.RenewLeaseParams{
 		LeaseNumber:    maxLeaseNumber,
 		ExternalDocID:  docID,
 		TenantID:       req.TenantID,
-		LandlordID:     int64(landlordMetaData.DbId),
+		LandlordID:     int64(landlordID),
 		ApartmentID:    req.ApartmentID,
 		LeaseStartDate: pgtype.Date{Time: startDate, Valid: true},
 		LeaseEndDate:   pgtype.Date{Time: endDate, Valid: true},
 		RentAmount:     pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
 		Status:         db.LeaseStatus(db.LeaseStatusPendingApproval),
 		LeasePdfS3:     pgtype.Text{String: s3bucket, Valid: true},
-		CreatedBy:      int64(landlordMetaData.DbId), // Use landlord ID from database
-		UpdatedBy:      int64(landlordMetaData.DbId),
+		CreatedBy:      int64(landlordID), // Use landlord ID from database
+		UpdatedBy:      int64(landlordID),
 		TenantSigningUrl: pgtype.Text{
 			String: tenantSigningURL,
 			Valid:  tenantSigningURL != "",

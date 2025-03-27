@@ -137,8 +137,6 @@ CREATE TABLE IF NOT EXISTS "leases"
     "status"            "Lease_Status" NOT NULL DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
-    "created_at"       TIMESTAMP(0)            DEFAULT now(),
-    "updated_at"       TIMESTAMP(0)            DEFAULT now(),
     "previous_lease_id" BIGINT REFERENCES leases(id),
     "tenant_signing_url" TEXT,
     "landlord_signing_url" TEXT

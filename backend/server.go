@@ -11,6 +11,7 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db"
 	"github.com/careecodes/RentDaddy/middleware"
+	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -67,7 +68,7 @@ func main() {
 	}))
 	// Added to make this work for testing.
 	r.Use(clerkhttp.WithHeaderAuthorization())
-	r.Use(middleware.ClerkAuthMiddleware)
+	r.Use(mymiddleware.ClerkAuthMiddleware)
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {

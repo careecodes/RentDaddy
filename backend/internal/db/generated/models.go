@@ -395,20 +395,18 @@ type Building struct {
 }
 
 type Complaint struct {
-	ID              int64             `json:"id"`
-	ComplaintNumber int64             `json:"complaint_number"`
-	CreatedBy       int64             `json:"created_by"`
-	Category        ComplaintCategory `json:"category"`
-	Title           string            `json:"title"`
-	Description     string            `json:"description"`
-	UnitNumber      pgtype.Int8       `json:"unit_number"`
-	Status          Status            `json:"status"`
-	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
-	CreatedAt       pgtype.Timestamp  `json:"created_at"`
+	ID          int64             `json:"id"`
+	CreatedBy   int64             `json:"created_by"`
+	Category    ComplaintCategory `json:"category"`
+	Title       string            `json:"title"`
+	Description string            `json:"description"`
+	UnitNumber  pgtype.Int8       `json:"unit_number"`
+	Status      Status            `json:"status"`
+	UpdatedAt   pgtype.Timestamp  `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp  `json:"created_at"`
 }
 
 type Lease struct {
-<<<<<<< HEAD
 	ID                 int64            `json:"id"`
 	LeaseNumber        int64            `json:"lease_number"`
 	ExternalDocID      string           `json:"external_doc_id"`
@@ -427,22 +425,6 @@ type Lease struct {
 	PreviousLeaseID    pgtype.Int8      `json:"previous_lease_id"`
 	TenantSigningUrl   pgtype.Text      `json:"tenant_signing_url"`
 	LandlordSigningUrl pgtype.Text      `json:"landlord_signing_url"`
-=======
-	ID             int64            `json:"id"`
-	LeaseNumber    int64            `json:"lease_number"`
-	ExternalDocID  string           `json:"external_doc_id"`
-	TenantID       int64            `json:"tenant_id"`
-	LandlordID     int64            `json:"landlord_id"`
-	ApartmentID    pgtype.Int8      `json:"apartment_id"`
-	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
-	RentAmount     pgtype.Numeric   `json:"rent_amount"`
-	Status         LeaseStatus      `json:"status"`
-	CreatedBy      int64            `json:"created_by"`
-	UpdatedBy      int64            `json:"updated_by"`
-	CreatedAt      pgtype.Timestamp `json:"created_at"`
-	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
->>>>>>> main
 }
 
 type Locker struct {
@@ -481,7 +463,6 @@ type User struct {
 type WorkOrder struct {
 	ID          int64            `json:"id"`
 	CreatedBy   int64            `json:"created_by"`
-	OrderNumber int64            `json:"order_number"`
 	Category    WorkCategory     `json:"category"`
 	Title       string           `json:"title"`
 	Description string           `json:"description"`
