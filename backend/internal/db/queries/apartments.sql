@@ -75,7 +75,7 @@ FROM apartments
 WHERE 
   id NOT IN (
     SELECT apartment_id FROM leases 
-    WHERE status = 'active' AND apartment_id IS NOT NULL
+    WHERE status = 'active'
   )
   AND availability = true
 ORDER BY unit_number ASC;
