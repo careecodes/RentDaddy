@@ -16,6 +16,7 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
+	"github.com/clerk/clerk-sdk-go/v2/session"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -98,7 +99,7 @@ func main() {
 
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
-			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
 
 			// Tenants
@@ -177,15 +178,18 @@ func main() {
 		// End Admin
 
 		// Tenant Endpoints
-		r.Route("/", func(r chi.Router) {
+		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", userHandler.GetUserByClerkId)
-			r.Get("/documents", userHandler.GetTenantDocuments)
-			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
-			r.Get("/complaints", userHandler.GetTenantComplaints)
+			r.Get("/apartment", userHandler.TenantGetApartment)
+			r.Get("/documents", userHandler.TenantGetDocuments)
+			r.Get("/work_orders", userHandler.TenantGetWorkOrders)
+			r.Post("/work_orders", userHandler.TenantCreateWorkOrder)
+			r.Get("/complaints", userHandler.TenantGetComplaints)
+			r.Post("/complaints", userHandler.TenantCreateComplaint)
 
 			// Locker Endpoints
-			r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
-			r.Post("/lockers/{user_id}/unlock", lockerHandler.UnlockLocker)
+			r.Get("/lockers", lockerHandler.GetLockerByUserId)
+			r.Post("/lockers/unlock", lockerHandler.UnlockLocker)
 
 			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {
@@ -193,6 +197,26 @@ func main() {
 				r.Post("/", parkingPermitHandler.TenantCreateParkingPermit)
 				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
 			})
+		})
+		// NOTE: Destory session / ctx on sign out
+		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := clerk.SessionClaimsFromContext(r.Context())
+			if !ok {
+				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
+				http.Error(w, "Error destorying session", http.StatusInternalServerError)
+				return
+			}
+			_, err := session.Revoke(r.Context(), &session.RevokeParams{
+				ID: claims.ID,
+			})
+			if err != nil {
+				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
+				http.Error(w, "Error revoking session", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Session revoked successfully"))
 		})
 	})
 
