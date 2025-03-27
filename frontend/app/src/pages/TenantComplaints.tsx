@@ -3,7 +3,7 @@ import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/react-router";
-import { ComplaintEntry, ComplaintsData, GetApartment } from "../types/types";
+import { ComplaintStatus, ComplaintEntry, ComplaintsData, GetApartment } from "../types/types";
 import Table, { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 
@@ -88,6 +88,13 @@ const TenantComplaintsAndWorkOrders = () => {
             title: "Status",
             dataIndex: "status",
             key: "status",
+            render: (status: ComplaintStatus) => {
+                if (status !== "resolved") {
+                    return <p>{status}</p>;
+                }
+
+                return <p className="text-success">{status}</p>;
+            },
         },
         {
             title: "Created At",

@@ -19,9 +19,8 @@ export interface LeaseData {
     status: string;
 }
 
-type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
-
-type WorkStatus = "open" | "in_progress" | "resolved" | "closed";
+export type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
+export type WorkStatus = "open" | "in_progress" | "resolved" | "closed";
 
 export type WorkOrderEntry = {
     category: WorkCategory;
@@ -37,14 +36,14 @@ export interface WorkOrderData {
     category: WorkCategory;
     title: string;
     description: string;
-    apartmentNumber: string;
+    unitNumber: string;
     status: WorkStatus;
     createdAt: Date;
     updatedAt: Date;
 }
 
 export type ComplaintCategory = "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
-type CompliantStatus = "pending_review" | "compliant" | "non_compliant" | "exempted";
+export type ComplaintStatus = "open" | "in_progress" | "resolved" | "closed";
 
 export interface ComplaintData {
     id: number;
@@ -54,7 +53,7 @@ export interface ComplaintData {
     title: string;
     description: string;
     unitNumber: number;
-    status: CompliantStatus;
+    status: ComplaintStatus;
     updatedAt: string;
     createdAt: string;
 }

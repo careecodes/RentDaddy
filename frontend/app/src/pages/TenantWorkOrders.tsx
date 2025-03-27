@@ -2,7 +2,7 @@ import { useAuth } from "@clerk/react-router";
 import { useMutation, useQueries, useQueryClient } from "@tanstack/react-query";
 import Table, { ColumnsType } from "antd/es/table";
 import { useState } from "react";
-import { GetApartment, WorkOrderData, WorkOrderEntry } from "../types/types";
+import { GetApartment, WorkOrderData, WorkOrderEntry, WorkStatus } from "../types/types";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import dayjs from "dayjs";
@@ -84,7 +84,13 @@ export default function WorkOrders() {
             title: "Status",
             dataIndex: "status",
             key: "status",
-            render: (status: string) => <p>{status}</p>,
+            render: (status: WorkStatus) => {
+                if (status !== "resolved") {
+                    return <p>{status}</p>;
+                }
+
+                return <p className="text-success">{status}</p>;
+            },
         },
         {
             title: "Created At",
@@ -97,7 +103,7 @@ export default function WorkOrders() {
         <div className="container">
             {/* Title */}
             {/* <h1 className="mb-4">Complaints and Work Orders</h1> */}
-            <PageTitleComponent title="Complaints" />
+            <PageTitleComponent title="Work Orders" />
             {/* Recent Complaints & Work Orders */}
             <div className="grid grid-cols-2 gap-6">
                 <div className="bg-gray-50 p-4 rounded border">
