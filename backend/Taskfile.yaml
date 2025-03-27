@@ -14,6 +14,12 @@ tasks:
       # - docker compose exec backend go run scripts/seed_users.go
     silent: false
 
+  seed-users:data:
+    desc: "Seed users into the database"
+    cmds:
+      - go run scripts/complaintsAndWork.go
+    silent: false
+
   build:
     cmds:
       - go build -v -i server.go

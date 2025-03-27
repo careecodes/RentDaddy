@@ -92,16 +92,10 @@ const listComplaints = `-- name: ListComplaints :many
 SELECT id, created_by, category, title, description, unit_number, status, updated_at, created_at
 FROM complaints
 ORDER BY created_at DESC
-LIMIT $1 OFFSET $2
 `
 
-type ListComplaintsParams struct {
-	Limit  int32 `json:"limit"`
-	Offset int32 `json:"offset"`
-}
-
-func (q *Queries) ListComplaints(ctx context.Context, arg ListComplaintsParams) ([]Complaint, error) {
-	rows, err := q.db.Query(ctx, listComplaints, arg.Limit, arg.Offset)
+func (q *Queries) ListComplaints(ctx context.Context) ([]Complaint, error) {
+	rows, err := q.db.Query(ctx, listComplaints)
 	if err != nil {
 		return nil, err
 	}

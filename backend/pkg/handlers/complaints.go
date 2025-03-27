@@ -46,13 +46,7 @@ func (h *ComplaintHandler) GetComplaintHandler(w http.ResponseWriter, r *http.Re
 }
 
 func (h ComplaintHandler) ListComplaintsHandler(w http.ResponseWriter, r *http.Request) {
-	props := db.ListComplaintsParams{
-		Limit:  10,
-		Offset: 0,
-	}
-
-	complaints, err := h.queries.ListComplaints(r.Context(), props)
-	log.Println("complaints", complaints)
+	complaints, err := h.queries.ListComplaints(r.Context())
 	if err != nil {
 		log.Println("error:", err)
 		http.Error(w, "Internal server error", http.StatusInternalServerError)

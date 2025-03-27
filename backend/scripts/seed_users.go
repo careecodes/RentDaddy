@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"log"
 	"os"
 	"time"
@@ -59,6 +58,7 @@ func main() {
 		return
 	}
 	defer pool.Close()
+	queries := db.New(pool)
 
 	row := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE role = $1", db.RoleTenant)
 	var count int
@@ -72,32 +72,24 @@ func main() {
 	}
 	log.Printf("[SEED_USERS] Starting %d users", userCount)
 
-	aRow, err := pool.Query(ctx, "SELECT id FROM users WHERE role = $1", db.RoleAdmin)
-	if err != nil {
-		log.Printf("[SEED_USERS] Error getting admin: %v", err)
-		return
-	}
-	defer aRow.Close()
-
-	var adminUsers []*clerk.User
-	for aRow.Next() {
-		var adminUser clerk.User
-		if err := aRow.Scan(&adminUser); err != nil {
-			log.Printf("[SEED_USERS] Error scanning admin: %v", err)
-			return
-		}
-		adminUsers = append(adminUsers, &adminUser)
-	}
+	aUsers, err := queries.ListUsersByRole(ctx, db.RoleAdmin)
 
 	var adminUser *clerk.User
-	if len(adminUsers) == 0 {
+	var aID int
+	if len(aUsers) == 0 {
 		log.Println("[SEED_USERS] No admin found, seeding admin")
 		adminUser, err = createAdmin(ctx)
 		if err != nil {
 			log.Printf("[SEED_USERS] Error seeding admin: %v", err)
 			return
-
 		}
+		a, err := queries.GetUser(ctx, adminUser.ID)
+		if err != nil {
+			log.Printf("[SEED_USERS] Error getting seeded admin: %v", err)
+			return
+		}
+		log.Printf("[SEED_USERS] Seeded admin: %v", a)
+		aID = int(a.ID)
 	}
 
 	for i := 0; i < userCount; i++ {
@@ -112,17 +104,6 @@ func main() {
 
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
 	time.Sleep(6 * time.Second)
-
-	qString := fmt.Sprintf(`SELECT id FROM users WHERE clerk_id = '%s' AND role = 'admin'`, adminUser.ID)
-
-	aUser := pool.QueryRow(ctx, qString)
-	var aID int
-	if err := aUser.Scan(&aID); err != nil {
-		log.Printf("[SEED_USERS] Error getting adminUser: %v", err)
-		return
-	}
-
-	queries := db.New(pool)
 
 	err = utils.SeedDB(queries, pool, int32(aID))
 	if err != nil {

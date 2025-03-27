@@ -151,11 +151,12 @@ const AdminDashboard = () => {
                 throw new Error(`Failed to fetch complaints: ${res.status}`);
             }
 
-            const data = await res.json();
+            const data = await res.json() as Complaint[];
             return data;
         },
     });
 
+    console.log("complaints:", complaints);
     console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
 
     // Query for fetching lockers
@@ -446,6 +447,8 @@ const AdminDashboard = () => {
 
     const WORK_ORDERS_COUNT = workOrders?.length ?? 0;
     const COMPLAINTS_COUNT = complaints?.length ?? 0;
+    console.log("Work orders count:", workOrdersWithKeys.length);
+    console.log("Complaints count:", COMPLAINTS_COUNT);
 
     return (
         <div className="container">
@@ -475,7 +478,7 @@ const AdminDashboard = () => {
                 />
                 <CardComponent
                     title="Complaints"
-                    value={isLoadingComplaints ? <Spin size="small" /> : COMPLAINTS_COUNT}
+                    value={isLoadingComplaints ? <Spin size="small" /> : COMPLAINTS_COUNT ?? 0}
                     description="Pending tenant issues"
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: "24px", color: "#faad14", marginBottom: "16px" }} />}
