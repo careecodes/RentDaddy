@@ -216,8 +216,12 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         content=""
                         type="Edit Apartment Building"
                         apartmentBuildingSetEditBuildingState={setEditBuildingObj}
-                        apartmentBuildingEditProps={editBuildingObj}
-                        handleOkay={() => handleEditLocation()}
+                        apartmentBuildingEditProps={{
+                            buildingNumber: record.building,
+                            floorNumbers: record.floors,
+                            numberOfRooms: record.rooms,
+                        }}
+                        handleOkay={handleEditLocation}
                     />
                 </div>
             ),
