@@ -11,7 +11,7 @@ import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
+import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -105,34 +105,27 @@ export const TenantDashBoard = () => {
         ],
     });
 
-    // Simulate fetching lease status using TanStack Query
-    const {
-        data: leaseStatus,
-        isLoading,
-        isError,
-    } = useQuery({
+      // Fetch lease status using TanStack Query
+      const { data: leaseData, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            // Simulate a delay to mimic network request and give dummy data
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            const leaseData = {
-                // userId: userId,
-                userId: "notme",
-                lease_status: "pending_approval",
-            };
-            // const response = await fetch(`/api/leases?tenantId=${userId}`);
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch lease status");
-            // }
-            // const data = await response.json();
-
-            // Return dummy data if the userId matches
-            if (userId === leaseData.userId) {
-                console.log(leaseData.lease_status);
-                return leaseData.lease_status;
-            } else {
-                return "active";
+            if (!userId) {
+                console.log("`userId` variable is not populated");
+                return null;
             }
+            const response = await fetch(`${absoluteServerUrl}/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                return null;
+            }
+
+            // If empty, return null so tenant dashboard can still load
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                return null;
+            }
+
+            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
+            return leaseData;
         },
         enabled: !!userId,
     });
@@ -295,7 +288,7 @@ export const TenantDashBoard = () => {
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
                     <p>
-                        Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.
+                        Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
                     </p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>

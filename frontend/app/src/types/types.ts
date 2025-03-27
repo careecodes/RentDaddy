@@ -18,6 +18,15 @@ export interface LeaseData {
     leaseEndDate: string;
     rentAmount: number;
     status: string;
+formattedStartDate?: dayjs.Dayjs;
+formattedEndDate?: dayjs.Dayjs;
+admin_doc_url?: string;
+
+}
+
+export interface TenantLeaseStatusAndURL {
+status: string;
+url: string;
 }
 
 export type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";

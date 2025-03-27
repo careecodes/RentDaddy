@@ -11,7 +11,6 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db"
 	"github.com/careecodes/RentDaddy/middleware"
-	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -66,6 +65,9 @@ func main() {
 		AllowCredentials: false,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
+	// // Added to make this work for testing.
+	// r.Use(clerkhttp.WithHeaderAuthorization())
+	// r.Use(middleware.ClerkAuthMiddleware)
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
@@ -85,13 +87,6 @@ func main() {
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 
-	// // Test routes - no auth required
-	// r.Post("/test/complaints", complaintHandler.CreateManyComplaintsForTestingHandler)
-
-	// r.Post("/test/work-orders", workOrderHandler.CreateManyWorkOrdersHandler)
-
-	// r.Post("/test/lockers", lockerHandler.CreateManyLockers)
-
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
@@ -99,7 +94,7 @@ func main() {
 
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			r.Use(middleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
 			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
@@ -155,6 +150,7 @@ func main() {
 				// Used to change the user assigned to a locker or the status of a locker
 				r.Patch("/{id}", lockerHandler.UpdateLocker)
 				// Used to set up the initial lockers for an apartment
+				r.Post("/", lockerHandler.CreateManyLockers)
 			})
 			// End of Locker Handlers
 
@@ -226,26 +222,7 @@ func main() {
 				})
 			})
 		})
-		// NOTE: Destory session / ctx on sign out
-		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := clerk.SessionClaimsFromContext(r.Context())
-			if !ok {
-				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
-				http.Error(w, "Error destorying session", http.StatusInternalServerError)
-				return
-			}
-			_, err := session.Revoke(r.Context(), &session.RevokeParams{
-				ID: claims.ID,
-			})
-			if err != nil {
-				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
-				http.Error(w, "Error revoking session", http.StatusInternalServerError)
-				return
-			}
 
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Session revoked successfully"))
-		})
 		// NOTE: Destory session / ctx on sign out
 		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := clerk.SessionClaimsFromContext(r.Context())

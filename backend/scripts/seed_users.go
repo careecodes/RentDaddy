@@ -62,7 +62,6 @@ func main() {
 
 	row := pool.QueryRow(ctx, "SELECT COUNT(*) FROM users WHERE role = $1", db.RoleTenant)
 	var count int
-	var adminUser *clerk.User
 	if err := row.Scan(&count); err != nil {
 		log.Printf("[SEED_USERS] Error counting users: %v", err)
 		return
@@ -73,11 +72,32 @@ func main() {
 	}
 	log.Printf("[SEED_USERS] Starting %d users", userCount)
 
-	adminUser, err = createAdmin(ctx)
+	aRow, err := pool.Query(ctx, "SELECT id FROM users WHERE role = $1", db.RoleAdmin)
 	if err != nil {
-		log.Printf("[SEED_USERS] Error seeding admin: %v", err)
+		log.Printf("[SEED_USERS] Error getting admin: %v", err)
 		return
+	}
+	defer aRow.Close()
 
+	var adminUsers []*clerk.User
+	for aRow.Next() {
+		var adminUser clerk.User
+		if err := aRow.Scan(&adminUser); err != nil {
+			log.Printf("[SEED_USERS] Error scanning admin: %v", err)
+			return
+		}
+		adminUsers = append(adminUsers, &adminUser)
+	}
+
+	var adminUser *clerk.User
+	if len(adminUsers) == 0 {
+		log.Println("[SEED_USERS] No admin found, seeding admin")
+		adminUser, err = createAdmin(ctx)
+		if err != nil {
+			log.Printf("[SEED_USERS] Error seeding admin: %v", err)
+			return
+
+		}
 	}
 
 	for i := 0; i < userCount; i++ {
@@ -89,9 +109,6 @@ func main() {
 			time.Sleep(2 * time.Second)
 		}
 	}
-
-	log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
-	log.Printf("[SEED_USERS] The admin user is %s", adminUser.ID)
 
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
 	time.Sleep(6 * time.Second)
