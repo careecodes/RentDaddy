@@ -29,6 +29,7 @@ RETURNING id, lease_number, external_doc_id, lease_pdf_s3, tenant_id, landlord_i
 `
 
 type CreateLeaseParams struct {
+<<<<<<< HEAD
 	LeaseNumber        int64          `json:"lease_number"`
 	ExternalDocID      string         `json:"external_doc_id"`
 	LeasePdfS3         pgtype.Text    `json:"lease_pdf_s3"`
@@ -44,6 +45,17 @@ type CreateLeaseParams struct {
 	PreviousLeaseID    pgtype.Int8    `json:"previous_lease_id"`
 	TenantSigningUrl   pgtype.Text    `json:"tenant_signing_url"`
 	LandlordSigningUrl pgtype.Text    `json:"landlord_signing_url"`
+=======
+	LeaseNumber    int64          `json:"lease_number"`
+	ExternalDocID  string         `json:"external_doc_id"`
+	TenantID       int64          `json:"tenant_id"`
+	LandlordID     int64          `json:"landlord_id"`
+	ApartmentID    pgtype.Int8    `json:"apartment_id"`
+	LeaseStartDate pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate   pgtype.Date    `json:"lease_end_date"`
+	RentAmount     pgtype.Numeric `json:"rent_amount"`
+	Status         LeaseStatus    `json:"status"`
+>>>>>>> main
 }
 
 func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (Lease, error) {
@@ -64,12 +76,25 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (Lease
 		arg.TenantSigningUrl,
 		arg.LandlordSigningUrl,
 	)
+<<<<<<< HEAD
+=======
+	var id int64
+	err := row.Scan(&id)
+	return id, err
+}
+
+const getLeaseByID = `-- name: GetLeaseByID :one
+SELECT id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at FROM leases WHERE id = $1 LIMIT 1
+`
+
+func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (Lease, error) {
+	row := q.db.QueryRow(ctx, getLeaseByID, id)
+>>>>>>> main
 	var i Lease
 	err := row.Scan(
 		&i.ID,
 		&i.LeaseNumber,
 		&i.ExternalDocID,
-		&i.LeasePdfS3,
 		&i.TenantID,
 		&i.LandlordID,
 		&i.ApartmentID,
@@ -81,13 +106,17 @@ func (q *Queries) CreateLease(ctx context.Context, arg CreateLeaseParams) (Lease
 		&i.UpdatedBy,
 		&i.CreatedAt,
 		&i.UpdatedAt,
+<<<<<<< HEAD
 		&i.PreviousLeaseID,
 		&i.TenantSigningUrl,
 		&i.LandlordSigningUrl,
+=======
+>>>>>>> main
 	)
 	return i, err
 }
 
+<<<<<<< HEAD
 const expireLeasesEndingToday = `-- name: ExpireLeasesEndingToday :one
 WITH expired_leases AS (
     UPDATE leases
@@ -122,6 +151,36 @@ SELECT id, lease_number, external_doc_id, lease_pdf_s3, tenant_id, landlord_id, 
 WHERE tenant_id = $1
 AND status IN ('active', 'draft', 'pending_approval')
 ORDER BY id DESC
+=======
+const getLeaseByNumber = `-- name: GetLeaseByNumber :one
+SELECT id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at FROM leases WHERE lease_number = $1 LIMIT 1
+`
+
+func (q *Queries) GetLeaseByNumber(ctx context.Context, leaseNumber int64) (Lease, error) {
+	row := q.db.QueryRow(ctx, getLeaseByNumber, leaseNumber)
+	var i Lease
+	err := row.Scan(
+		&i.ID,
+		&i.LeaseNumber,
+		&i.ExternalDocID,
+		&i.TenantID,
+		&i.LandlordID,
+		&i.ApartmentID,
+		&i.LeaseStartDate,
+		&i.LeaseEndDate,
+		&i.RentAmount,
+		&i.Status,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+	)
+	return i, err
+}
+
+const listLeases = `-- name: ListLeases :many
+SELECT id, lease_number, external_doc_id, tenant_id, landlord_id, apartment_id, lease_start_date, lease_end_date, rent_amount, status, created_by, updated_by, created_at, updated_at FROM leases ORDER BY created_at DESC
+>>>>>>> main
 `
 
 func (q *Queries) GetActiveLeasesByTenant(ctx context.Context, tenantID int64) ([]Lease, error) {
@@ -137,7 +196,6 @@ func (q *Queries) GetActiveLeasesByTenant(ctx context.Context, tenantID int64) (
 			&i.ID,
 			&i.LeaseNumber,
 			&i.ExternalDocID,
-			&i.LeasePdfS3,
 			&i.TenantID,
 			&i.LandlordID,
 			&i.ApartmentID,
@@ -149,9 +207,12 @@ func (q *Queries) GetActiveLeasesByTenant(ctx context.Context, tenantID int64) (
 			&i.UpdatedBy,
 			&i.CreatedAt,
 			&i.UpdatedAt,
+<<<<<<< HEAD
 			&i.PreviousLeaseID,
 			&i.TenantSigningUrl,
 			&i.LandlordSigningUrl,
+=======
+>>>>>>> main
 		); err != nil {
 			return nil, err
 		}

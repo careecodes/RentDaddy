@@ -157,7 +157,7 @@ func (h ApartmentHandler) UpdateApartmentHandler(w http.ResponseWriter, r *http.
 	updateParams := db.UpdateApartmentParams{
 		ID:           int64(apartmentID),
 		Price:        updateRequestParams.Price,
-		ManagementID: updateRequestParams.ManagementID,
+		ManagementID: updateRequestParams.ManagementID.Int64,
 		Availability: updateRequestParams.Availability,
 	}
 

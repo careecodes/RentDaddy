@@ -40,9 +40,7 @@ const UniversalSidebar: React.FC = () => {
             <Sider style={siderStyle}>
                 {/* Logo and Title Container with Link to Landing Page if not logged in, and to Dashboard if logged in */}
                 <div className="demo-logo-vertical d-flex flex-column align-items-center justify-content-center my-5">
-                    <Divider className="divider-text border-white" />
                     <Link to="/">
-                        <p className="fs-2 logo-text text-white">EZRA</p>
                         <img
                             src="/logo.png"
                             alt="EZRA Logo"
@@ -50,10 +48,11 @@ const UniversalSidebar: React.FC = () => {
                             width={64}
                             height={64}
                             style={{
-                                display: "block",
+                                display: "flex",
                                 margin: "0 auto",
                             }}
                         />
+                        <p className="fs-2 logo-text text-white">EZRA</p>
                     </Link>
                     <Divider className="divider-text border-white" />
                 </div>
