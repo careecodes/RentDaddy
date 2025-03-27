@@ -165,11 +165,6 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	landlordID, _, _, err := h.GetLandlordInfo(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
 
 	var (
 		existingLease      db.GetLeaseForAmendingRow
@@ -178,7 +173,7 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Try to fetch lease using tenant + apartment
-	existingLease, err = h.queries.GetLeaseForAmending(ctx, db.GetLeaseForAmendingParams{
+	existingLease, err := h.queries.GetLeaseForAmending(ctx, db.GetLeaseForAmendingParams{
 		TenantID:    req.TenantID,
 		ApartmentID: req.ApartmentID,
 	})
@@ -200,15 +195,11 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 		// Use the first active lease
 		active := leases[0]
 		existingLease = db.GetLeaseForAmendingRow{
-			ID:             active.ID,
-			TenantID:       active.TenantID,
-			ApartmentID:    active.ApartmentID,
-			Status:         active.Status,
-			ExternalDocID:  active.ExternalDocID,
-			LeaseNumber:    active.LeaseNumber,
-			LeaseStartDate: active.LeaseStartDate,
-			LeaseEndDate:   active.LeaseEndDate,
-			RentAmount:     active.RentAmount,
+			ID:            active.ID,
+			ApartmentID:   active.ApartmentID,
+			Status:        active.Status,
+			ExternalDocID: active.ExternalDocID,
+			LeaseNumber:   active.LeaseNumber,
 		}
 
 		log.Printf("[LEASE_AMEND] Found fallback lease ID %d at apartment %d", existingLease.ID, existingLease.ApartmentID)
@@ -225,7 +216,7 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Only active or draft leases can be amended", http.StatusBadRequest)
 		return
 	}
-	landlordID, _, _, err = h.GetLandlordInfo(r)
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -657,7 +648,7 @@ func (h *LeaseHandler) GetApartmentsWithoutLease(w http.ResponseWriter, r *http.
 	// For debugging purposes, log the first few apartments
 	if len(apartments) > 0 {
 		log.Printf("First apartment: ID=%d, Unit=%s, Price=%v",
-			apartments[0].ID, strconv.Itoa(int(apartments[0].UnitNumber)), apartments[0].Price)
+			apartments[0].ID, strconv.Itoa(int(apartments[0].UnitNumber.Int16)), apartments[0].Price)
 	}
 
 	// Convert to JSON response
@@ -980,16 +971,14 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	ctx := r.Context()
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	// Set landlord ID from parameters
-	req.LandlordID = int64(landlordMetaData.DbId)
+	req.LandlordID = int64(landlordID)
 
 	log.Printf("[LEASE_RENEW] Renewing lease for tenant %d using previous lease ID %v", req.TenantID, req.PreviousLeaseID)
 	if req.PreviousLeaseID == nil {
@@ -1017,15 +1006,9 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
-	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
-		return
-	}
 	req.ReplaceExisting = false
-	req.CreatedBy = int64(landlordMetaData.DbId)
-	req.UpdatedBy = int64(landlordMetaData.DbId)
+	req.CreatedBy = int64(landlordID)
+	req.UpdatedBy = int64(landlordID)
 	req.Status = string(db.LeaseStatusPendingApproval)
 
 	// Call the updated handler with landlord context
@@ -1500,15 +1483,7 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	ctx := r.Context()
 
 	// Get landlord ID from middleware-injected context
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
-	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
-		return
-	}
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
@@ -1521,17 +1496,12 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	}
 
 	log.Printf("[WEBHOOK] Document %s signed, marking lease %d as active", documentID, lease.ID)
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
-	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
-		return
-	}
+
 	// 2. Update the lease status to active
 	updatedLease, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
 		ID:        lease.ID,
 		Status:    db.LeaseStatusActive,
-		UpdatedBy: int64(landlordMetaData.DbId),
+		UpdatedBy: int64(landlordID),
 	})
 
 	if err != nil {
@@ -1551,18 +1521,12 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		}
 
 		// Update the apartment to unavailable
-		// Based on your errors, pgtype.Int8 is expected, not sql.NullInt64
-		leaseID := pgtype.Int8{
-			Int64: updatedLease.ID,
-			Valid: true,
-		}
 
 		err = h.queries.UpdateApartment(ctx, db.UpdateApartmentParams{
 			ID:           apartment.ID,
 			Price:        apartment.Price,
 			ManagementID: apartment.ManagementID,
 			Availability: false,
-			LeaseID:      leaseID,
 		})
 
 		if err != nil {
@@ -1659,7 +1623,7 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		// continue; not fatal
 	}
 
-	landlordID, _, landlordEmail, err := h.GetLandlordInfo(r)
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
