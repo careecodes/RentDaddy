@@ -615,7 +615,7 @@ const AdminWorkOrder = () => {
                 ) : (
                     <TableComponent<ComplaintsData>
                         columns={complaintsColumns}
-                        dataSource={sortedComplaintsData}
+                        dataSource={complaintsData}
                         style=".lease-table-container"
                         pagination={paginationConfig}
                         onChange={(pagination, filters, sorter, extra) => {
