@@ -61,7 +61,6 @@ COMMENT ON COLUMN "parking_permits"."expires_at" IS '5 days long';
 CREATE TABLE IF NOT EXISTS "complaints"
 (
     "id"               BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "complaint_number" BIGINT               NOT NULL,
     "created_by"       BIGINT               NOT NULL,
     "category"         "Complaint_Category" NOT NULL DEFAULT "Complaint_Category" 'other',
     "title"            VARCHAR              NOT NULL,
@@ -76,7 +75,6 @@ CREATE TABLE IF NOT EXISTS "work_orders"
 (
     "id"           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
     "created_by"   BIGINT          NOT NULL,
-    "order_number" BIGINT          NOT NULL,
     "category"     "Work_Category" NOT NULL,
     "title"        VARCHAR         NOT NULL,
     "description"  TEXT            NOT NULL,
@@ -181,3 +179,4 @@ ALTER TABLE "work_orders"
     ADD CONSTRAINT "workorder_created_by_foreign" FOREIGN KEY ("created_by") REFERENCES "users" ("id");
 ALTER TABLE "leases"
     ADD CONSTRAINT "lease_landlord_foreign" FOREIGN KEY ("landlord_id") REFERENCES "users" ("id");
+

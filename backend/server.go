@@ -16,6 +16,7 @@ import (
 	"github.com/clerk/clerk-sdk-go/v2"
 
 	clerkhttp "github.com/clerk/clerk-sdk-go/v2/http"
+	"github.com/clerk/clerk-sdk-go/v2/session"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -84,6 +85,13 @@ func main() {
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
+	// // Test routes - no auth required
+	// r.Post("/test/complaints", complaintHandler.CreateManyComplaintsForTestingHandler)
+
+	// r.Post("/test/work-orders", workOrderHandler.CreateManyWorkOrdersHandler)
+
+	// r.Post("/test/lockers", lockerHandler.CreateManyLockers)
+
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
@@ -91,7 +99,7 @@ func main() {
 
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
-			// a.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
 			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
@@ -179,13 +187,16 @@ func main() {
 		// Tenant Endpoints
 		r.Route("/tenant", func(r chi.Router) {
 			r.Get("/", userHandler.GetUserByClerkId)
-			r.Get("/documents", userHandler.GetTenantDocuments)
-			r.Get("/work_orders", userHandler.GetTenantWorkOrders)
-			r.Get("/complaints", userHandler.GetTenantComplaints)
+			r.Get("/apartment", userHandler.TenantGetApartment)
+			r.Get("/documents", userHandler.TenantGetDocuments)
+			r.Get("/work_orders", userHandler.TenantGetWorkOrders)
+			r.Post("/work_orders", userHandler.TenantCreateWorkOrder)
+			r.Get("/complaints", userHandler.TenantGetComplaints)
+			r.Post("/complaints", userHandler.TenantCreateComplaint)
 
 			// Locker Endpoints
-			r.Get("/lockers/{user_id}", lockerHandler.GetLockerByUserId)
-			r.Post("/lockers/{user_id}/unlock", lockerHandler.UnlockLocker)
+			r.Get("/lockers", lockerHandler.GetLockerByUserId)
+			r.Post("/lockers/unlock", lockerHandler.UnlockLocker)
 
 			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {
@@ -194,6 +205,26 @@ func main() {
 				r.Get("/{permit_id}", parkingPermitHandler.GetParkingPermit)
 			})
 		})
+		// NOTE: Destory session / ctx on sign out
+		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
+			claims, ok := clerk.SessionClaimsFromContext(r.Context())
+			if !ok {
+				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
+				http.Error(w, "Error destorying session", http.StatusInternalServerError)
+				return
+			}
+			_, err := session.Revoke(r.Context(), &session.RevokeParams{
+				ID: claims.ID,
+			})
+			if err != nil {
+				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
+				http.Error(w, "Error revoking session", http.StatusInternalServerError)
+				return
+			}
+
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Session revoked successfully"))
+		})
 	})
 
 	// ChatBot routes
@@ -201,6 +232,7 @@ func main() {
 		r.Post("/", chatbotHandler.ChatHandler)
 		r.Get("/", chatbotHandler.ChatGetHandler)
 	})
+
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{

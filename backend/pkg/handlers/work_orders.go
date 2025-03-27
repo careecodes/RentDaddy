@@ -249,3 +249,30 @@ func (h *WorkOrderHandler) DeleteWorkOrderHandler(w http.ResponseWriter, r *http
 		return
 	}
 }
+
+// Using this for testing, gonna comment out for PR
+// func (h *WorkOrderHandler) CreateManyWorkOrdersHandler(w http.ResponseWriter, r *http.Request) {
+// 	var req struct {
+// 		Count int32 `json:"count"`
+// 	}
+
+// 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+// 		http.Error(w, "Invalid request body", http.StatusBadRequest)
+// 		return
+// 	}
+
+// 	if req.Count <= 0 {
+// 		http.Error(w, "Count must be greater than 0", http.StatusBadRequest)
+// 		return
+// 	}
+// 	_, err := h.queries.CreateManyWorkOrdersForTesting(r.Context(), req.Count)
+// 	if err != nil {
+// 		http.Error(w, "Failed to create work orders", http.StatusInternalServerError)
+// 		return
+// 	}
+
+// 	w.WriteHeader(http.StatusCreated)
+// 	json.NewEncoder(w).Encode(map[string]string{
+// 		"message": fmt.Sprintf("Successfully created %d work orders", req.Count),
+// 	})
+// }

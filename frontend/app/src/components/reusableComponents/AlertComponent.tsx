@@ -3,6 +3,7 @@ import { Alert } from "antd";
 
 interface AlertProps {
     title: string;
+    message: string;
     description: string;
     type: "success" | "info" | "warning" | "error";
 }

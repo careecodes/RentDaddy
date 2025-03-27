@@ -4,13 +4,13 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"time"
 
 	"github.com/careecodes/RentDaddy/internal/utils"
 
 	//"github.com/careecodes/RentDaddy/internal/utils"
-	"log"
-	"os"
-	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -50,7 +50,7 @@ func main() {
 	ctx := context.Background()
 	// CLerk 10 request per second
 	rateLimitThreshold := 10
-	userCount := 9
+	userCount := 3
 
 	// check if users already seeded
 	pool, err := pgxpool.New(ctx, os.Getenv("PG_URL"))
