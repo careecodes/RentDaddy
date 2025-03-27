@@ -140,7 +140,7 @@ const AddTenant = () => {
     return (
         <div className="container">
             {/* <h1 className="p-3">View or Add Tenants</h1> */}
-            <PageTitleComponent title="View or Add Tenants" />
+            <PageTitleComponent title="Manage Tenants" />
             <div className="mb-3 flex">
                 <InviteUserModal />
             </div>

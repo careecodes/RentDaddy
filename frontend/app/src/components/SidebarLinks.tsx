@@ -69,9 +69,9 @@ const SidebarLinks = () => {
                             Apartment Setup
                         </Link>
                         <Link
-                            to="/admin/add-tenant"
-                            className={getLinkClass("/admin/add-tenant") + " hover-lift transition-all"}>
-                            Add Tenant
+                            to="/admin/manage-tenants"
+                            className={getLinkClass("/admin/manage-tenants") + " hover-lift transition-all"}>
+                            Manage Tenants
                         </Link>
                         <Link
                             to="/admin/admin-view-and-edit-leases"
@@ -83,17 +83,16 @@ const SidebarLinks = () => {
                             className={getLinkClass("/admin/admin-view-and-edit-work-orders-and-complaints") + " hover-lift transition-all"}>
                             Work Orders & Complaints
                         </Link>
-                        {/* View Smart Lockers */}
-                        {/* <Link
+                        <Link
                             to="/admin/admin-view-and-edit-smart-lockers"
                             className={getLinkClass("/admin/admin-view-and-edit-smart-lockers") + " hover-lift transition-all"}>
-                            View Smart Lockers
-                        </Link> */}
-                        {/* <Link
+                            Smart Lockers
+                        </Link>
+                        <Link
                             to="/components/settings"
                             className={getLinkClass("/components/settings") + " hover-lift transition-all"}>
                             Settings
-                        </Link> */}
+                        </Link>
                     </div>
                 </div>
             )}
