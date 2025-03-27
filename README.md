@@ -1,4 +1,4 @@
-![image](assets/logo.png)
+![image](frontend/app/public/logo.png)
 
 # Ezra
 
