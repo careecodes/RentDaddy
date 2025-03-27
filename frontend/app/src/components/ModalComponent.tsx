@@ -40,23 +40,14 @@ interface ModalComponentProps {
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
     type:
-        |
         | "default"
-       
         | "Smart Locker"
-       
         | "Guest Parking"
-       
         | "Invite Tenant"
-       
         | "Edit Tenant"
-       
         | "View Tenant Complaints"
-       
         | "View Tenant Work Orders"
-       
         | "Send Tenant Lease"
-       
         | "Edit Apartment Building"
         | "Update Password Locker"
         | "Edit Tenant"
