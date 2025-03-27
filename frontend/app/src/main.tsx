@@ -29,11 +29,12 @@ import AdminDashboard from "./pages/AdminDashboard.tsx";
 import AddTenant from "./pages/AddTenant.tsx";
 import AdminViewEditLeases from "./pages/AdminViewEditLeases.tsx";
 import AdminWorkOrder from "./pages/AdminWorkOrder.tsx";
-import TenantComplaintsAndWorkOrders from "./pages/TenantComplaintsAndWorkOrders.tsx";
 import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetupAndDetailsManagement.tsx";
+import TenantComplaints from "./pages/TenantComplaints.tsx";
+import TenantWorkOrders from "./pages/TenantWorkOrders.tsx";
 import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
@@ -186,8 +187,12 @@ createRoot(document.getElementById("root")!).render(
                                             element={<h1>Digital Documents</h1>}
                                         />
                                         <Route
-                                            path="tenant-work-orders-and-complaints"
-                                            element={<TenantComplaintsAndWorkOrders />}
+                                            path="tenant-complaints"
+                                            element={<TenantComplaints />}
+                                        />
+                                        <Route
+                                            path="tenant-work-orders"
+                                            element={<TenantWorkOrders />}
                                         />
                                     </Route>
                                 </Route>

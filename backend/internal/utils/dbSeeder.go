@@ -61,17 +61,14 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 	}
 
 	for i := 0; i < 10; i++ {
-		orderNum := user.ID + int64(rand.Intn(1000))
 		_, err := queries.CreateWorkOrder(context.Background(), db.CreateWorkOrderParams{
 			CreatedBy:   user.ID,
-			OrderNumber: orderNum,
 			Category:    RandomWorkCategory(),
 			Title:       faker.Sentence(),
 			Description: faker.Paragraph(),
-			Status:      RandomStatus(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %d %v", orderNum, err.Error()))
+			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %d %v", i, err.Error()))
 		}
 	}
 
@@ -82,17 +79,14 @@ func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) er
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
 	for i := 0; i < 10; i++ {
-		complaintNum := user.ID + int64(rand.Intn(1000))
 		_, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
-			CreatedBy:       user.ID,
-			ComplaintNumber: complaintNum,
-			Category:        RandomComplaintCategory(),
-			Title:           faker.Sentence(),
-			Description:     faker.Paragraph(),
-			Status:          RandomStatus(),
+			CreatedBy:   user.ID,
+			Category:    RandomComplaintCategory(),
+			Title:       faker.Sentence(),
+			Description: faker.Paragraph(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %d %v", complaintNum, err.Error()))
+			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %d %v", i, err.Error()))
 		}
 	}
 
@@ -103,9 +97,8 @@ func createComplaints(queries *db.Queries, user db.User, ctx context.Context) er
 func createParkingPermits(queries *db.Queries, user db.User, createCount int, ctx context.Context) error {
 	for i := 0; i < createCount; i++ {
 		_, err := queries.CreateParkingPermit(ctx, db.CreateParkingPermitParams{
-			CreatedBy:    user.ID,
-			PermitNumber: user.ID + int64(i),
-			ExpiresAt:    pgtype.Timestamp{Time: time.Now().AddDate(0, 0, 2), Valid: true},
+			CreatedBy: user.ID,
+			ExpiresAt: pgtype.Timestamp{Time: time.Now().AddDate(0, 0, 2), Valid: true},
 		})
 		if err != nil {
 			return errors.New(fmt.Sprintf("[SEEDER] error creating parking permit: %d %v", user.ID, err.Error()))
