@@ -145,6 +145,10 @@ body {
     justify-content: center;
 }
 
+.disabled-link {
+    pointer-events: none;
+}
+
 .alert-container {
     display: flex;
     margin-bottom: 20px;
@@ -222,6 +226,7 @@ body {
 
 .footer-logo {
     margin: 1rem auto;
+    max-height: 50px;
     border-radius: 8px;
 }
 
@@ -241,6 +246,7 @@ body {
     position: sticky;
     top: 0;
     z-index: 1;
+    padding: 2% 2%;
     width: 100%;
     display: flex;
     align-items: center;

@@ -34,6 +34,7 @@ import ReusableComponents from "./pages/ReusableComponents.tsx";
 
 import { TenantDashBoard } from "./pages/TenantDashBoard.tsx";
 import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetupAndDetailsManagement.tsx";
+import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
 
 const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
 
@@ -153,7 +154,7 @@ createRoot(document.getElementById("root")!).render(
                                             element={<AdminApartmentSetupAndDetailsManagement />}
                                         />
                                         <Route
-                                            path="add-tenant"
+                                            path="manage-tenants"
                                             element={<AddTenant />}
                                         />
                                         <Route
@@ -163,6 +164,10 @@ createRoot(document.getElementById("root")!).render(
                                         <Route
                                             path="admin-view-and-edit-work-orders-and-complaints"
                                             element={<AdminWorkOrder />}
+                                        />
+                                        <Route
+                                            path="admin-view-and-edit-smart-lockers"
+                                            element={<AdminViewEditSmartLockers />}
                                         />
                                     </Route>
 

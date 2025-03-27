@@ -36,6 +36,7 @@ const useStyle = createStyles(({ css, token }) => {
 });
 
 const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, disabled, loading }: TableComponentProps<T>) => {
+
     const { styles } = useStyle();
 
     return (
@@ -48,6 +49,7 @@ const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, paginati
                 pagination={pagination}
                 onChange={onChange}
                 onRow={onRow}
+                loading={loading}
                 scroll={{ x: "max-content" }}
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}
             />
