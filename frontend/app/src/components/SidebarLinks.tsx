@@ -28,9 +28,9 @@ const SidebarLinks = () => {
     const isTenant = path.startsWith("/tenant");
 
     return (
-        <div className="menu-container d-flex flex-column gap-3 px-1 overflow-y-auto">
+        <div className="menu-container d-flex flex-column gap-3 px-1 mb-5">
             {/* Home Menu Item */}
-            <div className="menu-item rounded-lg p-2 p-md-3">
+            {/* <div className="menu-item rounded-lg px-2 px-md-3 mt-3">
                 <div className="d-flex align-items-center">
                     <HomeOutlined
                         className="menu-icon text-white me-2 me-md-3"
@@ -42,7 +42,7 @@ const SidebarLinks = () => {
                         Home
                     </Link>
                 </div>
-            </div>
+            </div> */}
 
             {isAdmin && (
                 <div className="menu-item rounded-lg p-3">
@@ -69,9 +69,9 @@ const SidebarLinks = () => {
                             Apartment Setup
                         </Link>
                         <Link
-                            to="/admin/add-tenant"
-                            className={getLinkClass("/admin/add-tenant") + " hover-lift transition-all"}>
-                            Add Tenant
+                            to="/admin/manage-tenants"
+                            className={getLinkClass("/admin/manage-tenants") + " hover-lift transition-all"}>
+                            Manage Tenants
                         </Link>
                         <Link
                             to="/admin/admin-view-and-edit-leases"
@@ -82,6 +82,11 @@ const SidebarLinks = () => {
                             to="/admin/admin-view-and-edit-work-orders-and-complaints"
                             className={getLinkClass("/admin/admin-view-and-edit-work-orders-and-complaints") + " hover-lift transition-all"}>
                             Work Orders & Complaints
+                        </Link>
+                        <Link
+                            to="/admin/admin-view-and-edit-smart-lockers"
+                            className={getLinkClass("/admin/admin-view-and-edit-smart-lockers") + " hover-lift transition-all"}>
+                            Smart Lockers
                         </Link>
                         <Link
                             to="/components/settings"
@@ -126,14 +131,15 @@ const SidebarLinks = () => {
                             className={getLinkClass("/tenant/tenant-work-orders-and-complaints") + " hover-lift transition-all"}>
                             Work Orders & Complaints
                         </Link>
-                        <Link
+                        {/* <Link
                             to="/tenant/settings"
                             className={getLinkClass("/tenant/settings") + " hover-lift transition-all"}>
                             Settings
-                        </Link>
+                        </Link> */}
                     </div>
                 </div>
             )}
+            <div className="mt-5" />
         </div>
     );
 };

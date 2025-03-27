@@ -251,3 +251,21 @@ func (q *Queries) UpdateWorkOrder(ctx context.Context, arg UpdateWorkOrderParams
 	)
 	return err
 }
+
+const updateWorkOrderStatus = `-- name: UpdateWorkOrderStatus :exec
+UPDATE work_orders
+SET
+    status = $2,
+    updated_at = now()
+WHERE id = $1
+`
+
+type UpdateWorkOrderStatusParams struct {
+	ID     int64  `json:"id"`
+	Status Status `json:"status"`
+}
+
+func (q *Queries) UpdateWorkOrderStatus(ctx context.Context, arg UpdateWorkOrderStatusParams) error {
+	_, err := q.db.Exec(ctx, updateWorkOrderStatus, arg.ID, arg.Status)
+	return err
+}

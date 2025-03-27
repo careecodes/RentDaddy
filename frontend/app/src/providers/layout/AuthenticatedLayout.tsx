@@ -9,7 +9,6 @@ import SidebarLinks from "../../components/SidebarLinks";
 const { Header, Content, Footer, Sider } = Layout;
 
 const siderStyle: React.CSSProperties = {
-    overflow: "auto", // If we don't want the scrollbar to be scrollable, we can set this to hidden
     height: "100vh",
     position: "sticky",
     insetInlineStart: 0,
@@ -18,78 +17,6 @@ const siderStyle: React.CSSProperties = {
     scrollbarGutter: "stable",
     backgroundColor: "#00674f",
 };
-
-const items: MenuProps["items"] = [
-    {
-        key: "home",
-        icon: React.createElement(HomeOutlined),
-        label: <Link to="/">Home</Link>,
-    },
-    {
-        key: "admin",
-        icon: React.createElement(TeamOutlined),
-        label: <Link to="/admin">Admin</Link>,
-        children: [
-            // Admin Dashboard
-            {
-                key: "admin-dashboard",
-                label: <Link to="/admin">Admin Dashboard</Link>,
-            },
-            // Apartment Setup and Details Management Page
-            {
-                key: "apartment",
-                label: <Link to="/admin/init-apartment-complex">Apartment Setup</Link>,
-            },
-            // Add a tenant
-            {
-                key: "tenant",
-                label: <Link to="/admin/add-tenant">Add Tenant</Link>,
-            },
-            // View Digital Leases
-            {
-                key: "admin-view-and-edit-leases",
-                label: <Link to="/admin/admin-view-and-edit-leases">View Digital Leases</Link>,
-            },
-            // Work Order / Complaint Management Page
-            {
-                key: "admin-view-and-edit-work-orders-and-complaints",
-                label: <Link to="/admin/admin-view-and-edit-work-orders-and-complaints">Work Orders & Complaints</Link>,
-            },
-        ],
-    },
-    {
-        key: "tenant",
-        icon: React.createElement(UserOutlined),
-        label: <Link to="/tenant">Tenant</Link>,
-        children: [
-            // Tenant Dashboard
-            {
-                key: "tenant-dashboard",
-                label: <Link to="/tenant">Tenant Dashboard</Link>,
-            },
-            // Guest Parking
-            {
-                key: "guest-parking",
-                label: <Link to="/tenant/guest-parking">Guest Parking</Link>,
-            },
-            // View Digital Leases
-            {
-                key: "tenant-view-and-edit-leases",
-                label: <Link to="/tenant/tenant-view-and-edit-leases">View Digital Leases</Link>,
-            },
-            // Work Order / Complaint Management Page
-            {
-                key: "tenant-work-orders-and-complaints",
-                label: <Link to="/tenant/tenant-work-orders-and-complaints">Work Orders & Complaints</Link>,
-            },
-        ],
-    },
-    {
-        key: "settings",
-        icon: React.createElement(SettingOutlined),
-        label: <Link to="/components/settings">Settings</Link>,
-    },
-];
 
 const AuthenticatedLayout: React.FC = () => {
     const { isSignedIn, user } = useUser();
@@ -111,60 +38,51 @@ const AuthenticatedLayout: React.FC = () => {
             <Sider style={siderStyle}>
                 {/* Logo and Title Container */}
                 <div className="logo-container flex flex-column align-items-center justify-content-center py-3 py-md-4">
-                    <Divider className="divider-text border-white" />
                     <Link
                         to="/"
-                        className="text-decoration-none">
-                        <h1 className="logo-title text-white mb-3 text-center">EZRA</h1>
+                        className="text-decoration-none d-flex gap-2 my-auto">
                         <img
                             src="/logo.png"
                             alt="EZRA Logo"
-                            className="logo-image mx-auto d-block bg-white rounded-5"
-                            width={64}
-                            height={64}
+                            className="logo-image mx-auto d-flex bg-white rounded-5"
+                            width={48}
+                            height={48}
                         />
+
+                        <h2 className="logo-title text-white my-1 text-center">EZRA</h2>
                     </Link>
                     <Divider className="divider-text border-white" />
                 </div>
 
                 {/* Menu Container */}
-                {/* <Menu theme='dark' style={{ backgroundColor: '#7789f4', color: '#000000' }} mode="inline" defaultSelectedKeys={[defaultSelectedKey]} defaultOpenKeys={[defaultSelectedKey]} items={items} /> */}
-
-                {/* We can change the h-100 here once we show only the admin or tenant menu items based off the user role */}
-                <div className="sidebar-content position-relative h-100 d-flex flex-column">
-                    <div className="flex-grow-1 overflow-y-auto">
-                        <SidebarLinks />
-                    </div>
-
-                    {/* Avatar and Login Container */}
-                    <div className="avatar-container mt-auto pb-3">
-                        <Divider className="divider-text border-white" />
-                        {isSignedIn ? (
-                            <SignOutButton>
-                                <div className="flex align-items-center justify-content-center gap-2 mb-4 cursor-pointer">
-                                    <p className="login-text text-white m-0">Sign Out</p>
-                                    <Avatar
-                                        className="avatar-icon"
-                                        size={48}
-                                        src={user?.imageUrl}
-                                    />
-                                </div>
-                            </SignOutButton>
-                        ) : (
-                            <Link
-                                to="/auth/login"
-                                className="text-decoration-none">
-                                <div className="flex align-items-center justify-content-center gap-2 mb-4">
-                                    <p className="login-text text-white m-0">Login</p>
-                                    <Avatar
-                                        className="avatar-icon"
-                                        size={48}
-                                        icon={<UserOutlined />}
-                                    />
-                                </div>
-                            </Link>
-                        )}
-                    </div>
+                <SidebarLinks />
+                {/* Avatar and Login Container */}
+                <div className="avatar-container position-absolute bottom-0 w-100 pb-3 flex flex-column align-items-center justify-content-center">
+                    {isSignedIn ? (
+                        <SignOutButton>
+                            <div className="flex align-items-center justify-content-center gap-2 bg-white mb-4 cursor-pointer btn">
+                                <Avatar
+                                    className="avatar-icon"
+                                    size={24}
+                                    src={user?.imageUrl}
+                                />
+                                <p className="login-text text-black m-0">Sign Out</p>
+                            </div>
+                        </SignOutButton>
+                    ) : (
+                        <Link
+                            to="/auth/login"
+                            className="text-decoration-none">
+                            <div className="flex align-items-center justify-content-center gap-2 mb-4">
+                                <p className="login-text text-white m-0">Login</p>
+                                <Avatar
+                                    className="avatar-icon"
+                                    size={48}
+                                    icon={<UserOutlined />}
+                                />
+                            </div>
+                        </Link>
+                    )}
                 </div>
             </Sider>
 
@@ -178,21 +96,25 @@ const AuthenticatedLayout: React.FC = () => {
                 <Footer style={{ textAlign: "center" }}>
                     <Link
                         to="/about"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         About
                     </Link>
                     <Link
                         to="/contact"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         Contact
                     </Link>
                     <Link
                         to="/privacy"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         Privacy Policy
                     </Link>
                     <Link
                         to="/terms"
+                        className="disabled-link"
                         style={{ padding: "0 16px", color: "#595959", textDecoration: "none" }}>
                         Terms of Service
                     </Link>

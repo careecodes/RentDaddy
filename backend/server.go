@@ -133,6 +133,9 @@ func main() {
 					r.Get("/", workOrderHandler.GetWorkOrderHandler)
 					r.Patch("/", workOrderHandler.UpdateWorkOrderHandler)
 					r.Delete("/", workOrderHandler.DeleteWorkOrderHandler)
+					r.Route("/status", func(r chi.Router) {
+						r.Patch("/", workOrderHandler.UpdateWorkOrderStatusHandler)
+					})
 				})
 			})
 
@@ -164,6 +167,11 @@ func main() {
 				r.Post("/", complaintHandler.CreateComplaintHandler)
 				r.Patch("/{complaint}", complaintHandler.UpdateComplaintHandler)
 				r.Delete("/{complaint}", complaintHandler.DeleteComplaintHandler)
+				r.Route("/{complaint_id}", func(r chi.Router) {
+					r.Route("/status", func(r chi.Router) {
+						r.Patch("/", complaintHandler.UpdateComplaintStatusHandler)
+					})
+				})
 			})
 		})
 		// End Admin
