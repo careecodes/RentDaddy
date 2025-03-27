@@ -1,5 +1,8 @@
 #!/bin/sh
 
+export PGPASSWORD=$POSTGRES_PASSWORD
+
+
 # Database seeder script that authenticates with Clerk and creates test data
 
 echo "🚀 Starting database seeder script..."

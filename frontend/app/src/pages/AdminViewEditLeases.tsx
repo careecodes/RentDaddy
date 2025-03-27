@@ -214,6 +214,7 @@ export default function AdminViewEditLeases() {
         return record.status;
     };
 
+
     // Prepare lease data before rendering
     const filteredData: LeaseData[] = Array.isArray(leases) ? leases.map((lease) => {
         return {
@@ -403,7 +404,6 @@ export default function AdminViewEditLeases() {
             title: "Actions",
             key: "actions",
             render: (_, record) => (
-
 
                 <Space size="middle" wrap={true}>
                     {record.admin_doc_url && (

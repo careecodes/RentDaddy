@@ -3,6 +3,7 @@ package handlers
 // PLEASE USE THIS TO GET LANDLORD EMAIL, ALSO CHECK FOR LANDLORD NAME AND ID extractEmailFromContext
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"path/filepath"
@@ -48,11 +49,6 @@ Lease Termination Summary:
 Lease Renewal Summary:
 
 */
-
-// HARDCODED LANDLORD INFO FOR TESTING - need to do this with Clerk
-// var landlordID = int64(100)
-// var landlordName = "First Landlord"
-// var landlordEmail = "wrldconnect1@gmail.com"
 
 // Temp dir for storing generated leases
 var tempDir = os.Getenv("TEMP_DIR")
@@ -143,7 +139,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	// Default fallback values
 	currentLandlordID := int64(100) // Default to the original hardcoded value
 	currentLandlordName := "First Landlord"
-	currentLandlordEmail := "example@example.com"
+	currentLandlordEmail := "wrldconnect1@gmail.com"
 
 	if tempDir == "" {
 		tempDir = "/app/temp" // Default fallback
@@ -169,7 +165,11 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	ctx := r.Context()
-	// No need to get landlord ID from context since it's passed as parameter
+	landlordID, _, _, err := h.GetLandlordInfo(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
 	var (
 		existingLease      db.GetLeaseForAmendingRow
@@ -178,7 +178,7 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	)
 
 	// Try to fetch lease using tenant + apartment
-	existingLease, err := h.queries.GetLeaseForAmending(ctx, db.GetLeaseForAmendingParams{
+	existingLease, err = h.queries.GetLeaseForAmending(ctx, db.GetLeaseForAmendingParams{
 		TenantID:    req.TenantID,
 		ApartmentID: req.ApartmentID,
 	})
@@ -225,19 +225,17 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Only active or draft leases can be amended", http.StatusBadRequest)
 		return
 	}
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, _, err = h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	// Assign inherited fields
 	req.PreviousLeaseID = &existingLease.ID
 	req.LeaseNumber = existingLease.LeaseNumber
-	req.CreatedBy = int64(landlordMetaData.DbId)
-	req.UpdatedBy = int64(landlordMetaData.DbId)
+	req.CreatedBy = int64(landlordID)
+	req.UpdatedBy = int64(landlordID)
 	req.ReplaceExisting = true
 	req.Status = "draft" // All amendments start as draft
 
@@ -254,14 +252,15 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 
 	// Upsert new lease record with landlord context
 	h.handleLeaseUpsertWithContext(w, r, req)
-	landlordContext, err = middleware.GetClerkUser(r)
-
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, _, err = h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	// Use the landlord information
+	req.UpdatedBy = landlordID
+	req.CreatedBy = landlordID
 	// Cancel the original lease after amending (if not already terminated, expired, or canceled)
 	if existingLease.Status != db.LeaseStatusTerminated &&
 		existingLease.Status != db.LeaseStatusExpired &&
@@ -270,7 +269,7 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 		_, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
 			ID:        existingLease.ID,
 			Status:    db.LeaseStatusCanceled,
-			UpdatedBy: int64(landlordMetaData.DbId),
+			UpdatedBy: int64(landlordID),
 		})
 		if err != nil {
 			log.Printf("[LEASE_AMEND] Failed to cancel original lease ID %d: %v", existingLease.ID, err)
@@ -289,16 +288,14 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
 	// No need to get landlordID from context - it's passed as parameter
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	terminatedLease, err := h.queries.TerminateLease(ctx, db.TerminateLeaseParams{
-		UpdatedBy: int64(landlordMetaData.DbId),
+		UpdatedBy: int64(landlordID),
 		ID:        int64(leaseID),
 	})
 	if err != nil {
@@ -307,7 +304,7 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, int64(landlordMetaData.DbId))
+	log.Printf("[LEASE_TERMINATE] Lease %d manually terminated by admin %d", leaseID, landlordID)
 	err = h.queries.UpdateApartment(ctx, db.UpdateApartmentParams{
 		ID:           terminatedLease.ApartmentID,
 		ManagementID: terminatedLease.LandlordID,
@@ -333,207 +330,30 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-// deprecated for handleLeaseUpsertWithContext
-func (h *LeaseHandler) handleLeaseUpsert(w http.ResponseWriter, r *http.Request, req LeaseUpsertRequest) {
-	// Get landlord ID from middleware-injected context
-
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
-	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
-		return
-	}
-	landlordName := fmt.Sprintf("%s %s", *landlordContext.FirstName, *landlordContext.LastName)
-	landlordId := int64(landlordMetaData.DbId)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	req.UpdatedBy = landlordId
-	req.CreatedBy = landlordId
-
-	log.Println("[LEASE_UPSERT] Starting lease upsert handler")
-
-	log.Println("[LEASE_UPSERT] Generating lease PDF")
-	startDate, err := time.Parse("2006-01-02", req.StartDate)
-	if err != nil {
-		log.Printf("[LEASE_UPSERT] Invalid start date format: %v", err)
-		http.Error(w, "Invalid start date", http.StatusBadRequest)
-		return
-	}
-	endDate, err := time.Parse("2006-01-02", req.EndDate)
-	if err != nil {
-		log.Printf("[LEASE_UPSERT] Invalid end date format: %v", err)
-		http.Error(w, "Invalid end date", http.StatusBadRequest)
-		return
-	}
-
-	conflict, err := h.queries.GetConflictingActiveLease(r.Context(), db.GetConflictingActiveLeaseParams{
-		TenantID:       req.TenantID,
-		LeaseStartDate: pgtype.Date{Time: startDate, Valid: true},
-		LeaseEndDate:   pgtype.Date{Time: endDate, Valid: true},
-	})
-
-	if err == nil && conflict.ID != 0 {
-		log.Printf("Tenant %d already has an active lease during the requested period", req.TenantID)
-		http.Error(w, "Tenant already has an active lease during this period", http.StatusConflict)
-		return
-	}
-
-	existing, err := h.queries.GetDuplicateLease(r.Context(), db.GetDuplicateLeaseParams{
-		TenantID:    req.TenantID,
-		ApartmentID: req.ApartmentID,
-		Status:      db.LeaseStatus(req.Status),
-	})
-	// If a duplicate is found, provide a more detailed error
-	if err == nil && existing.ID != 0 {
-		if req.ReplaceExisting {
-			// Terminate the existing lease instead of "archiving" it
-			_, err = h.queries.TerminateLease(r.Context(), db.TerminateLeaseParams{
-				UpdatedBy: req.CreatedBy,
-				ID:        existing.ID,
-			})
-
-			if err != nil {
-				log.Printf("[LEASE_UPSERT] Failed to terminate existing lease: %v", err)
-				http.Error(w, "Failed to replace existing lease", http.StatusInternalServerError)
-				return
-			}
-		} else {
-			log.Printf("[LEASE_UPSERT] Duplicate lease exists for tenant %d, apartment %d with status %s",
-				req.TenantID, req.ApartmentID, req.Status)
-			http.Error(w, fmt.Sprintf("A lease already exists with ID: %d. Set replace_existing=true to override.", existing.ID), http.StatusConflict)
-			return
-		}
-	}
-	// Get landlord email and name from middleware-injected context
-
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-
-	// Step 2: Generate the lease PDF
-	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
-		req.DocumentTitle,
-		landlordName,
-		req.TenantName,
-		req.PropertyAddress,
-		req.RentAmount,
-		startDate,
-		endDate,
-	)
-	if err != nil {
-		log.Printf("[LEASE_UPSERT] Error generating lease PDF: %v", err)
-		http.Error(w, "Failed to generate lease PDF", http.StatusInternalServerError)
-		return
-	}
-	log.Printf("[LEASE_UPSERT] Generated PDF for %s (%s)", req.TenantName, req.PropertyAddress)
-	landlordEmail := h.extractEmailFromContext(landlordContext.EmailAddresses, *landlordContext.PrimaryEmailAddressID)
-	// Step 3: Upload to Documenso and populate fields
-	log.Println("[LEASE_UPSERT] Uploading lease PDF to Documenso")
-	docID, _, landlordSigningURL, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
-		pdfData,
-		LeaseWithSignersRequest{
-			TenantName:      req.TenantName,
-			TenantEmail:     req.TenantEmail,
-			PropertyAddress: req.PropertyAddress,
-			RentAmount:      req.RentAmount,
-			StartDate:       startDate.Format("2006-01-02"),
-			EndDate:         endDate.Format("2006-01-02"),
-			DocumentTitle:   req.DocumentTitle,
-		},
-		landlordName,
-		landlordEmail,
-	)
-	if err != nil {
-		log.Printf("[LEASE_UPSERT] Documenso upload error: %v", err)
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-	log.Printf("[LEASE_UPSERT] Documenso Document ID: %s", docID)
-	log.Printf("[LEASE_UPSERT] Signing URL: %s", docID)
-
-	// Step 4: Create lease record in database
-	log.Println("[LEASE_UPSERT] Inserting lease into database")
-
-	leaseParams := db.RenewLeaseParams{
-		LeaseNumber:     req.LeaseNumber,
-		ExternalDocID:   docID,
-		TenantID:        req.TenantID,
-		LandlordID:      req.LandlordID,
-		ApartmentID:     req.ApartmentID,
-		LeaseStartDate:  pgtype.Date{Time: startDate, Valid: true},
-		LeaseEndDate:    pgtype.Date{Time: endDate, Valid: true},
-		RentAmount:      pgtype.Numeric{Int: big.NewInt(int64(req.RentAmount * 100)), Exp: -2, Valid: true},
-		Status:          db.LeaseStatus(req.Status),
-		LeasePdfS3:      pgtype.Text{String: s3bucket, Valid: true},
-		CreatedBy:       req.CreatedBy,
-		UpdatedBy:       req.UpdatedBy,
-		PreviousLeaseID: pgtype.Int8{Int64: derefOrZero(req.PreviousLeaseID), Valid: req.PreviousLeaseID != nil},
-		TenantSigningUrl: pgtype.Text{
-			String: tenantSigningURL,
-			Valid:  tenantSigningURL != "",
-		},
-		LandlordSigningUrl: pgtype.Text{String: landlordSigningURL,
-			Valid: landlordSigningURL != ""},
-	}
-	log.Printf(" [LEASE_UPSERT] Status: %v ", leaseParams.Status)
-	row, err := h.queries.RenewLease(r.Context(), leaseParams)
-	if err != nil {
-		log.Printf("[LEASE_UPSERT] Database insert error: %v", err)
-		http.Error(w, "Failed to save lease", http.StatusInternalServerError)
-		return
-	}
-
-	// Step 5: Respond to client with success
-	log.Printf("[LEASE_UPSERT] Lease created/renewed successfully with ID: %d", row.ID)
-	resp := map[string]interface{}{
-		"lease_id":        row.ID,
-		"lease_number":    row.LeaseNumber,
-		"external_doc_id": docID,
-		"sign_url":        h.documenso_client.GetSigningURL(docID),
-		"status":          req.Status,
-		"message":         "Lease created/renewed successfully with signing url.",
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(http.StatusCreated)
-	if err := json.NewEncoder(w).Encode(resp); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
-		log.Printf("Error encoding response: %v", err)
-		return
-	}
-}
-
 func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *http.Request, req LeaseUpsertRequest) {
+	// Validate admin user from the context
+	log.Print("Validating admin user...")
 
-	// Get landlord ID from middleware-injected context
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, landlordName, landlordEmail, err := h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
-	req.UpdatedBy = int64(landlordMetaData.DbId)
-	req.CreatedBy = int64(landlordMetaData.DbId)
+
+	// Use the admin user from database as the landlord
+	log.Print("Using admin user from database as landlord...")
 
 	log.Println("[LEASE_UPSERT] Starting lease upsert handler")
 
-	log.Println("[LEASE_UPSERT] Generating lease PDF")
+	// Parse and validate dates
+	log.Println("[LEASE_UPSERT] Validating lease dates")
 	startDate, err := time.Parse("2006-01-02", req.StartDate)
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Invalid start date format: %v", err)
 		http.Error(w, "Invalid start date", http.StatusBadRequest)
 		return
 	}
+
 	endDate, err := time.Parse("2006-01-02", req.EndDate)
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Invalid end date format: %v", err)
@@ -541,6 +361,7 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		return
 	}
 
+	// Check for conflicting leases
 	conflict, err := h.queries.GetConflictingActiveLease(r.Context(), db.GetConflictingActiveLeaseParams{
 		TenantID:       req.TenantID,
 		LeaseStartDate: pgtype.Date{Time: startDate, Valid: true},
@@ -553,11 +374,13 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		return
 	}
 
+	// Check for duplicate leases
 	existing, err := h.queries.GetDuplicateLease(r.Context(), db.GetDuplicateLeaseParams{
 		TenantID:    req.TenantID,
 		ApartmentID: req.ApartmentID,
 		Status:      db.LeaseStatus(req.Status),
 	})
+
 	// If a duplicate is found, provide a more detailed error
 	if err == nil && existing.ID != 0 {
 		if req.ReplaceExisting {
@@ -580,24 +403,26 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		}
 	}
 
-	// Step 2: Generate the lease PDF
+	// Generate the lease PDF using the landlord info from database
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
-		fmt.Sprintf("%s %s", *landlordContext.FirstName, *landlordContext.LastName),
+		landlordName,
 		req.TenantName,
 		req.PropertyAddress,
 		req.RentAmount,
 		startDate,
 		endDate,
 	)
+
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Error generating lease PDF: %v", err)
 		http.Error(w, "Failed to generate lease PDF", http.StatusInternalServerError)
 		return
 	}
+
 	log.Printf("[LEASE_UPSERT] Generated PDF for %s (%s)", req.TenantName, req.PropertyAddress)
-	landlordEmail := h.extractEmailFromContext(landlordContext.EmailAddresses, *landlordContext.PrimaryEmailAddressID)
-	// Step 3: Upload to Documenso and populate fields
+
+	// Upload to Documenso and populate fields
 	log.Println("[LEASE_UPSERT] Uploading lease PDF to Documenso")
 	docID, _, landlordSigningURL, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
@@ -610,25 +435,27 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 			EndDate:         endDate.Format("2006-01-02"),
 			DocumentTitle:   req.DocumentTitle,
 		},
-		fmt.Sprintf("%s %s", *landlordContext.FirstName, *landlordContext.LastName),
+		landlordName,
 		landlordEmail,
 	)
+
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Documenso upload error: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
 	}
+
 	log.Printf("[LEASE_UPSERT] Documenso Document ID: %s", docID)
 	log.Printf("[LEASE_UPSERT] Signing URL: %s", docID)
 
-	// Step 4: Create lease record in database
+	// Create lease record in database
 	log.Println("[LEASE_UPSERT] Inserting lease into database")
 
 	leaseParams := db.RenewLeaseParams{
 		LeaseNumber:     req.LeaseNumber,
 		ExternalDocID:   docID,
 		TenantID:        req.TenantID,
-		LandlordID:      int64(landlordMetaData.DbId), // Use parameter directly
+		LandlordID:      landlordID, // Use landlord ID from database
 		ApartmentID:     req.ApartmentID,
 		LeaseStartDate:  pgtype.Date{Time: startDate, Valid: true},
 		LeaseEndDate:    pgtype.Date{Time: endDate, Valid: true},
@@ -642,9 +469,12 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 			String: tenantSigningURL,
 			Valid:  tenantSigningURL != "",
 		},
-		LandlordSigningUrl: pgtype.Text{String: landlordSigningURL,
-			Valid: landlordSigningURL != ""},
+		LandlordSigningUrl: pgtype.Text{
+			String: landlordSigningURL,
+			Valid:  landlordSigningURL != "",
+		},
 	}
+
 	log.Printf(" [LEASE_UPSERT] Status: %v ", leaseParams.Status)
 	row, err := h.queries.RenewLease(r.Context(), leaseParams)
 	if err != nil {
@@ -653,7 +483,7 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		return
 	}
 
-	// Step 5: Respond to client with success
+	// Respond to client with success
 	log.Printf("[LEASE_UPSERT] Lease created/renewed successfully with ID: %d", row.ID)
 	resp := map[string]interface{}{
 		"lease_id":        row.ID,
@@ -674,6 +504,7 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 }
 
 func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
+	log.Printf("Retrieving leases...")
 	leases, err := h.queries.ListLeases(r.Context())
 	if err != nil {
 		log.Printf("Error retrieving leases: %v", err)
@@ -686,21 +517,22 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 	}
 
 	publicHost = strings.TrimSuffix(publicHost, "/")
+	leaseResponses := make([]map[string]interface{}, 0)
 
-	var leaseResponses []map[string]interface{}
 	for _, lease := range leases {
 		// Fetch tenant name
 		tenant, err := h.queries.GetUserByID(r.Context(), lease.TenantID)
+
 		if err != nil {
 			log.Printf("Warning: Could not fetch tenant name for ID %d", lease.TenantID)
 		}
-
+		log.Printf("Fetched tenant %s", tenant.FirstName)
 		// Fetch apartment details
 		apartment, err := h.queries.GetApartment(r.Context(), lease.ApartmentID)
 		if err != nil {
 			log.Printf("Warning: Could not fetch apartment %d", lease.ApartmentID)
 		}
-
+		log.Printf("Fetched apartment %v", apartment.UnitNumber)
 		// IMPORTANT: Check specifically for terminated status first
 		var status string
 		if lease.Status == db.LeaseStatusTerminated {
@@ -718,6 +550,7 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 		}
 		adminDocURL := fmt.Sprintf("%s/documents/%s", publicHost, lease.ExternalDocID)
 		// Add data to response array
+
 		leaseResponses = append(leaseResponses, map[string]interface{}{
 			"id":             lease.ID,
 			"tenantId":       lease.TenantID,
@@ -730,6 +563,7 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 			"status":         status,
 			"admin_doc_url":  adminDocURL,
 		})
+
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -873,22 +707,6 @@ func (h *LeaseHandler) ValidateLeaseRequest(r *http.Request) (*LeaseValidationRe
 	if endDate.Before(startDate) {
 		return nil, errors.New("end date must be after start date")
 	}
-
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
-	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		return nil, errors.New("Error converting body to JSON")
-	}
-
-	// Get landlord ID from middleware-injected context
-
-	if err != nil {
-		return nil, errors.New("Unauthorized")
-	}
-	req.LandlordID = int64(landlordMetaData.DbId)
 
 	return &LeaseValidationResult{
 		StartDate: startDate,
@@ -1233,21 +1051,22 @@ func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 
 	// Use the landlord ID passed directly to the handler
 	// No need to get it from context
-	landlordContext, err := middleware.GetClerkUser(r)
-	var landlordMetaData ClerkUserPublicMetaData
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, _, err := h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
+	// Use the landlord information
+	req.UpdatedBy = landlordID
+	req.CreatedBy = landlordID
 	// fill in defaults
 	req.LeaseNumber = 1
 	req.PreviousLeaseID = nil
 	req.ReplaceExisting = false
-	req.CreatedBy = int64(landlordMetaData.DbId)
-	req.UpdatedBy = int64(landlordMetaData.DbId)
-	req.LandlordID = int64(landlordMetaData.DbId)
+	req.CreatedBy = landlordID
+	req.UpdatedBy = landlordID
+	req.LandlordID = landlordID
 
 	// IMPORTANT: Always set status to "draft" for new leases, regardless of what was in the request
 	req.Status = "draft"
@@ -1821,9 +1640,12 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[LEASE_SEND] GetUserByID failed: %v", err)
 		return
 	}
-	landlordContext, err := middleware.GetClerkUser(r)
+	_, _, landlordEmail, err := h.GetLandlordInfo(r)
+	if err != nil {
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
 
-	landlordEmail := h.extractEmailFromContext(landlordContext.EmailAddresses, *landlordContext.PrimaryEmailAddressID)
 	// 4. Get both signing URLs from Documenso
 	tenantSigningURL, landlordSigningURL, err := h.documenso_client.GetSigningURLs(lease.ExternalDocID, tenant.Email, landlordEmail)
 	if err != nil {
@@ -1843,18 +1665,17 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		// continue; not fatal
 	}
 
-	var landlordMetaData ClerkUserPublicMetaData
-	err = json.Unmarshal(landlordContext.PublicMetadata, &landlordMetaData)
+	landlordID, _, landlordEmail, err := h.GetLandlordInfo(r)
 	if err != nil {
-		log.Printf("[CLERK_MIDDLEWARE] Failed converting body to JSON: %v", err)
-		http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
 	}
+
 	// 6. Update lease status to pending_approval
 	updatedLease, err := h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
 		ID:        leaseID,
 		Status:    db.LeaseStatusPendingApproval,
-		UpdatedBy: int64(landlordMetaData.DbId),
+		UpdatedBy: landlordID,
 	})
 	if err != nil {
 		http.Error(w, "Failed to update lease status", http.StatusInternalServerError)
@@ -1993,4 +1814,110 @@ func (*LeaseHandler) extractEmailFromContext(contextEmailEntry []*clerk.EmailAdd
 		primaryUserEmail = contextEmailEntry[0].EmailAddress
 	}
 	return primaryUserEmail
+}
+
+// IsDocumensoAvailable checks if the Documenso service is available
+func (h *LeaseHandler) IsDocumensoAvailable(ctx context.Context) bool {
+	// Use the baseURL to check service availability
+	// We'll attempt to access the API root with a short timeout
+	checkCtx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	// Create a simple GET request to the API
+	req, err := http.NewRequestWithContext(checkCtx, "GET", h.documenso_client.BaseURL, nil)
+	if err != nil {
+		log.Printf("[DOCUMENSO_HEALTH] Failed to create request: %v", err)
+		return false
+	}
+
+	req.Header.Set("Authorization", "Bearer "+h.documenso_client.ApiKey)
+
+	// Execute the request
+	resp, err := h.documenso_client.Client.Do(req)
+	if err != nil {
+		log.Printf("[DOCUMENSO_HEALTH] Service check failed: %v", err)
+		return false
+	}
+	defer resp.Body.Close()
+
+	// Check if we got a successful status code
+	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
+		log.Printf("[DOCUMENSO_HEALTH] Service available, status: %d", resp.StatusCode)
+		return true
+	}
+
+	log.Printf("[DOCUMENSO_HEALTH] Service check returned status: %d", resp.StatusCode)
+	return false
+}
+
+// RetryWithDocumensoCheck wraps an operation that depends on Documenso with availability checking
+func (h *LeaseHandler) RetryWithDocumensoCheck(w http.ResponseWriter, r *http.Request, operation string, fn func() error) error {
+	// First, check if Documenso is available
+	if !h.IsDocumensoAvailable(r.Context()) {
+		log.Printf("[DOCUMENSO_RETRY] Service unavailable for %s operation", operation)
+		http.Error(w, "We're experiencing issues with our document signing service. Please try again later or contact support.", http.StatusServiceUnavailable)
+		return fmt.Errorf("documenso service unavailable")
+	}
+
+	// Set up retry parameters
+	maxRetries := 3
+	backoff := 1 * time.Second
+
+	// Attempt the operation with retries
+	var err error
+	for attempt := 0; attempt < maxRetries; attempt++ {
+		err = fn()
+		if err == nil {
+			// Success
+			return nil
+		}
+
+		log.Printf("[DOCUMENSO_RETRY] %s attempt %d failed: %v", operation, attempt+1, err)
+
+		// If we've exhausted all retries, break
+		if attempt == maxRetries-1 {
+			break
+		}
+
+		// Wait before retrying with exponential backoff
+		waitTime := backoff * time.Duration(1<<uint(attempt))
+		time.Sleep(waitTime)
+	}
+
+	// If we get here, all retries failed
+	h.handleDocumensoError(w, err, operation)
+	return err
+}
+
+// handleDocumensoError provides a consistent error response when Documenso service fails
+func (h *LeaseHandler) handleDocumensoError(w http.ResponseWriter, err error, operation string) {
+	// Log the detailed error for debugging purposes
+	log.Printf("[DOCUMENSO_ERROR] %s operation failed: %v", operation, err)
+
+	// Return a user-friendly error message
+	http.Error(w, "We're experiencing issues with our document signing service. Please try again later or contact support.", http.StatusServiceUnavailable)
+}
+
+// GetLandlordInfo retrieves the landlord information from the current request context
+// Returns landlordID, landlordName, landlordEmail and any error that occurred
+func (h *LeaseHandler) GetLandlordInfo(r *http.Request) (int64, string, string, error) {
+	adminClerkID := middleware.GetUserCtx(r).ID
+	adminUser, err := h.queries.GetUser(r.Context(), adminClerkID)
+	if err != nil {
+		log.Printf("[Construct-Admin] cannot retrieve admin: %v", err)
+		return 0, "", "", fmt.Errorf("unauthorized: %w", err)
+	}
+
+	if adminUser.ClerkID != adminClerkID {
+		log.Printf("[Construct] admin user does not belong to clerk")
+		return 0, "", "", errors.New("unauthorized: clerk ID mismatch")
+	}
+
+	if adminUser.Role != db.RoleAdmin {
+		log.Printf("[Construct] unauthorized user")
+		return 0, "", "", errors.New("unauthorized: not admin")
+	}
+
+	landlordName := fmt.Sprintf("%s %s", adminUser.FirstName, adminUser.LastName)
+	return adminUser.ID, landlordName, adminUser.Email, nil
 }

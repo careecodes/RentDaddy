@@ -121,7 +121,7 @@ volumes:
 If you're self-hosting **both Documenso and your backend** inside Docker and both are on the same Docker network (`documenso-rentdaddy`), then **you do not need ngrok** for Documenso webhooks to reach your backend. You can configure the webhook like so:
 
 ```http
-http://rentdaddy-backend:8080/your-webhook-endpoint
+http://rentdaddy-backend:8080/admin/leases/webhooks/documenso
 ```
 
 However, if:
