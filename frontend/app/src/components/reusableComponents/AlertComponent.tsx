@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { Alert } from "antd";
 
 interface AlertProps {
@@ -7,6 +8,12 @@ interface AlertProps {
 }
 
 const AlertComponent = (props: AlertProps) => {
+    const [visible, setVisible] = useState(true);
+
+    if (!visible) {
+        return null;
+    }
+
     return (
         <>
             <Alert
@@ -14,7 +21,10 @@ const AlertComponent = (props: AlertProps) => {
                 message={props.title}
                 description={props.description}
                 type={props.type}
-                showIcon></Alert>
+                showIcon
+                closable
+                onClose={() => setVisible(false)}
+            />
         </>
     );
 };
