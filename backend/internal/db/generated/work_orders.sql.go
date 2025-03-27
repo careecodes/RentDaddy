@@ -25,35 +25,42 @@ func (q *Queries) CountWorkOrdersByUser(ctx context.Context, createdBy int64) (i
 const createWorkOrder = `-- name: CreateWorkOrder :one
 INSERT INTO work_orders (
     created_by,
+    order_number,
     category,
     title,
     description,
-    unit_number
+    unit_number,
+    status
   )
-VALUES ($1, $2, $3, $4, $5)
-RETURNING id, created_by, category, title, description, unit_number, status, updated_at, created_at
+VALUES ($1, $2, $3, $4, $5, $6, $7)
+RETURNING id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 `
 
 type CreateWorkOrderParams struct {
 	CreatedBy   int64        `json:"created_by"`
+	OrderNumber int64        `json:"order_number"`
 	Category    WorkCategory `json:"category"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
+	UnitNumber  int64        `json:"unit_number"`
+	Status      Status       `json:"status"`
 }
 
 func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams) (WorkOrder, error) {
 	row := q.db.QueryRow(ctx, createWorkOrder,
 		arg.CreatedBy,
+		arg.OrderNumber,
 		arg.Category,
 		arg.Title,
 		arg.Description,
 		arg.UnitNumber,
+		arg.Status,
 	)
 	var i WorkOrder
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedBy,
+		&i.OrderNumber,
 		&i.Category,
 		&i.Title,
 		&i.Description,
@@ -76,7 +83,7 @@ func (q *Queries) DeleteWorkOrder(ctx context.Context, id int64) error {
 }
 
 const getWorkOrder = `-- name: GetWorkOrder :one
-SELECT id, created_by,category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 WHERE id = $1
 LIMIT 1
@@ -88,6 +95,7 @@ func (q *Queries) GetWorkOrder(ctx context.Context, id int64) (WorkOrder, error)
 	err := row.Scan(
 		&i.ID,
 		&i.CreatedBy,
+		&i.OrderNumber,
 		&i.Category,
 		&i.Title,
 		&i.Description,
@@ -100,7 +108,7 @@ func (q *Queries) GetWorkOrder(ctx context.Context, id int64) (WorkOrder, error)
 }
 
 const listTenantWorkOrders = `-- name: ListTenantWorkOrders :many
-SELECT id, created_by, category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 WHERE created_by = $1
 `
@@ -117,6 +125,7 @@ func (q *Queries) ListTenantWorkOrders(ctx context.Context, createdBy int64) ([]
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedBy,
+			&i.OrderNumber,
 			&i.Category,
 			&i.Title,
 			&i.Description,
@@ -136,7 +145,7 @@ func (q *Queries) ListTenantWorkOrders(ctx context.Context, createdBy int64) ([]
 }
 
 const listWorkOrders = `-- name: ListWorkOrders :many
-SELECT id, created_by, category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 ORDER BY created_at DESC
 `
@@ -153,6 +162,7 @@ func (q *Queries) ListWorkOrders(ctx context.Context) ([]WorkOrder, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedBy,
+			&i.OrderNumber,
 			&i.Category,
 			&i.Title,
 			&i.Description,
@@ -172,7 +182,7 @@ func (q *Queries) ListWorkOrders(ctx context.Context) ([]WorkOrder, error) {
 }
 
 const listWorkOrdersByUser = `-- name: ListWorkOrdersByUser :many
-SELECT id, created_by, category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 WHERE created_by = $1
 ORDER BY created_at DESC
@@ -190,6 +200,7 @@ func (q *Queries) ListWorkOrdersByUser(ctx context.Context, createdBy int64) ([]
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedBy,
+			&i.OrderNumber,
 			&i.Category,
 			&i.Title,
 			&i.Description,
@@ -225,7 +236,7 @@ type UpdateWorkOrderParams struct {
 	Category    WorkCategory `json:"category"`
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
-	UnitNumber  int16        `json:"unit_number"`
+	UnitNumber  int64        `json:"unit_number"`
 	Status      Status       `json:"status"`
 }
 

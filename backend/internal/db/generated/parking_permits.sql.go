@@ -11,45 +11,66 @@ import (
 	"github.com/jackc/pgx/v5/pgtype"
 )
 
-const createParkingPermit = `-- name: CreateParkingPermit :one
-INSERT INTO parking_permits (
-    created_by,
-    expires_at,
-    updated_at
-)
-VALUES (
-    $1,
-    $2,
-    now()
-)
-RETURNING id, created_by, updated_at, expires_at
+const clearParkingPermit = `-- name: ClearParkingPermit :exec
+UPDATE parking_permits
+SET license_plate = NULL,
+    car_make = NULL,
+    car_color = NULL,
+    available = TRUE,
+    expires_at = NULL,
+    created_by = NULL
+WHERE id = $1
 `
 
-type CreateParkingPermitParams struct {
-	CreatedBy int64            `json:"created_by"`
-	ExpiresAt pgtype.Timestamp `json:"expires_at"`
+func (q *Queries) ClearParkingPermit(ctx context.Context, id int64) error {
+	_, err := q.db.Exec(ctx, clearParkingPermit, id)
+	return err
 }
 
-func (q *Queries) CreateParkingPermit(ctx context.Context, arg CreateParkingPermitParams) (ParkingPermit, error) {
-	row := q.db.QueryRow(ctx, createParkingPermit, arg.CreatedBy, arg.ExpiresAt)
+const createManyParkingPermits = `-- name: CreateManyParkingPermits :execrows
+INSERT INTO parking_permits (
+     license_plate,
+     car_make,
+     car_color,
+     created_by,
+     expires_at)
+SELECT NULL::TEXT,
+       NULL::TEXT,
+       NULL::TEXT,
+       NULL::BIGINT,
+       NULL::TIMESTAMP -- default null expires_at
+FROM generate_series(1, $1::int)
+`
+
+func (q *Queries) CreateManyParkingPermits(ctx context.Context, count int32) (int64, error) {
+	result, err := q.db.Exec(ctx, createManyParkingPermits, count)
+	if err != nil {
+		return 0, err
+	}
+	return result.RowsAffected(), nil
+}
+
+const getAvailableParkingPermit = `-- name: GetAvailableParkingPermit :one
+SELECT id, license_plate, car_make, car_color, available, created_by, updated_at, expires_at
+FROM parking_permits
+WHERE available IS TRUE
+LIMIT 1
+`
+
+func (q *Queries) GetAvailableParkingPermit(ctx context.Context) (ParkingPermit, error) {
+	row := q.db.QueryRow(ctx, getAvailableParkingPermit)
 	var i ParkingPermit
 	err := row.Scan(
 		&i.ID,
+		&i.LicensePlate,
+		&i.CarMake,
+		&i.CarColor,
+		&i.Available,
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
 	)
 	return i, err
-}
-
-const deleteParkingPermit = `-- name: DeleteParkingPermit :exec
-DELETE FROM parking_permits
-WHERE id = $1
-`
-
-func (q *Queries) DeleteParkingPermit(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteParkingPermit, id)
-	return err
 }
 
 const getNumOfUserParkingPermits = `-- name: GetNumOfUserParkingPermits :one
@@ -58,7 +79,7 @@ FROM parking_permits
 WHERE created_by = $1
 `
 
-func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int64) (int64, error) {
+func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy pgtype.Int8) (int64, error) {
 	row := q.db.QueryRow(ctx, getNumOfUserParkingPermits, createdBy)
 	var count int64
 	err := row.Scan(&count)
@@ -66,7 +87,7 @@ func (q *Queries) GetNumOfUserParkingPermits(ctx context.Context, createdBy int6
 }
 
 const getParkingPermit = `-- name: GetParkingPermit :one
-SELECT id, created_by, updated_at, expires_at
+SELECT id, license_plate, car_make, car_color, available, created_by, updated_at, expires_at
 FROM parking_permits
 WHERE id = $1
 LIMIT 1
@@ -77,6 +98,10 @@ func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (ParkingPermit
 	var i ParkingPermit
 	err := row.Scan(
 		&i.ID,
+		&i.LicensePlate,
+		&i.CarMake,
+		&i.CarColor,
+		&i.Available,
 		&i.CreatedBy,
 		&i.UpdatedAt,
 		&i.ExpiresAt,
@@ -85,12 +110,12 @@ func (q *Queries) GetParkingPermit(ctx context.Context, id int64) (ParkingPermit
 }
 
 const getTenantParkingPermits = `-- name: GetTenantParkingPermits :many
-SELECT id, created_by, updated_at, expires_at
+SELECT id, license_plate, car_make, car_color, available, created_by, updated_at, expires_at
 FROM parking_permits
 WHERE created_by = $1
 `
 
-func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) ([]ParkingPermit, error) {
+func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy pgtype.Int8) ([]ParkingPermit, error) {
 	rows, err := q.db.Query(ctx, getTenantParkingPermits, createdBy)
 	if err != nil {
 		return nil, err
@@ -101,6 +126,10 @@ func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) 
 		var i ParkingPermit
 		if err := rows.Scan(
 			&i.ID,
+			&i.LicensePlate,
+			&i.CarMake,
+			&i.CarColor,
+			&i.Available,
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.ExpiresAt,
@@ -116,7 +145,7 @@ func (q *Queries) GetTenantParkingPermits(ctx context.Context, createdBy int64) 
 }
 
 const listParkingPermits = `-- name: ListParkingPermits :many
-SELECT id, created_by, updated_at, expires_at
+SELECT id, license_plate, car_make, car_color, available, created_by, updated_at, expires_at
 FROM parking_permits
 ORDER BY created_by DESC
 `
@@ -132,6 +161,10 @@ func (q *Queries) ListParkingPermits(ctx context.Context) ([]ParkingPermit, erro
 		var i ParkingPermit
 		if err := rows.Scan(
 			&i.ID,
+			&i.LicensePlate,
+			&i.CarMake,
+			&i.CarColor,
+			&i.Available,
 			&i.CreatedBy,
 			&i.UpdatedAt,
 			&i.ExpiresAt,
@@ -144,4 +177,36 @@ func (q *Queries) ListParkingPermits(ctx context.Context) ([]ParkingPermit, erro
 		return nil, err
 	}
 	return items, nil
+}
+
+const updateParkingPermit = `-- name: UpdateParkingPermit :exec
+UPDATE parking_permits
+SET license_plate = $2,
+    car_make = $3,
+    car_color = $4,
+    available = FALSE,
+    created_by = $5,
+    expires_at = $6
+WHERE id = $1
+`
+
+type UpdateParkingPermitParams struct {
+	ID           int64            `json:"id"`
+	LicensePlate pgtype.Text      `json:"license_plate"`
+	CarMake      pgtype.Text      `json:"car_make"`
+	CarColor     pgtype.Text      `json:"car_color"`
+	CreatedBy    pgtype.Int8      `json:"created_by"`
+	ExpiresAt    pgtype.Timestamp `json:"expires_at"`
+}
+
+func (q *Queries) UpdateParkingPermit(ctx context.Context, arg UpdateParkingPermitParams) error {
+	_, err := q.db.Exec(ctx, updateParkingPermit,
+		arg.ID,
+		arg.LicensePlate,
+		arg.CarMake,
+		arg.CarColor,
+		arg.CreatedBy,
+		arg.ExpiresAt,
+	)
+	return err
 }

@@ -373,7 +373,8 @@ func (ns NullWorkCategory) Value() (driver.Value, error) {
 type Apartment struct {
 	ID int64 `json:"id"`
 	// describes as <building><floor><door> -> 2145
-	UnitNumber   pgtype.Int2      `json:"unit_number"`
+	UnitNumber   pgtype.Int8      `json:"unit_number"`
+	BuildingID   int64            `json:"building_id"`
 	Price        pgtype.Numeric   `json:"price"`
 	Size         pgtype.Int2      `json:"size"`
 	ManagementID int64            `json:"management_id"`
@@ -383,21 +384,26 @@ type Apartment struct {
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
-type ApartmentTenant struct {
-	ApartmentID int64 `json:"apartment_id"`
-	TenantID    int64 `json:"tenant_id"`
+type Building struct {
+	ID             int64            `json:"id"`
+	ParkingTotal   pgtype.Int8      `json:"parking_total"`
+	PerUserParking pgtype.Int8      `json:"per_user_parking"`
+	ManagementID   int64            `json:"management_id"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }
 
 type Complaint struct {
-	ID          int64             `json:"id"`
-	CreatedBy   int64             `json:"created_by"`
-	Category    ComplaintCategory `json:"category"`
-	Title       string            `json:"title"`
-	Description string            `json:"description"`
-	UnitNumber  pgtype.Int2       `json:"unit_number"`
-	Status      Status            `json:"status"`
-	UpdatedAt   pgtype.Timestamp  `json:"updated_at"`
-	CreatedAt   pgtype.Timestamp  `json:"created_at"`
+	ID              int64             `json:"id"`
+	ComplaintNumber int64             `json:"complaint_number"`
+	CreatedBy       int64             `json:"created_by"`
+	Category        ComplaintCategory `json:"category"`
+	Title           string            `json:"title"`
+	Description     string            `json:"description"`
+	UnitNumber      pgtype.Int8       `json:"unit_number"`
+	Status          Status            `json:"status"`
+	UpdatedAt       pgtype.Timestamp  `json:"updated_at"`
+	CreatedAt       pgtype.Timestamp  `json:"created_at"`
 }
 
 type Lease struct {
@@ -417,11 +423,6 @@ type Lease struct {
 	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }
 
-type LeaseTenant struct {
-	LeaseID  int64 `json:"lease_id"`
-	TenantID int64 `json:"tenant_id"`
-}
-
 type Locker struct {
 	ID         int64       `json:"id"`
 	AccessCode pgtype.Text `json:"access_code"`
@@ -430,9 +431,13 @@ type Locker struct {
 }
 
 type ParkingPermit struct {
-	ID        int64            `json:"id"`
-	CreatedBy int64            `json:"created_by"`
-	UpdatedAt pgtype.Timestamp `json:"updated_at"`
+	ID           int64            `json:"id"`
+	LicensePlate pgtype.Text      `json:"license_plate"`
+	CarMake      pgtype.Text      `json:"car_make"`
+	CarColor     pgtype.Text      `json:"car_color"`
+	Available    bool             `json:"available"`
+	CreatedBy    pgtype.Int8      `json:"created_by"`
+	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
 	// 5 days long
 	ExpiresAt pgtype.Timestamp `json:"expires_at"`
 }
@@ -454,10 +459,11 @@ type User struct {
 type WorkOrder struct {
 	ID          int64            `json:"id"`
 	CreatedBy   int64            `json:"created_by"`
+	OrderNumber int64            `json:"order_number"`
 	Category    WorkCategory     `json:"category"`
 	Title       string           `json:"title"`
 	Description string           `json:"description"`
-	UnitNumber  int16            `json:"unit_number"`
+	UnitNumber  int64            `json:"unit_number"`
 	Status      Status           `json:"status"`
 	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
 	CreatedAt   pgtype.Timestamp `json:"created_at"`

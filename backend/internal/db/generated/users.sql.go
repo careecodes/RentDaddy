@@ -69,7 +69,8 @@ func (q *Queries) CreateUser(ctx context.Context, arg CreateUserParams) (CreateU
 }
 
 const deleteUser = `-- name: DeleteUser :exec
-DELETE FROM users
+DELETE
+FROM users
 WHERE clerk_id = $1
 `
 
@@ -100,6 +101,42 @@ type GetUserRow struct {
 func (q *Queries) GetUser(ctx context.Context, clerkID string) (GetUserRow, error) {
 	row := q.db.QueryRow(ctx, getUser, clerkID)
 	var i GetUserRow
+	err := row.Scan(
+		&i.ID,
+		&i.ClerkID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.Status,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
+const getUserByClerkId = `-- name: GetUserByClerkId :one
+SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
+FROM users
+WHERE clerk_id = $1
+LIMIT 1
+`
+
+type GetUserByClerkIdRow struct {
+	ID        int64            `json:"id"`
+	ClerkID   string           `json:"clerk_id"`
+	FirstName string           `json:"first_name"`
+	LastName  string           `json:"last_name"`
+	Email     string           `json:"email"`
+	Phone     pgtype.Text      `json:"phone"`
+	Role      Role             `json:"role"`
+	Status    AccountStatus    `json:"status"`
+	CreatedAt pgtype.Timestamp `json:"created_at"`
+}
+
+func (q *Queries) GetUserByClerkId(ctx context.Context, clerkID string) (GetUserByClerkIdRow, error) {
+	row := q.db.QueryRow(ctx, getUserByClerkId, clerkID)
+	var i GetUserByClerkIdRow
 	err := row.Scan(
 		&i.ID,
 		&i.ClerkID,
@@ -184,7 +221,15 @@ func (q *Queries) ListTenantsWithLeases(ctx context.Context) ([]ListTenantsWithL
 }
 
 const listUsersByRole = `-- name: ListUsersByRole :many
-SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
+SELECT id,
+       clerk_id,
+       first_name,
+       last_name,
+       email,
+       phone,
+       role,
+       status,
+       created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC
@@ -234,7 +279,11 @@ func (q *Queries) ListUsersByRole(ctx context.Context, role Role) ([]ListUsersBy
 
 const updateUser = `-- name: UpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, updated_at = now()
+SET first_name = $2,
+    last_name  = $3,
+    email      = $4,
+    phone      = $5,
+    updated_at = now()
 WHERE clerk_id = $1
 `
 

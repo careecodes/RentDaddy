@@ -18,8 +18,22 @@ FROM users
 WHERE clerk_id = $1
 LIMIT 1;
 
--- name: ListUsersByRole :many
+-- name: GetUserByClerkId :one
 SELECT id, clerk_id, first_name, last_name, email, phone, role, status, created_at
+FROM users
+WHERE clerk_id = $1
+LIMIT 1;
+
+-- name: ListUsersByRole :many
+SELECT id,
+       clerk_id,
+       first_name,
+       last_name,
+       email,
+       phone,
+       role,
+       status,
+       created_at
 FROM users
 WHERE role = $1
 ORDER BY created_at DESC;
@@ -46,9 +60,17 @@ ORDER BY users.created_at DESC;
 
 -- name: UpdateUser :exec
 UPDATE users
-SET first_name = $2, last_name = $3, email = $4, phone = $5, updated_at = now()
+SET first_name = $2,
+    last_name  = $3,
+    email      = $4,
+    phone      = $5,
+    updated_at = now()
 WHERE clerk_id = $1;
 
 -- name: DeleteUser :exec
-DELETE FROM users
+DELETE
+FROM users
 WHERE clerk_id = $1;
+
+
+

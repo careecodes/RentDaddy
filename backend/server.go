@@ -101,6 +101,13 @@ func main() {
 		r.Route("/admin", func(r chi.Router) {
 			r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
+			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
+				err := handlers.ConstructApartments(queries, w, r)
+				if err != nil {
+					log.Printf("[ERROR] Error constructing Apartments: %v", err)
+					return
+				}
+			})
 
 			// Tenants
 			r.Route("/tenants", func(r chi.Router) {
