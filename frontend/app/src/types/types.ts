@@ -28,8 +28,8 @@ export interface WorkOrderData {
     category: "plumbing" | "electrical" | "carpentry" | "hvac" | "other";
     title: string;
     description: string;
-    apartmentNumber: string;
-    status: "open" | "in_progress" | "awaiting_parts" | "completed";
+    unitNumber: string;
+    status: "open" | "in_progress" | "resolved" | "closed";
     createdAt: Date;
     updatedAt: Date;
 }
