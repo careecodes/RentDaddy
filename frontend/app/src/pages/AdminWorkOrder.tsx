@@ -371,7 +371,7 @@ const AdminWorkOrder = () => {
     });
 
     const { data: complaintsData, isLoading: isComplaintsLoading, error: complaintsError } = useQuery({
-        queryKey: ['complaints'],
+        queryKey: ["complaints"],
         queryFn: async () => {
             const token = await getToken();
             const response = await fetch(`${API_URL}/admin/complaints`, {

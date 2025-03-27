@@ -19,11 +19,9 @@ INSERT INTO complaints (
     title,
     description,
     unit_number,
-    status,
-	updated_at,
-	created_at
+    status
   )
-VALUES ($1, $2, $3, $4, $5, $6, $7,now(),now())
+VALUES ($1, $2, $3, $4, $5, $6, $7)
 RETURNING id, complaint_number, created_by, category, title, description, unit_number, status, updated_at, created_at
 `
 
@@ -227,5 +225,23 @@ func (q *Queries) UpdateComplaint(ctx context.Context, arg UpdateComplaintParams
 		arg.UnitNumber,
 		arg.Status,
 	)
+	return err
+}
+
+const updateComplaintStatus = `-- name: UpdateComplaintStatus :exec
+UPDATE complaints
+SET
+  status = $2,
+  updated_at = now()
+WHERE id = $1
+`
+
+type UpdateComplaintStatusParams struct {
+	ID     int64  `json:"id"`
+	Status Status `json:"status"`
+}
+
+func (q *Queries) UpdateComplaintStatus(ctx context.Context, arg UpdateComplaintStatusParams) error {
+	_, err := q.db.Exec(ctx, updateComplaintStatus, arg.ID, arg.Status)
 	return err
 }
