@@ -145,6 +145,10 @@ body {
     justify-content: center;
 }
 
+.disabled-link {
+    pointer-events: none;
+}
+
 .alert-container {
     display: flex;
     margin-bottom: 20px;
