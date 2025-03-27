@@ -258,9 +258,6 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use the landlord information
-	req.UpdatedBy = landlordID
-	req.CreatedBy = landlordID
 	// Cancel the original lease after amending (if not already terminated, expired, or canceled)
 	if existingLease.Status != db.LeaseStatusTerminated &&
 		existingLease.Status != db.LeaseStatusExpired &&
@@ -1057,9 +1054,6 @@ func (h *LeaseHandler) CreateLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Use the landlord information
-	req.UpdatedBy = landlordID
-	req.CreatedBy = landlordID
 	// fill in defaults
 	req.LeaseNumber = 1
 	req.PreviousLeaseID = nil
