@@ -9,9 +9,10 @@ interface TableComponentProps<T> {
     onChange?: TableProps<T>["onChange"];
     icon?: React.ReactNode;
     style?: string;
-    pagination?: TablePaginationConfig;
+    pagination?: TablePaginationConfig | false;
     onRow?: (record: T) => { onClick: () => void };
-    loading?: boolean;
+    disabled?: boolean | undefined;
+    loading?: boolean | undefined;
 }
 const useStyle = createStyles(({ css, token }) => {
     const { antCls } = token; //ignore the warning
@@ -34,7 +35,8 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, loading }: TableComponentProps<T>) => {
+const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, disabled, loading }: TableComponentProps<T>) => {
+
     const { styles } = useStyle();
 
     return (

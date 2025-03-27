@@ -52,6 +52,3 @@ WHERE clerk_id = $1;
 -- name: DeleteUser :exec
 DELETE FROM users
 WHERE clerk_id = $1;
-
-
-

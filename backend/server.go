@@ -85,7 +85,12 @@ func main() {
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
-	r.Post("/create-lockers", lockerHandler.CreateManyLockers)
+	// // Test routes - no auth required
+	// r.Post("/test/complaints", complaintHandler.CreateManyComplaintsForTestingHandler)
+
+	// r.Post("/test/work-orders", workOrderHandler.CreateManyWorkOrdersHandler)
+
+	// r.Post("/test/lockers", lockerHandler.CreateManyLockers)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -219,6 +224,7 @@ func main() {
 		r.Post("/", chatbotHandler.ChatHandler)
 		r.Get("/", chatbotHandler.ChatGetHandler)
 	})
+
 	// Server config
 	port := os.Getenv("PORT")
 	server := &http.Server{
