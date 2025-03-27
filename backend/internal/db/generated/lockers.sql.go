@@ -95,7 +95,6 @@ const getLockers = `-- name: GetLockers :many
 SELECT id, access_code, in_use, user_id
 FROM lockers
 ORDER BY id DESC
-LIMIT (SELECT COUNT(*) FROM lockers)
 `
 
 func (q *Queries) GetLockers(ctx context.Context) ([]Locker, error) {

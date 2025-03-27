@@ -32,8 +32,7 @@ WHERE id = $1;
 -- name: GetLockers :many
 SELECT *
 FROM lockers
-ORDER BY id DESC
-LIMIT (SELECT COUNT(*) FROM lockers);
+ORDER BY id DESC;
 
 -- name: GetLocker :one
 SELECT *
