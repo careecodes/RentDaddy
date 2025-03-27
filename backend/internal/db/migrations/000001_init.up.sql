@@ -48,7 +48,6 @@ CREATE TYPE "Work_Category" AS ENUM (
 CREATE TABLE IF NOT EXISTS "parking_permits"
 (
     "id"            BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
-    "permit_number" BIGINT                         NOT NULL,
     "created_by"    BIGINT                         NOT NULL,
     "updated_at"    TIMESTAMP(0) DEFAULT now(),
     "expires_at"    TIMESTAMP(0) NOT NULL
@@ -91,7 +90,6 @@ CREATE TABLE IF NOT EXISTS "users"
     "last_name"  VARCHAR          NOT NULL,
     "email"      VARCHAR          NOT NULL,
     "phone"      VARCHAR          NULL,
-    "image_url"  TEXT             NULL,     --Avatar picture
     "role"       "Role"           NOT NULL DEFAULT "Role" 'tenant',
     "status"     "Account_Status" NOT NULL DEFAULT "Account_Status" 'active',
     "updated_at" TIMESTAMP(0)              DEFAULT now(),

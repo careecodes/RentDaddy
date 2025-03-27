@@ -28,10 +28,9 @@ INSERT INTO work_orders (
     category,
     title,
     description,
-    unit_number,
-    status
+    unit_number
   )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, created_by, category, title, description, unit_number, status, updated_at, created_at
 `
 
@@ -41,7 +40,6 @@ type CreateWorkOrderParams struct {
 	Title       string       `json:"title"`
 	Description string       `json:"description"`
 	UnitNumber  int16        `json:"unit_number"`
-	Status      Status       `json:"status"`
 }
 
 func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams) (WorkOrder, error) {
@@ -51,7 +49,6 @@ func (q *Queries) CreateWorkOrder(ctx context.Context, arg CreateWorkOrderParams
 		arg.Title,
 		arg.Description,
 		arg.UnitNumber,
-		arg.Status,
 	)
 	var i WorkOrder
 	err := row.Scan(
@@ -156,7 +153,6 @@ func (q *Queries) ListWorkOrders(ctx context.Context) ([]WorkOrder, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.CreatedBy,
-			&i.OrderNumber,
 			&i.Category,
 			&i.Title,
 			&i.Description,
@@ -176,7 +172,7 @@ func (q *Queries) ListWorkOrders(ctx context.Context) ([]WorkOrder, error) {
 }
 
 const listWorkOrdersByUser = `-- name: ListWorkOrdersByUser :many
-SELECT id, created_by, order_number, category, title, description, unit_number, status, updated_at, created_at
+SELECT id, created_by, category, title, description, unit_number, status, updated_at, created_at
 FROM work_orders
 WHERE created_by = $1
 ORDER BY created_at DESC

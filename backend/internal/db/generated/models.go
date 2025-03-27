@@ -376,7 +376,7 @@ type Apartment struct {
 	UnitNumber   pgtype.Int2      `json:"unit_number"`
 	Price        pgtype.Numeric   `json:"price"`
 	Size         pgtype.Int2      `json:"size"`
-	ManagementID pgtype.Int8      `json:"management_id"`
+	ManagementID int64            `json:"management_id"`
 	Availability bool             `json:"availability"`
 	LeaseID      pgtype.Int8      `json:"lease_id"`
 	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
@@ -394,30 +394,27 @@ type Complaint struct {
 	Category    ComplaintCategory `json:"category"`
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
-	UnitNumber  int16             `json:"unit_number"`
+	UnitNumber  pgtype.Int2       `json:"unit_number"`
 	Status      Status            `json:"status"`
 	UpdatedAt   pgtype.Timestamp  `json:"updated_at"`
 	CreatedAt   pgtype.Timestamp  `json:"created_at"`
 }
 
 type Lease struct {
-	ID               int64            `json:"id"`
-	LeaseNumber      int64            `json:"lease_number"`
-	ExternalDocID    string           `json:"external_doc_id"`
-	LeasePdfS3       pgtype.Text      `json:"lease_pdf_s3"`
-	TenantID         int64            `json:"tenant_id"`
-	LandlordID       int64            `json:"landlord_id"`
-	ApartmentID      int64            `json:"apartment_id"`
-	LeaseStartDate   pgtype.Date      `json:"lease_start_date"`
-	LeaseEndDate     pgtype.Date      `json:"lease_end_date"`
-	RentAmount       pgtype.Numeric   `json:"rent_amount"`
-	Status           LeaseStatus      `json:"status"`
-	CreatedBy        int64            `json:"created_by"`
-	UpdatedBy        int64            `json:"updated_by"`
-	CreatedAt        pgtype.Timestamp `json:"created_at"`
-	UpdatedAt        pgtype.Timestamp `json:"updated_at"`
-	PreviousLeaseID  pgtype.Int8      `json:"previous_lease_id"`
-	TenantSigningUrl pgtype.Text      `json:"tenant_signing_url"`
+	ID             int64            `json:"id"`
+	LeaseNumber    int64            `json:"lease_number"`
+	ExternalDocID  string           `json:"external_doc_id"`
+	TenantID       int64            `json:"tenant_id"`
+	LandlordID     int64            `json:"landlord_id"`
+	ApartmentID    pgtype.Int8      `json:"apartment_id"`
+	LeaseStartDate pgtype.Date      `json:"lease_start_date"`
+	LeaseEndDate   pgtype.Date      `json:"lease_end_date"`
+	RentAmount     pgtype.Numeric   `json:"rent_amount"`
+	Status         LeaseStatus      `json:"status"`
+	CreatedBy      int64            `json:"created_by"`
+	UpdatedBy      int64            `json:"updated_by"`
+	CreatedAt      pgtype.Timestamp `json:"created_at"`
+	UpdatedAt      pgtype.Timestamp `json:"updated_at"`
 }
 
 type LeaseTenant struct {
@@ -433,10 +430,9 @@ type Locker struct {
 }
 
 type ParkingPermit struct {
-	ID           int64            `json:"id"`
-	PermitNumber int64            `json:"permit_number"`
-	CreatedBy    int64            `json:"created_by"`
-	UpdatedAt    pgtype.Timestamp `json:"updated_at"`
+	ID        int64            `json:"id"`
+	CreatedBy int64            `json:"created_by"`
+	UpdatedAt pgtype.Timestamp `json:"updated_at"`
 	// 5 days long
 	ExpiresAt pgtype.Timestamp `json:"expires_at"`
 }
@@ -449,7 +445,6 @@ type User struct {
 	LastName  string           `json:"last_name"`
 	Email     string           `json:"email"`
 	Phone     pgtype.Text      `json:"phone"`
-	ImageUrl  pgtype.Text      `json:"image_url"`
 	Role      Role             `json:"role"`
 	Status    AccountStatus    `json:"status"`
 	UpdatedAt pgtype.Timestamp `json:"updated_at"`

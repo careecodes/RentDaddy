@@ -7,6 +7,8 @@ package db
 
 import (
 	"context"
+
+	"github.com/jackc/pgx/v5/pgtype"
 )
 
 const createComplaint = `-- name: CreateComplaint :one
@@ -15,13 +17,9 @@ INSERT INTO complaints (
     category,
     title,
     description,
-    unit_number,
-    status,
-	updated_at,
-	created_at
+    unit_number
   )
-<<<<<<< HEAD
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING id, created_by, category, title, description, unit_number, status, updated_at, created_at
 `
 
@@ -30,8 +28,7 @@ type CreateComplaintParams struct {
 	Category    ComplaintCategory `json:"category"`
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
-	UnitNumber  int16             `json:"unit_number"`
-	Status      Status            `json:"status"`
+	UnitNumber  pgtype.Int2       `json:"unit_number"`
 }
 
 func (q *Queries) CreateComplaint(ctx context.Context, arg CreateComplaintParams) (Complaint, error) {
@@ -41,7 +38,6 @@ func (q *Queries) CreateComplaint(ctx context.Context, arg CreateComplaintParams
 		arg.Title,
 		arg.Description,
 		arg.UnitNumber,
-		arg.Status,
 	)
 	var i Complaint
 	err := row.Scan(
@@ -189,7 +185,7 @@ type UpdateComplaintParams struct {
 	Category    ComplaintCategory `json:"category"`
 	Title       string            `json:"title"`
 	Description string            `json:"description"`
-	UnitNumber  int16             `json:"unit_number"`
+	UnitNumber  pgtype.Int2       `json:"unit_number"`
 	Status      Status            `json:"status"`
 }
 

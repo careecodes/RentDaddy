@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"io"
 	"log"
 	"net/http"
@@ -49,8 +51,15 @@ func NewUserHandler(pool *pgxpool.Pool, queries *db.Queries) *UserHandler {
 
 // PUBLIC START
 func (u UserHandler) GetUserByClerkId(w http.ResponseWriter, r *http.Request) {
-	userClerkId := r.URL.Query().Get("clerk_id")
-	res, err := u.queries.GetUser(r.Context(), userClerkId)
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
+		log.Printf("[USER_HANDLER] Failed no tenant context")
+		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
+		return
+	}
+
+	// userClerkId := r.URL.Query().Get("clerk_id")
+	res, err := u.queries.GetUser(r.Context(), tenantCtx.ID)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Get tenant by ClerkId failed: %v", err)
 		http.Error(w, "Faild querying user data", http.StatusInternalServerError)
@@ -421,15 +430,15 @@ func (u UserHandler) TenantGetDocuments(w http.ResponseWriter, r *http.Request) 
 }
 
 func (u UserHandler) TenantGetWorkOrders(w http.ResponseWriter, r *http.Request) {
-	tenantCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
 		log.Printf("[USER_HANDLER] Failed no tenant context")
 		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
 		return
 	}
 
 	var tenantMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
+	err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
 		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
@@ -456,15 +465,15 @@ func (u UserHandler) TenantGetWorkOrders(w http.ResponseWriter, r *http.Request)
 }
 
 func (u UserHandler) TenantGetComplaints(w http.ResponseWriter, r *http.Request) {
-	tenantCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
 		log.Printf("[USER_HANDLER] Failed no tenant context")
 		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
 		return
 	}
 
 	var tenantMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
+	err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
 		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
@@ -490,31 +499,53 @@ func (u UserHandler) TenantGetComplaints(w http.ResponseWriter, r *http.Request)
 	w.Write([]byte(jsonComplaints))
 }
 
-// TODO:adjust this!
 func (u UserHandler) TenantCreateComplaint(w http.ResponseWriter, r *http.Request) {
-	tenantCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
 		log.Printf("[USER_HANDLER] Failed no tenant context")
 		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
 		return
 	}
 
 	var tenantMetadata ClerkUserPublicMetaData
-	err = json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
+	err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
 		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
 		return
 	}
 
-	complaints, err := u.queries.ListTenantComplaints(r.Context(), int64(tenantMetadata.DbId))
+	body, err := io.ReadAll(r.Body)
 	if err != nil {
-		log.Printf("[USER_HANDLER] Failed querying tenant complaints: %v", err)
-		http.Error(w, "Error querying tenant complaints", http.StatusInternalServerError)
+		log.Printf("[USER_HANDLER] Failed reading body: %s", err)
+		http.Error(w, "Error reading body", http.StatusInternalServerError)
 		return
 	}
 
-	jsonComplaints, err := json.Marshal(complaints)
+	var createComplaintReq db.CreateComplaintParams
+	err = json.Unmarshal(body, &createComplaintReq)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed parsing JSON: %s", err)
+		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("NEW COMPLAINT TITLE: %s", createComplaintReq.Title)
+	log.Printf("NEW COMPLAINT CATEGORY: %s", createComplaintReq.Category)
+
+	res, err := u.queries.CreateComplaint(r.Context(), db.CreateComplaintParams{
+		CreatedBy:   int64(tenantMetadata.DbId),
+		Category:    createComplaintReq.Category,
+		Title:       createComplaintReq.Title,
+		Description: createComplaintReq.Description,
+		UnitNumber:  pgtype.Int2{Int16: createComplaintReq.UnitNumber.Int16, Valid: true},
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed creating tenant complaint: %v", err)
+		http.Error(w, "Error creating tenant complaint", http.StatusInternalServerError)
+		return
+	}
+
+	jsonComplaints, err := json.Marshal(res)
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying documents for tenant: %v", err)
 		http.Error(w, "Error querying documents for tenant", http.StatusInternalServerError)
@@ -524,6 +555,103 @@ func (u UserHandler) TenantCreateComplaint(w http.ResponseWriter, r *http.Reques
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
 	w.Write([]byte(jsonComplaints))
+}
+
+func (u UserHandler) TenantGetApartment(w http.ResponseWriter, r *http.Request) {
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
+		log.Printf("[USER_HANDLER] Failed no tenant context")
+		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
+		return
+	}
+
+	var tenantMetadata ClerkUserPublicMetaData
+	err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
+		return
+	}
+
+	res, err := u.queries.GetApartment(r.Context(), int64(tenantMetadata.DbId))
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusNoContent)
+		}
+		log.Printf("[USER_HANDLER] Failed querying tenant apartment: %v", err)
+		http.Error(w, "Error querying apartment", http.StatusInternalServerError)
+		return
+	}
+
+	jsonApartment, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed converting to JSON: %v", err)
+		http.Error(w, "Error converting to JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonApartment))
+}
+
+func (u UserHandler) TenantCreateWorkOrder(w http.ResponseWriter, r *http.Request) {
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
+		log.Printf("[USER_HANDLER] Failed no tenant context")
+		http.Error(w, "Error no tenant context", http.StatusUnauthorized)
+		return
+	}
+
+	var tenantMetadata ClerkUserPublicMetaData
+	err := json.Unmarshal(tenantCtx.PublicMetadata, &tenantMetadata)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusInternalServerError)
+		return
+	}
+
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed reading body: %s", err)
+		http.Error(w, "Error reading body", http.StatusInternalServerError)
+		return
+	}
+
+	var createWorkOrderReq db.CreateWorkOrderParams
+	err = json.Unmarshal(body, &createWorkOrderReq)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed parsing JSON: %s", err)
+		http.Error(w, "Error parsing JSON request", http.StatusInternalServerError)
+		return
+	}
+	log.Printf("Category: %s", createWorkOrderReq.Category)
+	log.Printf("Title: %s", createWorkOrderReq.Title)
+	log.Printf("Createdby: %d", tenantMetadata.DbId)
+
+	res, err := u.queries.CreateWorkOrder(r.Context(), db.CreateWorkOrderParams{
+		CreatedBy:   int64(tenantMetadata.DbId),
+		Category:    createWorkOrderReq.Category,
+		Title:       createWorkOrderReq.Title,
+		Description: createWorkOrderReq.Description,
+		UnitNumber:  createWorkOrderReq.UnitNumber,
+	})
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed creating tenant work_order: %v", err)
+		http.Error(w, "Error creating work_order complaint", http.StatusInternalServerError)
+		return
+	}
+
+	jsonWorkOrders, err := json.Marshal(res)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed converting JSON: %v", err)
+		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonWorkOrders))
 }
 
 // TENANT END

@@ -8,9 +8,11 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useMutation, useQueries, useQuery } from "@tanstack/react-query";
+import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 import { ComplaintsData, Parking, WorkOrderData } from "../types/types";
-import { absoluteServerUrl } from "../lib/utils";
+
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const absoluteServerUrl = `${serverUrl}`;
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
@@ -21,7 +23,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch(absoluteServerUrl("/tenant/parking"), {
+        const res = await fetch(`${absoluteServerUrl}/tenant/parking`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -40,7 +42,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch(absoluteServerUrl("/tenant/complaints"), {
+        const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -59,7 +61,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch(absoluteServerUrl("/tenant/work_orders"), {
+        const res = await fetch(`${absoluteServerUrl}/tenant/work_orders`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -78,7 +80,7 @@ export const TenantDashBoard = () => {
         if (!authToken) {
             throw new Error("[TENANT_DASHBOARD] Error unauthorized");
         }
-        const res = await fetch(absoluteServerUrl(`/tenant/lockers`), {
+        const res = await fetch(`${absoluteServerUrl}/tenant/lockers`, {
             method: "GET",
             headers: {
                 "Content-Type": "application/json",
@@ -183,11 +185,11 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Package info"
-                    value={lockers.data?.length ?? 0}
+                    value={lockers.data?.length ?? 1}
                     description={`${lockers.data?.length ? "You have a package. Click the button at your locker to open it." : "When package arrives you will be notified here."}`}
                     hoverable={true}
                     icon={<InboxOutlined className="icon" />}
-                    button={<TenantOpenLockerModal numberOfPackages={lockers.data?.length ?? 0} />}
+                    button={<TenantOpenLockerModal numberOfPackages={lockers.data?.length ?? 1} />}
                 />
                 <CardComponent
                     title="Guest Parking"
@@ -269,6 +271,7 @@ interface ParkingPermitModalProps {
 }
 
 function TenantParkingPeritModal(props: ParkingPermitModalProps) {
+    const queryClient = useQueryClient();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const { userId, getToken } = useAuth();
     const [parkingPermitForm] = Form.useForm<Parking>();
@@ -281,7 +284,7 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
             }
 
             // console.log(`FORM VALUES: ${JSON.stringify(parkingPermitForm.getFieldsValue())}`);
-            const res = await fetch(absoluteServerUrl("/tenant/parking"), {
+            const res = await fetch(`${absoluteServerUrl}/tenant/parking`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -294,6 +297,12 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
                 throw new Error("[TENANT_DASHBOARD] Error creating parking_permit");
             }
             return;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: [`${userId}-parking`],
+            });
+            handleCancel();
         },
     });
 
@@ -479,6 +488,7 @@ function TenantViewComplaintsModal(props: ComplaintModalProps) {
     );
 }
 function TenantCreateComplaintsModal() {
+    const queryClient = useQueryClient();
     const { getToken, userId } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const [complaintForm] = Form.useForm<ComplaintsData>();
@@ -503,7 +513,7 @@ function TenantCreateComplaintsModal() {
             }
 
             // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
-            const res = await fetch(absoluteServerUrl("/tenant/complaints"), {
+            const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -518,6 +528,9 @@ function TenantCreateComplaintsModal() {
             return;
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: [`${userId}-complaints`],
+            });
             handleCancel();
         },
     });
@@ -581,6 +594,7 @@ interface LockerModalProps {
 }
 
 function TenantOpenLockerModal(props: LockerModalProps) {
+    const queryClient = useQueryClient();
     const { getToken, userId } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const showModal = () => {
@@ -601,7 +615,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
             if (!authToken) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
-            const res = await fetch(absoluteServerUrl("/tenants/lockers"), {
+            const res = await fetch(`${absoluteServerUrl}/tenants/lockers/unlock`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -613,6 +627,11 @@ function TenantOpenLockerModal(props: LockerModalProps) {
                 throw new Error("[TENANT_DASHBOARD] Error opening locker");
             }
             return;
+        },
+        onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: [`${userId}-lockers`],
+            });
         },
     });
 
@@ -638,6 +657,24 @@ function TenantOpenLockerModal(props: LockerModalProps) {
                 okButtonProps={{ hidden: true, disabled: true }}
                 cancelButtonProps={{ hidden: true, disabled: true }}>
                 <Divider />
+                <span className="d-flex align-items-center text-success">
+                    <svg
+                        xmlns="http://www.w3.org/2000/svg"
+                        width="24"
+                        height="24"
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        stroke-width="2"
+                        stroke-linecap="round"
+                        stroke-linejoin="round"
+                        className="lucide lucide-key-square-icon lucide-key-square mb-3 me-1">
+                        <path d="M12.4 2.7a2.5 2.5 0 0 1 3.4 0l5.5 5.5a2.5 2.5 0 0 1 0 3.4l-3.7 3.7a2.5 2.5 0 0 1-3.4 0L8.7 9.8a2.5 2.5 0 0 1 0-3.4z" />
+                        <path d="m14 7 3 3" />
+                        <path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814" />
+                    </svg>
+                    <p className="fs-5">Locker is open!</p>
+                </span>
             </Modal>
         </>
     );

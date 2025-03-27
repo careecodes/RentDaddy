@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"io"
 	"log"
-	"math/rand"
 	"net/http"
 	"strconv"
 	"time"
@@ -18,8 +17,7 @@ import (
 )
 
 type CreateParkingPermitRequest struct {
-	TenantClerkId       string `json:"tenant_clerk_id"`
-	ParkingPermitNumber int    `json:"permit_number"`
+	TenantClerkId string `json:"tenant_clerk_id"`
 }
 
 type ParkingPermitHandler struct {
@@ -98,8 +96,7 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 	}
 
 	res, err := p.queries.CreateParkingPermit(r.Context(), db.CreateParkingPermitParams{
-		PermitNumber: int64(parkingPermitReq.ParkingPermitNumber),
-		CreatedBy:    int64(userMetadata.DbId),
+		CreatedBy: int64(userMetadata.DbId),
 		ExpiresAt: pgtype.Timestamp{
 			Time:  time.Now().UTC().Add(time.Duration(2) * 24 * time.Hour),
 			Valid: true,
@@ -206,8 +203,8 @@ func (p ParkingPermitHandler) TenantGetParkingPermit(w http.ResponseWriter, r *h
 		return
 	}
 
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
 		log.Println("[PARKING_HANDLER] Failed no user CTX")
 		http.Error(w, "Error no user CTX", http.StatusNotFound)
 		return
@@ -233,8 +230,8 @@ func (p ParkingPermitHandler) TenantGetParkingPermit(w http.ResponseWriter, r *h
 }
 
 func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *http.Request) {
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
 		log.Printf("[USER_HANDLER] No user CTX")
 		http.Error(w, "Error No user CTX", http.StatusUnauthorized)
 		return
@@ -262,8 +259,6 @@ func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *
 }
 
 func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r *http.Request) {
-	permitNumber := rand.Intn(500) + 1
-
 	userCtx := middleware.GetUserCtx(r)
 	if userCtx == nil {
 		log.Println("[PARKING_HANDLER] Failed no user context")
@@ -311,8 +306,7 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 	}
 
 	res, err := p.queries.CreateParkingPermit(r.Context(), db.CreateParkingPermitParams{
-		PermitNumber: int64(permitNumber),
-		CreatedBy:    int64(userMetadata.DbId),
+		CreatedBy: int64(userMetadata.DbId),
 		ExpiresAt: pgtype.Timestamp{
 			Time:  time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
 			Valid: true,

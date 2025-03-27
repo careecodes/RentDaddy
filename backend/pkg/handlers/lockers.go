@@ -1,7 +1,9 @@
 package handlers
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -107,9 +109,9 @@ func (l LockerHandler) GetLocker(w http.ResponseWriter, r *http.Request) {
 }
 
 func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request) {
-	tenantCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
-		log.Printf("[LOCKER_HANDLER] Failed getting tenant context: %v", err)
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
+		log.Printf("[LOCKER_HANDLER] Failed getting tenant context")
 		http.Error(w, "Error no user context", http.StatusUnauthorized)
 		return
 	}
@@ -120,9 +122,14 @@ func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request)
 		http.Error(w, "Error parsing metadata", http.StatusInternalServerError)
 		return
 	}
+	// log.Printf("TENANTS DB_ID: %d", tenantMetadata.DbId)
 
 	locker, err := l.queries.GetLockerByUserId(r.Context(), pgtype.Int8{Int64: int64(tenantMetadata.DbId), Valid: true})
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			w.WriteHeader(http.StatusOK)
+			return
+		}
 		log.Printf("Error getting locker by user ID: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 		return
@@ -133,9 +140,9 @@ func (l LockerHandler) GetLockerByUserId(w http.ResponseWriter, r *http.Request)
 }
 
 func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
-	tenantCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
-		log.Printf("[LOCKER_HANDLER] Failed getting tenant context: %v", err)
+	tenantCtx := middleware.GetUserCtx(r)
+	if tenantCtx == nil {
+		log.Printf("[LOCKER_HANDLER] Failed getting tenant context")
 		http.Error(w, "Error no user context", http.StatusUnauthorized)
 		return
 	}

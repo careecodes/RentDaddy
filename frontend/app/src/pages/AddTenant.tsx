@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from "@tanstack/react-query";
+import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import { useEffect, useState } from "react";
@@ -8,15 +8,6 @@ import { CheckOutlined, CloseCircleOutlined, MailOutlined, PlusOutlined } from "
 import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
 import { ColumnsType } from "antd/es/table";
 
-const SERVER_URL = import.meta.env.VITE_SERVER_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${SERVER_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
-
-// type InviteTenant = {
-//     email: string;
-//     unitNumber: number;
-//     management_id: string;
-// };
 type InviteTenant = {
     email: string;
 };
@@ -100,7 +91,7 @@ const AddTenant = () => {
             dataIndex: "created_at",
             key: "createdAt",
             render: (createdAt: string) =>
-                new Date(createdAt).toLocaleDateString("en-GB", {
+                new Date(createdAt).toLocaleDateString("en-US", {
                     day: "2-digit",
                     month: "2-digit",
                     year: "2-digit",
@@ -199,6 +190,7 @@ function ActionMenu(props: ActionsDropdownProps) {
 }
 
 function InviteUserModal() {
+    const queryClient = useQueryClient();
     const { getToken } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const [tenantInviteForm] = Form.useForm<InviteTenant>();
@@ -240,6 +232,9 @@ function InviteUserModal() {
                 type: "success",
             });
             tenantInviteForm.resetFields();
+            queryClient.invalidateQueries({
+                queryKey: ["tenants"],
+            });
         },
         onError: () => {
             setInviteStatus({
@@ -374,34 +369,40 @@ function TenantWorkOrderModal(props: TenantModalProps) {
         <>
             <div onClick={showModal}>Work Orders</div>
             <Modal
-                className="p-3 flex-wrap-row"
+                className="p-3"
                 title={<h3>Tenant Work Orders</h3>}
                 open={internalModalOpen}
                 onCancel={handleCancel}
                 okButtonProps={{ hidden: true, disabled: true }}
                 cancelButtonProps={{ hidden: true, disabled: true }}>
                 <div>
-                    {data ? (
-                        <>
+                    {data?.length ? (
+                        <div
+                            className="space-y-4 d-flex flex-column"
+                            style={{ maxHeight: "600px", overflowY: "auto" }}>
                             {data.map((order, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    {/* Title */}
-                                    <p>{order.title}</p>
-                                    {/* Category */}
-                                    <p>
-                                        Category: <span style={{ color: "green" }}>{order.category}</span>
-                                    </p>
-                                    {/* Status */}
-                                    <p>
-                                        Status: <span style={{ color: "green" }}>{order.status}</span>
-                                    </p>
+                                    className="p-3 border rounded my-1 shadow-md bg-white d-flex flex-column">
+                                    <span className="d-flex flex-column">
+                                        <p className="fs-6">Title</p>
+                                        <p>{order.title}</p>
+                                    </span>
+                                    <div className="d-flex align-items-center">
+                                        <span className="d-flex align-items-center me-5">
+                                            <p className="fs-6 me-1">Category</p>
+                                            <p className="text-success">{order.category}</p>
+                                        </span>
+                                        <span className="d-flex align-items-center ms-1">
+                                            <p className="fs-6 me-1">Status</p>
+                                            <p className="text-success">{order.status}</p>
+                                        </span>
+                                    </div>
                                 </div>
                             ))}
-                        </>
+                        </div>
                     ) : (
-                        <p>No work orders....</p>
+                        <p className="text-body-seconday">No work orders...</p>
                     )}
                 </div>
             </Modal>
@@ -464,27 +465,34 @@ function TenantComplaintModal(props: TenantModalProps) {
                 okButtonProps={{ hidden: true, disabled: true }}
                 cancelButtonProps={{ hidden: true, disabled: true }}>
                 <div>
-                    {data ? (
-                        <>
+                    {data?.length ? (
+                        <div
+                            className="space-y-3 d-flex flex-column"
+                            style={{ maxHeight: "600px", overflowY: "auto" }}>
                             {data.map((order, idx) => (
                                 <div
                                     key={idx}
-                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    {/* Title */}
-                                    <p>{order.title}</p>
-                                    {/* Category */}
-                                    <p>
-                                        Category: <span style={{ color: "green" }}>{order.category}</span>
-                                    </p>
-                                    {/* Status */}
-                                    <p>
-                                        Status: <span style={{ color: "green" }}>{order.status}</span>
-                                    </p>
+                                    className="p-3 border rounded shadow-sm bg-white d-flex flex-column">
+                                    <div className="mb-2">
+                                        <p className="fs-6 fw-semibold mb-1">Title</p>
+                                        <p className="mb-0">{order.title}</p>
+                                    </div>
+
+                                    <div className="d-flex align-items-center">
+                                        <div className="d-flex align-items-center me-4">
+                                            <p className="fs-6 fw-semibold mb-0 me-1">Category:</p>
+                                            <p className="text-success mb-0">{order.category}</p>
+                                        </div>
+                                        <div className="d-flex align-items-center">
+                                            <p className="fs-6 fw-semibold mb-0 me-1">Status:</p>
+                                            <p className="text-success mb-0">{order.status}</p>
+                                        </div>
+                                    </div>
                                 </div>
                             ))}
-                        </>
+                        </div>
                     ) : (
-                        <p>No complaints....</p>
+                        <p className="text-body-seconday">No complaints....</p>
                     )}
                 </div>
             </Modal>
@@ -493,6 +501,7 @@ function TenantComplaintModal(props: TenantModalProps) {
 }
 
 function TenantDeleteModal(props: TenantModalProps) {
+    const queryClient = useQueryClient();
     const { getToken } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const showModal = () => {
@@ -511,7 +520,7 @@ function TenantDeleteModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/complaints`, {
+            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",
@@ -525,6 +534,9 @@ function TenantDeleteModal(props: TenantModalProps) {
             return (await res.json()) as ComplaintsData[];
         },
         onSuccess: () => {
+            queryClient.invalidateQueries({
+                queryKey: ["tenants"],
+            });
             handleCancel();
         },
         onError: () => {},

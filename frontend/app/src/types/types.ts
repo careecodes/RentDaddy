@@ -1,3 +1,12 @@
+export type GetApartment = {
+    id: number;
+    unitNumber: number | null;
+    price: number | null;
+    size: number | null;
+    managementId: number;
+    availability: boolean;
+};
+
 export type LeaseStatus = "draft" | "pending_approval" | "active" | "expired" | "terminated" | "renewed";
 
 export interface LeaseData {
@@ -15,9 +24,10 @@ type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
 type WorkStatus = "open" | "in_progress" | "resolved" | "closed";
 
 export type WorkOrderEntry = {
+    category: WorkCategory;
     title: string;
     description: string;
-    category: WorkCategory;
+    UnitNumber: number;
 };
 
 export interface WorkOrderData {
@@ -53,6 +63,7 @@ export type ComplaintEntry = {
     title: string;
     description: string;
     category: ComplaintCategory;
+    unit_number: number;
 };
 
 export interface ComplaintsData {

@@ -4,10 +4,9 @@ INSERT INTO complaints (
     category,
     title,
     description,
-    unit_number,
-    status
+    unit_number
   )
-VALUES ($1, $2, $3, $4, $5, $6)
+VALUES ($1, $2, $3, $4, $5)
 RETURNING *;
 
 -- name: GetComplaint :one
