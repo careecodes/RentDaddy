@@ -43,6 +43,7 @@ const HeroBanner: React.FC = () => {
             }}>
             <h1 className="bg-dark p-3 my-2">{heroContent.title}</h1>
             <p className="bg-dark p-3 my-3">{heroContent.subtitle}</p>
+
             <Button
                 type="primary"
                 onClick={showModal}>

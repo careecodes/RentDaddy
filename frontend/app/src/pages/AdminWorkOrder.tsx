@@ -6,13 +6,19 @@ import { Input, Select } from "antd";
 import { SearchOutlined } from "@ant-design/icons";
 import ModalComponent from "../components/ModalComponent";
 import TableComponent from "../components/reusableComponents/TableComponent";
-import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import type { ColumnsType, ColumnType } from "antd/es/table/interface";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import { WorkOrderData, ComplaintsData } from "../types/types";
 import type { TablePaginationConfig } from "antd";
 import { useState } from "react";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
+import EmptyState from "../components/reusableComponents/EmptyState";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useAuth } from "@clerk/clerk-react";
+
+const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || "http://localhost";
+const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || "8080";
+const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
@@ -67,130 +73,6 @@ const shortenInput = (input: string, maxLength: number = 30) => {
         return input;
     }
 };
-
-// DUMMY DATA THIS WILL BE DELETED :D
-const workOrderDataRaw: WorkOrderData[] = [
-    {
-        key: 1,
-        workOrderNumber: 10001,
-        creatingBy: 3,
-        category: "plumbing",
-        title: "Leaking Kitchen Sink",
-        description: "Water is slowly leaking from under the kitchen sink and forming a puddle on the floor.",
-        apartmentNumber: "C466",
-        status: "open",
-        createdAt: new Date("2025-02-15T09:30:00"),
-        updatedAt: new Date("2025-02-15T09:30:00"),
-    },
-    {
-        key: 2,
-        workOrderNumber: 10002,
-        creatingBy: 1,
-        category: "electrical",
-        title: "Bathroom Light Flickering",
-        description: "The bathroom light has been flickering for two days and sometimes goes out completely.",
-        apartmentNumber: "B218",
-        status: "in_progress",
-        createdAt: new Date("2025-02-10T14:45:00"),
-        updatedAt: new Date("2025-02-12T11:20:00"),
-    },
-    {
-        key: 3,
-        workOrderNumber: 10003,
-        creatingBy: 10,
-        category: "hvac",
-        title: "AC Not Cooling",
-        description: "Air conditioner is running but not cooling the apartment. Temperature is getting uncomfortable.",
-        apartmentNumber: "A101",
-        status: "awaiting_parts",
-        createdAt: new Date("2025-01-30T16:20:00"),
-        updatedAt: new Date("2025-02-02T09:15:00"),
-    },
-    {
-        key: 4,
-        workOrderNumber: 10004,
-        creatingBy: 5,
-        category: "carpentry",
-        title: "Broken Cabinet Door",
-        description: "Kitchen cabinet door hinge is broken and the door won't stay closed.",
-        apartmentNumber: "C378",
-        status: "completed",
-        createdAt: new Date("2025-03-17T00:00:00"),
-        updatedAt: new Date("2025-03-17T00:00:00"),
-    },
-    {
-        key: 5,
-        workOrderNumber: 10005,
-        creatingBy: 8,
-        category: "plumbing",
-        title: "Clogged Toilet",
-        description: "Toilet is clogged and won't flush properly. Plunger hasn't helped.",
-        apartmentNumber: "C299",
-        status: "open",
-        createdAt: new Date("2025-02-18T08:10:00"),
-        updatedAt: new Date("2025-02-18T08:10:00"),
-    },
-    {
-        key: 6,
-        workOrderNumber: 10006,
-        creatingBy: 2,
-        category: "electrical",
-        title: "No Power in Bedroom",
-        description: "Electrical outlets in the bedroom aren't working. Breaker hasn't tripped.",
-        apartmentNumber: "A212",
-        status: "in_progress",
-        createdAt: new Date("2025-02-14T12:30:00"),
-        updatedAt: new Date("2025-02-14T16:45:00"),
-    },
-    {
-        key: 7,
-        workOrderNumber: 10007,
-        creatingBy: 4,
-        category: "other",
-        title: "Stuck Window",
-        description: "Living room window is stuck and won't open. Frame seems to be warped.",
-        apartmentNumber: "B179",
-        status: "open",
-        createdAt: new Date("2025-02-17T11:25:00"),
-        updatedAt: new Date("2025-02-17T11:25:00"),
-    },
-    {
-        key: 8,
-        workOrderNumber: 10008,
-        creatingBy: 6,
-        category: "hvac",
-        title: "Noisy Heater",
-        description: "Heating system is making loud banging noises when it starts up.",
-        apartmentNumber: "A333",
-        status: "awaiting_parts",
-        createdAt: new Date("2025-03-14T09:50:00"),
-        updatedAt: new Date("2025-01-29T14:20:00"),
-    },
-    {
-        key: 9,
-        workOrderNumber: 10009,
-        creatingBy: 9,
-        category: "plumbing",
-        title: "Low Water Pressure",
-        description: "Water pressure in the shower is very low. All other faucets seem normal.",
-        apartmentNumber: "B155",
-        status: "completed",
-        createdAt: new Date("2025-01-20T13:15:00"),
-        updatedAt: new Date("2025-01-23T10:40:00"),
-    },
-    {
-        key: 10,
-        workOrderNumber: 10010,
-        creatingBy: 7,
-        category: "carpentry",
-        title: "Damaged Baseboards",
-        description: "Baseboards in the living room are damaged and coming away from the wall in several places.",
-        apartmentNumber: "D401",
-        status: "in_progress",
-        createdAt: new Date("2025-02-12T15:00:00"),
-        updatedAt: new Date("2025-02-13T11:30:00"),
-    },
-];
 
 const workOrderColumns: ColumnsType<WorkOrderData> = [
     {
@@ -251,9 +133,9 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
     },
     {
         title: "Unit",
-        dataIndex: "apartmentNumber",
-        key: "apartmentNumber",
-        ...getWorkOrderColumnSearchProps("apartmentNumber", "Unit"),
+        dataIndex: "unitNumber",
+        key: "unitNumber",
+        ...getWorkOrderColumnSearchProps("unitNumber", "Unit"),
     },
     {
         title: "Status",
@@ -267,12 +149,12 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
                     color = "red";
                     break;
                 case "in_progress":
-                    color = "blue";
-                    break;
-                case "awaiting_parts":
                     color = "orange";
                     break;
-                case "completed":
+                case "resolved":
+                    color = "blue";
+                    break;
+                case "closed":
                     color = "green";
                     break;
             }
@@ -295,57 +177,6 @@ const workOrderColumns: ColumnsType<WorkOrderData> = [
         ...getWorkOrderColumnSearchProps("updatedAt", "Updated"),
         sorter: (a, b) => dayjs(a.updatedAt).unix() - dayjs(b.updatedAt).unix(),
         render: (date) => dayjs(date).format("MMM D, YYYY h:mm A"),
-    },
-];
-
-const complaintsDataRaw: ComplaintsData[] = [
-    {
-        key: 1,
-        complaintNumber: 20001,
-        createdBy: 4,
-        category: "noise",
-        title: "Loud Music at Night",
-        description: "Neighbor plays loud music past midnight.",
-        unitNumber: "A312",
-        status: "open",
-        createdAt: new Date("2025-03-10T22:15:00"),
-        updatedAt: new Date("2025-03-11T08:00:00"),
-    },
-    {
-        key: 2,
-        complaintNumber: 20002,
-        createdBy: 7,
-        category: "parking",
-        title: "Unauthorized Vehicle in My Spot",
-        description: "A car is parked in my designated space.",
-        unitNumber: "B210",
-        status: "in_progress",
-        createdAt: new Date("2025-02-28T18:30:00"),
-        updatedAt: new Date("2025-03-01T09:45:00"),
-    },
-    {
-        key: 3,
-        complaintNumber: 20003,
-        createdBy: 2,
-        category: "maintenance",
-        title: "Leaking Roof",
-        description: "Water leaking from ceiling during rainstorms.",
-        unitNumber: "C405",
-        status: "resolved",
-        createdAt: new Date("2025-02-20T14:00:00"),
-        updatedAt: new Date("2025-02-22T16:00:00"),
-    },
-    {
-        key: 4,
-        complaintNumber: 20004,
-        createdBy: 10,
-        category: "security",
-        title: "Suspicious Person Near Entrance",
-        description: "Unfamiliar person lingering around entrance at night.",
-        unitNumber: "E102",
-        status: "closed",
-        createdAt: new Date("2025-03-02T20:00:00"),
-        updatedAt: new Date("2025-03-03T12:00:00"),
     },
 ];
 
@@ -491,45 +322,155 @@ const paginationConfig: TablePaginationConfig = {
 };
 
 const AdminWorkOrder = () => {
-    const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
-    const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
+    // const [workOrderData, setWorkOrderData] = useState<WorkOrderData[]>(workOrderDataRaw);
+    // const [complaintsData, setComplaintsData] = useState<ComplaintsData[]>(complaintsDataRaw);
     const [selectedItem, setSelectedItem] = useState<WorkOrderData | ComplaintsData | null>(null);
     const [isModalVisible, setIsModalVisible] = useState(false);
     const [itemType, setItemType] = useState<"workOrder" | "complaint">("workOrder");
     const [currentStatus, setCurrentStatus] = useState<string>("");
 
+    const { getToken } = useAuth();
+    const queryClient = useQueryClient();
+
+    const { data: workOrderData, isLoading: isWorkOrdersLoading, error: workOrdersError } = useQuery({
+        queryKey: ['workOrders'],
+        queryFn: async () => {
+            const token = await getToken();
+            const response = await fetch(`${API_URL}/admin/work_orders`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                }
+            });
+            if (!response.ok) {
+                throw new Error('Failed to fetch work orders');
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                throw new Error("No work orders");
+            }
+
+            if (!data || data.length === 0) {
+                return [];
+            }
+
+            return (data || []).map((item: any) => ({
+                key: item.id,
+                workOrderNumber: item.order_number,
+                creatingBy: item.created_by,
+                category: item.category,
+                title: item.title,
+                description: item.description,
+                unitNumber: String(item.unit_number),
+                status: item.status,
+                createdAt: new Date(item.created_at),
+                updatedAt: new Date(item.updated_at),
+            })) as WorkOrderData[];
+        },
+    });
+
+    const { data: complaintsData, isLoading: isComplaintsLoading, error: complaintsError } = useQuery({
+        queryKey: ["complaints"],
+        queryFn: async () => {
+            const token = await getToken();
+            const response = await fetch(`${API_URL}/admin/complaints`, {
+                method: "GET",
+                headers: {
+                    "Authorization": `Bearer ${token}`,
+                    "Content-Type": "application/json",
+                }
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            if (!Array.isArray(data)) {
+                throw new Error('No complaints');
+            }
+
+            if (!data || data.length === 0) {
+                return [];
+            }
+
+            return (data || []).map((item: any) => ({
+                key: item.id,
+                complaintNumber: item.complaint_number,
+                createdBy: item.created_by,
+                category: item.category,
+                title: item.title,
+                description: item.description,
+                unitNumber: String(item.unit_number),
+                status: item.status,
+                createdAt: new Date(item.created_at),
+                updatedAt: new Date(item.updated_at),
+            })) as ComplaintsData[];
+        },
+    });
+
     const handleStatusChange = (newStatus: string) => {
         setCurrentStatus(newStatus);
     };
 
-    const handleConfirm = () => {
+    const handleConfirm = async () => {
         if (selectedItem && currentStatus) {
-            if (itemType === "workOrder") {
-                const updatedWorkOrders = workOrderData.map((item) => {
-                    if (item.key === selectedItem.key) {
-                        return {
-                            ...item,
+            try {
+                const token = await getToken();
+
+                if (itemType === "workOrder") {
+                    // Work order update logic (existing)
+                    const response = await fetch(`${API_URL}/admin/work_orders/${selectedItem.key}/status`, {
+                        method: 'PATCH',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            "Authorization": `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
                             status: currentStatus,
-                            updatedAt: new Date(),
-                        } as WorkOrderData;
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to update work order');
                     }
-                    return item;
-                });
-                setWorkOrderData(updatedWorkOrders);
-            } else {
-                const updatedComplaints = complaintsData.map((item) => {
-                    if (item.key === selectedItem.key) {
-                        return {
-                            ...item,
+
+                    queryClient.setQueryData(['workOrders'], (oldData: WorkOrderData[] | undefined) => {
+                        if (!oldData) return oldData;
+                        return oldData.map(item =>
+                            item.key === selectedItem.key
+                                ? { ...item, status: currentStatus, updatedAt: new Date() }
+                                : item
+                        );
+                    });
+                } else {
+                    const response = await fetch(`${API_URL}/admin/complaints/${selectedItem.key}/status`, {
+                        method: "PATCH",
+                        headers: {
+                            "Content-Type": "application/json",
+                            "Authorization": `Bearer ${token}`,
+                        },
+                        body: JSON.stringify({
                             status: currentStatus,
-                            updatedAt: new Date(),
-                        } as ComplaintsData;
+                        }),
+                    });
+
+                    if (!response.ok) {
+                        throw new Error('Failed to update complaint');
                     }
-                    return item;
-                });
-                setComplaintsData(updatedComplaints);
+
+                    queryClient.setQueryData(['complaints'], (oldData: ComplaintsData[] | undefined) => {
+                        if (!oldData) return oldData;
+                        return oldData.map(item =>
+                            item.key === selectedItem.key
+                                ? { ...item, status: currentStatus, updatedAt: new Date() }
+                                : item
+                        );
+                    });
+                }
+                setIsModalVisible(false);
+            } catch (error) {
+                console.error("Error updating status:", error);
             }
-            setIsModalVisible(false);
         }
     };
 
@@ -540,66 +481,52 @@ const AdminWorkOrder = () => {
         setIsModalVisible(true);
     };
 
-    const getUnitNumber = (item: WorkOrderData | ComplaintsData): string => {
-        // I HAVE NO CLUE WHAT THE NAMING CONVENTION IS NOW SO ADDING THIS SINCE I'VE SEEN BOTH
-        // FOR WORK ORDER AND COMPLAINTS
-        if ("apartmentNumber" in item) {
-            return item.apartmentNumber;
-        }
-        return item.unitNumber;
-    };
-
-    workOrderDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, in_progress: 2, awaiting_parts: 3, completed: 4 };
-        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) return priorityDiff;
-
-        if (a.status !== "completed" && b.status !== "completed") {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
-    complaintsDataRaw.sort((a, b) => {
-        const statusPriority = { open: 1, in_progress: 2, resolved: 3, closed: 4 };
-        const priorityDiff = statusPriority[a.status] - statusPriority[b.status];
-        if (priorityDiff !== 0) {
-            return priorityDiff;
-        }
-
-        if (!(a.status in ["resolved", "closed"]) && !(b.status in ["resolved", "closed"])) {
-            return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
-        }
-
-        return new Date(b.updatedAt).getTime() - new Date(a.updatedAt).getTime();
-    });
-
     const hoursUntilOverdue: number = 48;
-    const overdueServiceCount: number = workOrderDataRaw.filter(({ createdAt, status }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
-        return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
-    }).length;
+    const overdueServiceCount: number = workOrderData
+        ? workOrderData.filter(({ createdAt, status }) => {
+            const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
+            return status === "open" && hoursSinceCreation >= hoursUntilOverdue;
+        }).length
+        : 0;
+
     const hoursSinceRecentlyCreated: number = 24;
-    const recentlyCreatedServiceCount: number = workOrderDataRaw.filter(({ createdAt }) => {
-        const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
-        return hoursSinceCreation <= hoursSinceRecentlyCreated;
-    }).length;
+    const recentlyCreatedServiceCount: number = workOrderData
+        ? workOrderData.filter(({ createdAt }) => {
+            const hoursSinceCreation = dayjs().diff(dayjs(createdAt), "hour");
+            return hoursSinceCreation <= hoursSinceRecentlyCreated;
+        }).length
+        : 0;
 
     const hoursSinceRecentlyCompleted: number = 24;
-    const recentlyCompletedServiceCount: number = workOrderDataRaw.filter(({ updatedAt, status }) => {
-        const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
-        return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
-    }).length;
+    const recentlyCompletedServiceCount: number = workOrderData
+        ? workOrderData.filter(({ updatedAt, status }) => {
+            const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
+            return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
+        }).length
+        : 0;
 
     let alerts: string[] = [];
-    if (overdueServiceCount > 0) {
-        alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
-    } else if (recentlyCreatedServiceCount > 0) {
-        alerts.push(`${recentlyCreatedServiceCount} services created in past ${hoursSinceRecentlyCreated} hours.`);
-    } else if (recentlyCompletedServiceCount > 0) {
-        alerts.push(`${recentlyCompletedServiceCount} services completed in past ${hoursSinceRecentlyCompleted} hours.`);
+    if (isWorkOrdersLoading || isComplaintsLoading) {
+        alerts.push("Loading data...");
+    } else if (workOrdersError || complaintsError) {
+        alerts.push("Error loading data");
+    } else {
+        if (workOrderData?.length === 0) {
+            alerts.push("No work orders found");
+        }
+        if (complaintsData?.length === 0) {
+            alerts.push("No complaints found");
+        }
+
+        if (workOrderData && workOrderData.length > 0) {
+            if (overdueServiceCount > 0) {
+                alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
+            } else if (recentlyCreatedServiceCount > 0) {
+                alerts.push(`${recentlyCreatedServiceCount} services created recently.`);
+            }
+        }
     }
+
     const alertDescription: string = alerts.join(" ") ?? "";
 
     const modalContent = selectedItem && (
@@ -611,7 +538,7 @@ const AdminWorkOrder = () => {
                 <strong>Description:</strong> {selectedItem.description}
             </div>
             <div className="mb-4">
-                <strong>Unit Number:</strong> {getUnitNumber(selectedItem)}
+                <strong>Unit Number:</strong> {selectedItem.unitNumber}
             </div>
             <div>
                 <strong>Status:</strong>
@@ -623,8 +550,8 @@ const AdminWorkOrder = () => {
                         <>
                             <Select.Option value="open">Open</Select.Option>
                             <Select.Option value="in_progress">In Progress</Select.Option>
-                            <Select.Option value="awaiting_parts">Awaiting Parts</Select.Option>
-                            <Select.Option value="completed">Completed</Select.Option>
+                            <Select.Option value="resolved">Resolved</Select.Option>
+                            <Select.Option value="closed">Closed</Select.Option>
                         </>
                     ) : (
                         <>
@@ -650,44 +577,59 @@ const AdminWorkOrder = () => {
             {/* Work Order Table */}
             <div className="mb-5">
                 <h4 className="mb-3">Work Orders</h4>
-                <TableComponent<WorkOrderData>
-                    columns={workOrderColumns}
-                    dataSource={workOrderData}
-                    style=".lease-table-container"
-                    pagination={paginationConfig}
-                    onChange={(pagination, filters, sorter, extra) => {
-                        console.log("Table changed:", pagination, filters, sorter, extra);
-                    }}
-                    onRow={(record: WorkOrderData) => ({
-                        onClick: () => handleRowClick(record, "workOrder"),
-                        style: {
-                            cursor: "pointer",
-                        },
-                        className: "hoverable-row",
-                    })}
-                />
+                {isWorkOrdersLoading ? (
+                    <div>Loading work orders...</div>
+                ) : workOrdersError ? (
+                    <div>Error loading work orders: {workOrdersError.message}</div>
+                ) : workOrderData?.length === 0 ? (
+                    <EmptyState description="No work orders found" />
+                ) : (
+                    <TableComponent<WorkOrderData>
+                        columns={workOrderColumns}
+                        dataSource={workOrderData || []}
+                        style=".lease-table-container"
+                        pagination={paginationConfig}
+                        onChange={(pagination, filters, sorter, extra) => {
+                            console.log("Table changed:", pagination, filters, sorter, extra);
+                        }}
+                        onRow={(record: WorkOrderData) => ({
+                            onClick: () => handleRowClick(record, "workOrder"),
+                            style: {
+                                cursor: "pointer",
+                            },
+                            className: "hoverable-row",
+                        })}
+                    />
+                )}
             </div>
 
             {/* Complaints Table */}
             <div className="mb-5">
                 <h4 className="mb-3">Complaints</h4>
-
-                <TableComponent<ComplaintsData>
-                    columns={complaintsColumns}
-                    dataSource={complaintsData}
-                    style=".lease-table-container"
-                    pagination={paginationConfig}
-                    onChange={(pagination, filters, sorter, extra) => {
-                        console.log("Table changed:", pagination, filters, sorter, extra);
-                    }}
-                    onRow={(record: ComplaintsData) => ({
-                        onClick: () => handleRowClick(record, "complaint"),
-                        style: {
-                            cursor: "pointer",
-                        },
-                        className: "hoverable-row",
-                    })}
-                />
+                {isComplaintsLoading ? (
+                    <div>Loading complaints...</div>
+                ) : complaintsError ? (
+                    <div>Error loading complaints: {complaintsError.message}</div>
+                ) : complaintsData?.length === 0 ? (
+                    <EmptyState description="No complaints found" />
+                ) : (
+                    <TableComponent<ComplaintsData>
+                        columns={complaintsColumns}
+                        dataSource={complaintsData}
+                        style=".lease-table-container"
+                        pagination={paginationConfig}
+                        onChange={(pagination, filters, sorter, extra) => {
+                            console.log("Table changed:", pagination, filters, sorter, extra);
+                        }}
+                        onRow={(record: ComplaintsData) => ({
+                            onClick: () => handleRowClick(record, "complaint"),
+                            style: {
+                                cursor: "pointer",
+                            },
+                            className: "hoverable-row",
+                        })}
+                    />
+                )}
             </div>
 
             {selectedItem && (
@@ -700,7 +642,7 @@ const AdminWorkOrder = () => {
                     modalTitle={`${itemType === "workOrder" ? "Work Order" : "Complaint"} Details`}
                     isModalOpen={isModalVisible}
                     onCancel={() => setIsModalVisible(false)}
-                    apartmentBuildingSetEditBuildingState={() => {}}
+                    apartmentBuildingSetEditBuildingState={() => { }}
                 />
             )}
         </div>

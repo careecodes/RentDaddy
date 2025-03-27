@@ -8,9 +8,11 @@ import (
 	"os"
 	"time"
 
+
 	"github.com/careecodes/RentDaddy/internal/utils"
 
 	//"github.com/careecodes/RentDaddy/internal/utils"
+
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -91,9 +93,10 @@ func main() {
 	}
 
 	log.Printf("[SEED_USERS] Finished seeding %d users", userCount)
+	log.Printf("[SEED_USERS] The admin user is %s", adminUser.ID)
 
 	log.Println("[SEED_USERS] Waiting for clerk to sync")
-	time.Sleep(3 * time.Second)
+	time.Sleep(6 * time.Second)
 
 	qString := fmt.Sprintf(`SELECT id FROM users WHERE clerk_id = '%s' AND role = 'admin'`, adminUser.ID)
 
