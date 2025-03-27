@@ -120,7 +120,7 @@ CREATE TABLE IF NOT EXISTS "apartments"
 CREATE INDEX "apartment_unit_number_index" ON "apartments" ("unit_number");
 
 COMMENT ON COLUMN "apartments"."unit_number" IS 'describes as <building><floor><door> -> 2145';
-
+-- Leases Table
 
 CREATE TABLE IF NOT EXISTS "leases"
 (
@@ -137,6 +137,8 @@ CREATE TABLE IF NOT EXISTS "leases"
     "status"            "Lease_Status" NOT NULL DEFAULT 'active',
     "created_by"       BIGINT         NOT NULL,
     "updated_by"       BIGINT         NOT NULL,
+    "created_at"       TIMESTAMP(0)            DEFAULT now(),
+    "updated_at"       TIMESTAMP(0)            DEFAULT now(),
     "previous_lease_id" BIGINT REFERENCES leases(id),
     "tenant_signing_url" TEXT,
     "landlord_signing_url" TEXT
