@@ -227,3 +227,21 @@ func (q *Queries) UpdateComplaint(ctx context.Context, arg UpdateComplaintParams
 	)
 	return err
 }
+
+const updateComplaintStatus = `-- name: UpdateComplaintStatus :exec
+UPDATE complaints
+SET
+  status = $2,
+  updated_at = now()
+WHERE id = $1
+`
+
+type UpdateComplaintStatusParams struct {
+	ID     int64  `json:"id"`
+	Status Status `json:"status"`
+}
+
+func (q *Queries) UpdateComplaintStatus(ctx context.Context, arg UpdateComplaintStatusParams) error {
+	_, err := q.db.Exec(ctx, updateComplaintStatus, arg.ID, arg.Status)
+	return err
+}
