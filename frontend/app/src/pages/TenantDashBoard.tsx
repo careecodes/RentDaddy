@@ -9,7 +9,7 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ComplaintsData, Parking, WorkOrderData } from "../types/types";
+import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
@@ -275,7 +275,8 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
     const queryClient = useQueryClient();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const { userId, getToken } = useAuth();
-    const [parkingPermitForm] = Form.useForm<Parking>();
+    const [parkingPermitForm] = Form.useForm<ParkingEntry>();
+    console.log(`FORM VALUES: ${JSON.stringify(parkingPermitForm.getFieldsValue())}`);
     const { mutate: createParkingPermit, isPending: isParkingPending } = useMutation({
         mutationKey: [`${userId}-create-parking`],
         mutationFn: async () => {
@@ -324,7 +325,7 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
                 title="Add Guest Parking"
                 type="primary"
                 onClick={showModal}
-                disabled={props.userParkingPermitsUsed === 0 ? false : true}
+                disabled={props.userParkingPermitsUsed >= 2 ? true : false}
             />
             <Modal
                 className="p-3 flex-wrap-row"

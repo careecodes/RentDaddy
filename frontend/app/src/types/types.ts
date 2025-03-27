@@ -127,11 +127,17 @@ export interface DataType {
 
 export interface Parking {
     id: number;
-    permit_number: number;
     created_by: number;
     updated_at: string;
     // 2 days long
     expires_at: string;
+}
+
+export interface ParkingEntry {
+    created_by: number;
+    car_color: string;
+    car_make: string;
+    license_plate: string;
 }
 
 export type ClerkPublicMetadata = {
