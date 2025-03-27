@@ -185,11 +185,11 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Package info"
-                    value={lockers.data?.length ?? 1}
+                    value={lockers.data?.length ?? 0}
                     description={`${lockers.data?.length ? "You have a package. Click the button at your locker to open it." : "When package arrives you will be notified here."}`}
                     hoverable={true}
                     icon={<InboxOutlined className="icon" />}
-                    button={<TenantOpenLockerModal numberOfPackages={lockers.data?.length ?? 1} />}
+                    button={<TenantOpenLockerModal numberOfPackages={lockers.data?.length ?? 0} />}
                 />
                 <CardComponent
                     title="Guest Parking"
@@ -222,6 +222,7 @@ export const TenantDashBoard = () => {
                     title="Work Orders"
                     description={"View your work orders here."}
                     hoverable={true}
+                    value={workOrders.data?.length}
                     button={<TenantViewWorkOrdersModal data={workOrders.data} />}
                 />
                 <CardComponent
