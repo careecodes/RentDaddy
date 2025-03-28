@@ -36,7 +36,11 @@ export const TenantDashBoard = () => {
         if (!res.ok) {
             throw new Error("[TENANT_DASHBOARD] Error parking_permits request failed");
         }
-        return (await res.json()) as Parking[];
+
+
+        const permits = (await res.json()) as Parking[];
+        console.log("Parking permits:", permits);
+        return permits;
     }
 
     async function getComplaints() {
@@ -197,7 +201,7 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Guest Parking"
-                    value={parking.data?.length ?? 0}
+                    value={parking.data?.length ?? `0/2`}
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}

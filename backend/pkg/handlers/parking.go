@@ -259,12 +259,20 @@ func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *
 
 	log.Printf("Current user ID: %s", userCtx.ID)
 
-	parkingPermits, err := p.queries.ListParkingPermits(r.Context())
+	tenant, err := p.queries.GetUserByClerkId(r.Context(), userCtx.ID)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying user by clerk ID: %v", err)
+		http.Error(w, "Error querying user by clerk ID", http.StatusInternalServerError)
+		return
+	}
+
+	parkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), pgtype.Int8{Int64: tenant.ID, Valid: true})
 	if err != nil {
 		log.Printf("[USER_HANDLER] Fiailed querying user parking permits: %v", err)
 		http.Error(w, "Error querying user parking permits", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("Parking permits: %v", parkingPermits)
 
 	jsonRes, err := json.Marshal(parkingPermits)
 	if err != nil {
@@ -275,7 +283,7 @@ func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(jsonRes))
+	w.Write(jsonRes)
 }
 
 func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r *http.Request) {
