@@ -45,12 +45,13 @@ COPY ./cmd/cron/leases-cron /etc/cron.d/leases-cron
 RUN chmod 0644 /etc/cron.d/leases-cron \
     && crontab /etc/cron.d/leases-cron
 
-# Copy entrypoint.sh and set correct permissions
-RUN chmod +x /app/entrypoint.sh
+# Copy entrypoint
+COPY entrypoint.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
 
 EXPOSE 8080
 
 # Environment variable to control whether to use Air
-ENV USE_AIR=false
+ENV USE_AIR=true
 
 ENTRYPOINT ["/app/entrypoint.sh"]

@@ -102,6 +102,7 @@ createRoot(document.getElementById("root")!).render(
                             {/* Main Route (Landing Page) */}
                             {/* Pre-authentication Layout Group */}
                             <Route element={<PreAuthedLayout />}>
+                                <Route path="/healthz" element={<div>ok</div>} />
                                 {/* Landing Page */}
                                 <Route
                                     index

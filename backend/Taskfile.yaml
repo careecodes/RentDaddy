@@ -88,7 +88,7 @@ tasks:
         exit 1
         fi
         echo "Running all tests in container: $CONTAINER_NAME..."
-        psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+        psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
   cron:expire-leases:
     desc: "Run lease expiration job manually in backend container"
     cmds:
@@ -96,7 +96,7 @@ tasks:
   cron:test-expired-leases:
     desc: "Seed db with leases to expire"
     cmds:
-      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
+      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
 
   cron:test-status-update:
     desc: "Test the lease status update endpoint"

@@ -1,4 +1,0 @@
-[
-    "arn:aws:ecs:us-east-2:168356498770:task-definition/rentdaddy-main-postgres:7",
-    "service:rentdaddy-main-postgres-service"
-]

@@ -196,7 +196,7 @@ resource "aws_ecs_cluster" "main" {
 resource "aws_launch_template" "ecs_lt" {
   name_prefix   = "rentdaddy-ecs-"
   image_id      = "ami-059601b8419c53014" # Amazon ECS-optimized Amazon Linux 2 AMI for us-east-2
-  instance_type = "t3.medium"
+  instance_type = "t3.small"
   key_name      = "rentdaddy_key"
 
   iam_instance_profile {
@@ -221,7 +221,6 @@ resource "aws_launch_template" "ecs_lt" {
     # Make sure ec2-user owns other directories
     chown -R ec2-user:ec2-user /home/ec2-user/app/temp
     chown -R ec2-user:ec2-user /home/ec2-user/documenso
-    echo "✅ User data script completed successfully" >> /var/log/user-data.log
     EOF
   )
 
@@ -290,7 +289,6 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       name      = "backend"
       image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/backend:latest"
       essential = true
-      links     = ["main-postgres"],
       environment = [
         {
           name  = "FORCE_REDEPLOY"
@@ -304,9 +302,9 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
         { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
         { name = "VITE_PORT", value = "8080" },
-        { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
+        { name = "VITE_DOMAIN_URL", value = "http://localhost" },
         { name = "PORT", value = "8080" },
-        { name = "DOMAIN_URL", value = "https://app.curiousdev.net" },
+        { name = "DOMAIN_URL", value = "http://localhost" },
         { name = "TEMP_DIR", value = "/app/temp" },
         { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
         { name = "ADMIN_LAST_NAME", value = "First Landlord" },
@@ -324,16 +322,15 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "awsAccessID", value = "AKIASOMWUJVJOJ63YFFE" },
         { name = "DOCUMENSO_HOST", value = "documenso" },
         { name = "DOCUMENSO_PORT", value = "3000" },
-        { name = "DOCUMENSO_API_URL", value = "https://docs.curiousdev.net" },
-        { name = "DOCUMENSO_PUBLIC_URL", value = "https://docs.curiousdev.net" },
+        { name = "DOCUMENSO_API_URL", value = "http://documenso:3000" },
+        { name = "DOCUMENSO_PUBLIC_URL", value = "http://localhost:3000" },
         { name = "ENV", value = "development" },
-        { name = "DEBUG_MODE", value = var.debug_mode }
+        { name = "DEBUG_MODE", value = "false" }
       ]
-      portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }]
+      portMappings = [{ containerPort = 8080, protocol = "tcp" }]
       secrets = [
         { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
-        { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
         { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
         { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
         { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
@@ -353,7 +350,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       name         = "frontend"
       image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:latest"
       essential    = true
-      portMappings = [{ containerPort = 5173, hostPort = 5173, protocol = "tcp" }]
+      portMappings = [{ containerPort = 5173, protocol = "tcp" }]
       environment = [
         {
           name  = "FORCE_REDEPLOY"
@@ -434,11 +431,11 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
       scope         = "shared"
       autoprovision = true
       driver        = "local"
-      # driver_opts = {
-      #   "type"   = "none",
-      #   "device" = "/home/ec2-user/app/postgres-data",
-      #   "o"      = "bind"
-      # }
+      driver_opts = {
+        "type"   = "none",
+        "device" = "/home/ec2-user/app/postgres-data",
+        "o"      = "bind"
+      }
     }
   }
 }
@@ -461,11 +458,9 @@ resource "aws_ecs_task_definition" "documenso" {
       portMappings = [
         {
           containerPort = 3000
-          hostPort      = 3000
           protocol      = "tcp"
         }
       ]
-      links = ["documenso-postgres"],
       environment = [
         { name = "NODE_ENV", value = "production" },
         { name = "POSTGRES_USER", value = "documenso" },
@@ -552,11 +547,11 @@ resource "aws_ecs_task_definition" "documenso" {
       scope         = "shared"
       autoprovision = true
       driver        = "local"
-      # driver_opts = {
-      #   "type"   = "none",
-      #   "device" = "/home/ec2-user/documenso/postgres-data",
-      #   "o"      = "bind"
-      # }
+      driver_opts = {
+        "type"   = "none",
+        "device" = "/home/ec2-user/documenso/postgres-data",
+        "o"      = "bind"
+      }
     }
   }
 }
@@ -751,28 +746,22 @@ data "aws_route53_zone" "main" {
 
 
 
-resource "aws_acm_certificate_validation" "certvalidation" {
-  certificate_arn         = aws_acm_certificate.main.arn
-  validation_record_fqdns = [for r in aws_route53_record.wildcard_cert_validation : r.fqdn]
-}
-
 resource "aws_acm_certificate" "main" {
-  domain_name       = "curiousdev.net"
+  domain_name       = "app.curiousdev.net"
   validation_method = "DNS"
 
   subject_alternative_names = [
-    "*.curiousdev.net"
+    "docs.curiousdev.net"
   ]
-
-  tags = {
-    Name = "rentdaddy-cert"
-  }
 
   lifecycle {
     create_before_destroy = true
   }
-}
 
+  tags = {
+    Name = "rentdaddy-cert"
+  }
+}
 
 resource "aws_lb" "main" {
   name               = "rentdaddy-alb"
@@ -793,13 +782,14 @@ resource "aws_lb_target_group" "frontend" {
   vpc_id      = aws_vpc.main.id
   target_type = "instance"
 
+
   health_check {
-    path                = "/healthz"
-    matcher             = "200"
+    path                = "/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
+    matcher             = "200"
   }
 }
 
@@ -811,12 +801,12 @@ resource "aws_lb_target_group" "backend" {
   target_type = "instance"
 
   health_check {
-    path                = "/healthz"
-    matcher             = "200"
+    path                = "/"
     interval            = 30
     timeout             = 5
     healthy_threshold   = 2
     unhealthy_threshold = 2
+    matcher             = "200"
   }
 }
 
@@ -837,28 +827,26 @@ resource "aws_lb_target_group" "documenso" {
   }
 }
 
-resource "aws_lb_target_group_attachment" "frontend" {
-  count            = length(data.aws_instances.ecs_instances.ids)
-  target_group_arn = aws_lb_target_group.frontend.arn
-  target_id        = data.aws_instances.ecs_instances.ids[count.index]
-  port             = 5173
-}
+# resource "aws_lb_target_group_attachment" "frontend" {
+#   count            = length(data.aws_instances.ecs_instances.ids)
+#   target_group_arn = aws_lb_target_group.frontend.arn
+#   target_id        = data.aws_instances.ecs_instances.ids[count.index]
+#   port             = 5173
+# }
 
-resource "aws_lb_target_group_attachment" "backend" {
-  count            = length(data.aws_instances.ecs_instances.ids)
-  target_group_arn = aws_lb_target_group.backend.arn
-  target_id        = data.aws_instances.ecs_instances.ids[count.index]
-  port             = 8080
-}
+# resource "aws_lb_target_group_attachment" "backend" {
+#   count            = length(data.aws_instances.ecs_instances.ids)
+#   target_group_arn = aws_lb_target_group.backend.arn
+#   target_id        = data.aws_instances.ecs_instances.ids[count.index]
+#   port             = 8080
+# }
 
-resource "aws_lb_target_group_attachment" "documenso" {
-  count            = length(data.aws_instances.ecs_instances.ids)
-  target_group_arn = aws_lb_target_group.documenso.arn
-  target_id        = data.aws_instances.ecs_instances.ids[count.index]
-  port             = 3000
-}
-
-
+# resource "aws_lb_target_group_attachment" "documenso" {
+#   count            = length(data.aws_instances.ecs_instances.ids)
+#   target_group_arn = aws_lb_target_group.documenso.arn
+#   target_id        = data.aws_instances.ecs_instances.ids[count.index]
+#   port             = 3000
+# }
 resource "aws_lb_listener" "https" {
   load_balancer_arn = aws_lb.main.arn
   port              = 443
@@ -905,29 +893,6 @@ resource "aws_lb_listener_rule" "frontend" {
   }
 }
 
-resource "aws_lb_listener_rule" "redirect_to_app" {
-  listener_arn = aws_lb_listener.https.arn
-  priority     = 10
-
-  action {
-    type = "redirect"
-
-    redirect {
-      port        = "443"
-      protocol    = "HTTPS"
-      status_code = "HTTP_301"
-      host        = "app.curiousdev.net"
-    }
-  }
-
-  condition {
-    host_header {
-      values = ["curiousdev.net"]
-    }
-  }
-}
-
-
 resource "aws_lb_listener_rule" "documenso" {
   listener_arn = aws_lb_listener.https.arn
   priority     = 200
@@ -947,77 +912,48 @@ resource "aws_route53_record" "docs_alb" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "docs.curiousdev.net"
   type    = "A"
-
-  alias {
-    name                   = aws_lb.main.dns_name
-    zone_id                = aws_lb.main.zone_id
-    evaluate_target_health = true
-  }
+  ttl     = 300
+  records = ["3.148.114.36"]
 
   lifecycle {
     prevent_destroy = true
   }
 }
 
-# resource "aws_route53_record" "acm_validation_docs" {
-#   zone_id = data.aws_route53_zone.main.zone_id
-#   name    = "_3202e4d9e072fd2a55853a587e6c3cde.docs.curiousdev.net"
-#   type    = "CNAME"
-#   ttl     = 300
-#   records = ["_34117048b6acc0aa84239bc4fc1dd1a1.xlfgrmvvlj.acm-validations.aws"]
+resource "aws_route53_record" "acm_validation_docs" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "_3202e4d9e072fd2a55853a587e6c3cde.docs.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["_34117048b6acc0aa84239bc4fc1dd1a1.xlfgrmvvlj.acm-validations.aws"]
 
-#   lifecycle {
-#     prevent_destroy = true
-#   }
-# }
-
-resource "aws_route53_record" "wildcard_cert_validation" {
-  for_each = {
-    for dvo in distinct([
-      for dvo in aws_acm_certificate.main.domain_validation_options :
-      {
-        name   = dvo.resource_record_name
-        type   = dvo.resource_record_type
-        record = dvo.resource_record_value
-      }
-    ]) : dvo.name => dvo
+  lifecycle {
+    prevent_destroy = true
   }
-
-  zone_id         = data.aws_route53_zone.main.zone_id
-  name            = each.value.name
-  type            = each.value.type
-  ttl             = 300
-  records         = [each.value.record]
-  allow_overwrite = true
-
 }
-
-
-
 
 
 resource "aws_route53_record" "app_alb" {
   zone_id = data.aws_route53_zone.main.zone_id
   name    = "app.curiousdev.net"
   type    = "A"
-
-  alias {
-    name                   = aws_lb.main.dns_name
-    zone_id                = aws_lb.main.zone_id
-    evaluate_target_health = true
+  ttl     = 300
+  records = ["18.222.116.146"]
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
-# resource "aws_route53_record" "validate_app_cert" {
-#   zone_id = data.aws_route53_zone.main.zone_id
-#   name    = "_26feeea980e5b9a570740aea36c08250.app.curiousdev.net"
-#   type    = "CNAME"
-#   ttl     = 300
-#   records = ["_e3388d6accc1c6e5f41d5c8851d98a40.xlfgrmvvlj.acm-validations.aws"]
-#   lifecycle {
-#     prevent_destroy = true
-#   }
-# }
+resource "aws_route53_record" "validate_app_cert" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "_26feeea980e5b9a570740aea36c08250.app.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["_e3388d6accc1c6e5f41d5c8851d98a40.xlfgrmvvlj.acm-validations.aws"]
+  lifecycle {
+    prevent_destroy = true
+  }
+}
 
 
 resource "aws_service_discovery_private_dns_namespace" "rentdaddy" {
@@ -1047,10 +983,4 @@ output "nameservers" {
 variable "deploy_version" {
   description = "Version string or commit SHA used to force ECS task redeployments"
   type        = string
-}
-
-variable "debug_mode" {
-  description = "Debug backend container startup in ECS"
-  type        = string
-  default     = "false"
 }

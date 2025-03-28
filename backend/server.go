@@ -68,7 +68,10 @@ func main() {
 	// // Added to make this work for testing.
 	// r.Use(clerkhttp.WithHeaderAuthorization())
 	// r.Use(middleware.ClerkAuthMiddleware)
-
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)

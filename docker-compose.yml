@@ -18,7 +18,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
       - "2345:2345" 
@@ -38,13 +38,13 @@ services:
     networks:
         - app-network
         - documenso-rentdaddy
-    #command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
     
 
   frontend:
     build:
       context: ./frontend/app
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     volumes:
