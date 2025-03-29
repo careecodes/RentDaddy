@@ -171,10 +171,7 @@ func (u UserHandler) GetAdminOverview(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	complaints, err := u.queries.ListComplaints(r.Context(), db.ListComplaintsParams{
-		Limit:  5,
-		Offset: 0,
-	})
+	complaints, err := u.queries.ListComplaints(r.Context())
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed querying complaints for adminOverview: %v", err)
 		http.Error(w, "Error querying complaints", http.StatusInternalServerError)
@@ -556,7 +553,7 @@ func (u UserHandler) TenantCreateComplaint(w http.ResponseWriter, r *http.Reques
 		Category:    createComplaintReq.Category,
 		Title:       createComplaintReq.Title,
 		Description: createComplaintReq.Description,
-		UnitNumber:  pgtype.Int2{Int16: createComplaintReq.UnitNumber.Int16, Valid: true},
+		UnitNumber:  pgtype.Int8{Int64: createComplaintReq.UnitNumber.Int64, Valid: true},
 	})
 	if err != nil {
 		log.Printf("[USER_HANDLER] Failed creating tenant complaint: %v", err)

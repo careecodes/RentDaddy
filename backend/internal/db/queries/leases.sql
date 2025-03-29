@@ -240,7 +240,7 @@ SET
     availability = false,
     lease_id = (SELECT id FROM updated_lease),
     updated_at = now()
-WHERE id = (SELECT apartment_id FROM updated_lease WHERE apartment_id IS NOT NULL)
+WHERE id = (SELECT apartment_id FROM updated_lease)
 RETURNING 
     (SELECT json_build_object(
         'lease_id', ul.id,

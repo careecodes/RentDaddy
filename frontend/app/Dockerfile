@@ -8,7 +8,7 @@ RUN apk add --no-cache curl bash
 
 # Copy package files for dependency installation
 COPY package.json ./
-COPY package-lock.json* ./
+COPY package-lock.json ./
 
 # Install dependencies
 RUN npm ci --no-audit --no-fund || npm install --no-audit --no-fund

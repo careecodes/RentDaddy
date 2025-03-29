@@ -109,6 +109,7 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 					Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
 					ManagementID: adminUser.ID,
 					BuildingID:   buildingResponse.ID,
+					Availability: true,
 				})
 				if err != nil {
 					log.Printf("[Construct-Create-Apartment] error creating apartment: %v", err)

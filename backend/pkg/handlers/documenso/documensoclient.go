@@ -76,8 +76,8 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 ) (string, map[string]RecipientInfo, string, error) {
 	// Step 1: Create document with recipients
 	createDocumentURL := fmt.Sprintf("%s/documents", c.BaseURL)
-	log.Println("Creating document with signers:", createDocumentURL)
-	//this should ideally be done after the documenso signing webhook not here
+	log.Println("[Upload] Creating document with signers:", createDocumentURL)
+	// this should ideally be done after the documenso signing webhook not here
 	var s3bucket string
 	// Convert signers to API-recognized format
 	recipients := make([]map[string]interface{}, len(signers))
@@ -364,7 +364,6 @@ func (c *DocumensoClient) GetSigningURL(documentID string) string {
 	signURL := fmt.Sprintf("%s/sign/%s", base, documentID)
 	log.Printf("[LEASE_UPSERT] Lease signing URL: %s", signURL)
 	return signURL
-
 }
 
 // AddSignatureField adds a signature field or date field to a document for a specific recipient with retries
@@ -449,6 +448,7 @@ func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y,
 
 	return fmt.Errorf("failed to create %s field after %d attempts", actualFieldType, maxRetries)
 }
+
 func (c *DocumensoClient) withRetry(maxRetries int, operation func() error) error {
 	var err error
 	for attempt := 0; attempt < maxRetries; attempt++ {
@@ -554,6 +554,7 @@ func (c *DocumensoClient) GetDocumentDownloadURL(documentID string) (string, err
 
 	return response.DownloadURL, nil
 }
+
 func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
 	log.Printf("DOCUMENSO DEBUG: "+format, args...)
 }

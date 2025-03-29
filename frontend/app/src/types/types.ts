@@ -18,6 +18,15 @@ export interface LeaseData {
     leaseEndDate: string;
     rentAmount: number;
     status: string;
+formattedStartDate?: dayjs.Dayjs;
+formattedEndDate?: dayjs.Dayjs;
+admin_doc_url?: string;
+
+}
+
+export interface TenantLeaseStatusAndURL {
+status: string;
+url: string;
 }
 
 export type WorkCategory = "plumbing" | "electric" | "carpentry" | "hvac" | "other";
@@ -31,8 +40,7 @@ export type WorkOrderEntry = {
 };
 
 export interface WorkOrderData {
-    key: number;
-    workOrderNumber: number;
+    id: number;
     creatingBy: number; // this is the user from tenant table that created ticket
     category: WorkCategory;
     title: string;
@@ -48,7 +56,6 @@ export type ComplaintStatus = "open" | "in_progress" | "resolved" | "closed";
 
 export interface ComplaintData {
     id: number;
-    complaintNumber: number;
     createdBy: number;
     category: ComplaintCategory;
     title: string;
@@ -67,8 +74,7 @@ export type ComplaintEntry = {
 };
 
 export interface ComplaintsData {
-    key: number;
-    complaintNumber: number;
+    id: number;
     createdBy: number;
     category: "maintenance" | "noise" | "security" | "parking" | "neighbor" | "trash" | "internet" | "lease" | "natural_disaster" | "other";
     title: string;

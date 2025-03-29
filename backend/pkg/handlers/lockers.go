@@ -60,23 +60,6 @@ func (l LockerHandler) TestCreateLocker(w http.ResponseWriter, r *http.Request) 
 }
 
 func (l LockerHandler) GetLockers(w http.ResponseWriter, r *http.Request) {
-	// limitStr := r.URL.Query().Get("limit")
-	// offsetStr := r.URL.Query().Get("offset")
-
-	// limit := int32(20)
-	// if limitStr != "" {
-	// 	if parsedLimit, err := strconv.ParseInt(limitStr, 10, 32); err == nil {
-	// 		limit = int32(parsedLimit)
-	// 	}
-	// }
-
-	// offset := int32(0)
-	// if offsetStr != "" {
-	// 	if parsedOffset, err := strconv.ParseInt(offsetStr, 10, 32); err == nil {
-	// 		offset = int32(parsedOffset)
-	// 	}
-	// }
-
 	lockers, err := l.queries.GetLockers(r.Context())
 	if err != nil {
 		log.Printf("Error getting lockers: %v", err)
@@ -156,7 +139,11 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 	// Get access code from request body
 	var req struct {
 		AccessCode string `json:"access_code"`
+		LockerID   string `json:"locker_id"`
+		InUse      bool   `json:"in_use"`
+		UserID     int64  `json:"user_id"`
 	}
+
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		log.Printf("Error decoding request body: %v", err)
 		http.Error(w, "Invalid request body", http.StatusBadRequest)
@@ -180,8 +167,8 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 	// Reset locker to default state for next Tenant
 	err = l.queries.UpdateLockerUser(r.Context(), db.UpdateLockerUserParams{
 		ID:     locker.ID,
-		UserID: pgtype.Int8{Valid: false}, // Clear user ID
-		InUse:  false,                     // Set not in use
+		UserID: pgtype.Int8{}, // Clear user ID
+		InUse:  false,         // Set not in use
 	})
 	if err != nil {
 		log.Printf("Error resetting locker: %v", err)
@@ -189,10 +176,19 @@ func (l LockerHandler) UnlockLocker(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
-		"message": "Locker unlocked and reset successfully",
+	err = l.queries.UpdateAccessCode(r.Context(), db.UpdateAccessCodeParams{
+		ID:         locker.ID,
+		AccessCode: pgtype.Text{String: "", Valid: false},
 	})
+
+	if err != nil {
+		log.Printf("Error resetting locker: %v", err)
+		http.Error(w, "Could not reset locker", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode("Locker unlocked successfully")
 }
 
 // This can handle updating the userId, access code, and the inUse status separately and together.

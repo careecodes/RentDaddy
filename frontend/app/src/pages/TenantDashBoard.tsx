@@ -1,9 +1,5 @@
 import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
-import { Tag, Modal, Button } from "antd";
-import React, { useState, useEffect } from "react";
 import { Link } from "react-router";
-import { TenantLeaseStatusAndURL } from "../types/types";
-import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
 import ModalComponent from "../components/ModalComponent";
@@ -13,22 +9,16 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQuery } from "@tanstack/react-query";
-
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
-
+import LeaseCard from "../components/LeaseCardComponent";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
+
+import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
 
 const serverUrl = import.meta.env.VITE_SERVER_URL;
 const absoluteServerUrl = `${serverUrl}`;
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
-    const { user } = useUser();
-    const userId = user?.publicMetadata["db_id"];
     const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
@@ -47,7 +37,11 @@ export const TenantDashBoard = () => {
         if (!res.ok) {
             throw new Error("[TENANT_DASHBOARD] Error parking_permits request failed");
         }
-        return (await res.json()) as Parking[];
+
+
+        const permits = (await res.json()) as Parking[];
+        console.log("Parking permits:", permits);
+        return permits;
     }
 
     async function getComplaints() {
@@ -116,34 +110,27 @@ export const TenantDashBoard = () => {
         ],
     });
 
-    // Simulate fetching lease status using TanStack Query
-    const {
-        data: leaseStatus,
-        isLoading,
-        isError,
-    } = useQuery({
+    // Fetch lease status using TanStack Query
+    const { data: leaseData, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            // Simulate a delay to mimic network request and give dummy data
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            const leaseData = {
-                // userId: userId,
-                userId: "notme",
-                lease_status: "pending_approval",
-            };
-            // const response = await fetch(`/api/leases?tenantId=${userId}`);
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch lease status");
-            // }
-            // const data = await response.json();
-
-            // Return dummy data if the userId matches
-            if (userId === leaseData.userId) {
-                console.log(leaseData.lease_status);
-                return leaseData.lease_status;
-            } else {
-                return "active";
+            if (!userId) {
+                console.log("`userId` variable is not populated");
+                return null;
             }
+            const response = await fetch(` ${absoluteServerUrl}/tenant/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                return null;
+            }
+
+            // If empty, return null so tenant dashboard can still load
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                return null;
+            }
+
+            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
+            return leaseData;
         },
         enabled: !!userId,
     });
@@ -215,7 +202,7 @@ export const TenantDashBoard = () => {
                 />
                 <CardComponent
                     title="Guest Parking"
-                    value={parking.data?.length ?? 0}
+                    value={parking.data?.length ?? `0/2`}
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
@@ -235,20 +222,7 @@ export const TenantDashBoard = () => {
             {/* Quick Access Documents Section */}
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
-                <CardComponent
-                    title="Lease"
-                    description="View or Resign your lease"
-                    hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View Lease"
-                            content="Lease should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
-                />
+                <LeaseCard />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}
@@ -306,7 +280,7 @@ export const TenantDashBoard = () => {
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
                     <p>
-                        Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.
+                        Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
                     </p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>

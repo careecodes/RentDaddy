@@ -123,23 +123,23 @@ const ModalComponent = (props: ModalComponentProps) => {
                 <Modal
                     className="p-3 flex-wrap-row"
                     title={<h3>{props.modalTitle}</h3>}
-                    open={isModalOpen}
+                    open={internalModalOpen}
                     onOk={async () => {
                         try {
-                            if (props.accessCode && props.accessCode) {
                                 props.setUserId(props.selectedUserId);
                                 props.setAccessCode(props.accessCode);
+                                console.log("props: ", props);
                                 await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
                                 setInternalModalOpen(false);
-                            } else {
-                                console.error("Missing required fields");
-                            }
+                                handleCancel();
+
                         } catch (error) {
                             console.error("Error in modal onOk:", error);
                             // Keep modal open if there's an error
                         }
                     }}
                     onCancel={handleCancel}>
+
                     <Divider />
                     <Form layout="vertical">
                         <Form.Item

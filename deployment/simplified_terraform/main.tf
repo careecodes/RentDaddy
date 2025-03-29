@@ -1,0 +1,1056 @@
+provider "aws" {
+  region = "us-east-2"
+}
+
+# VPC and Networking
+resource "aws_vpc" "main" {
+  cidr_block           = "10.0.0.0/16"
+  enable_dns_support   = true
+  enable_dns_hostnames = true
+  tags = {
+    Name = "rentdaddy-vpc"
+  }
+}
+
+resource "aws_subnet" "public" {
+  count                   = 2
+  vpc_id                  = aws_vpc.main.id
+  cidr_block              = count.index == 0 ? "10.0.0.0/24" : "10.0.1.0/24"
+  availability_zone       = count.index == 0 ? "us-east-2a" : "us-east-2b"
+  map_public_ip_on_launch = true
+  tags = {
+    Name = "rentdaddy-public-${count.index}"
+  }
+}
+
+
+
+resource "aws_internet_gateway" "main" {
+  vpc_id = aws_vpc.main.id
+  tags = {
+    Name = "rentdaddy-igw"
+  }
+}
+
+resource "aws_route_table" "public" {
+  vpc_id = aws_vpc.main.id
+  route {
+    cidr_block = "0.0.0.0/0"
+    gateway_id = aws_internet_gateway.main.id
+  }
+  tags = {
+    Name = "rentdaddy-public-rt"
+  }
+}
+
+resource "aws_route_table_association" "public" {
+  count          = 2
+  subnet_id      = aws_subnet.public[count.index].id
+  route_table_id = aws_route_table.public.id
+}
+
+# Security Groups
+resource "aws_security_group" "ec2_sg" {
+  name        = "rentdaddy-ec2-sg"
+  description = "Security group for ECS EC2 instances"
+  vpc_id      = aws_vpc.main.id
+
+  ingress {
+    from_port   = 22
+    to_port     = 22
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 80
+    to_port     = 80
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 3000
+    to_port     = 3000
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 5173
+    to_port     = 5173
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 8080
+    to_port     = 8080
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  ingress {
+    from_port   = 5432
+    to_port     = 5432
+    protocol    = "tcp"
+    cidr_blocks = [aws_vpc.main.cidr_block]
+  }
+  ingress {
+    from_port   = 443
+    to_port     = 443
+    protocol    = "tcp"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  egress {
+    from_port   = 0
+    to_port     = 0
+    protocol    = "-1"
+    cidr_blocks = ["0.0.0.0/0"]
+  }
+
+  tags = {
+    Name = "rentdaddy-ec2-sg"
+  }
+}
+
+# IAM Roles
+resource "aws_iam_role" "ecs_instance_role" {
+  name = "rentdaddy-ecs-instance-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ec2.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_instance_role_attachment" {
+  role       = aws_iam_role.ecs_instance_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonEC2ContainerServiceforEC2Role"
+}
+
+resource "aws_iam_instance_profile" "ecs_instance_profile" {
+  name = "rentdaddy-ecs-instance-profile"
+  role = aws_iam_role.ecs_instance_role.name
+}
+
+resource "aws_iam_role" "ecs_task_execution_role" {
+  name = "rentdaddy-ecs-task-execution-role"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Principal = {
+          Service = "ecs-tasks.amazonaws.com"
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "ecs_task_execution_role_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy"
+}
+
+# Add Secrets Manager access
+resource "aws_iam_role_policy_attachment" "ecs_task_secrets_manager_policy" {
+  role       = aws_iam_role.ecs_task_execution_role.name
+  policy_arn = "arn:aws:iam::aws:policy/SecretsManagerReadWrite"
+}
+
+# CloudWatch Log Groups
+resource "aws_cloudwatch_log_group" "backend_logs" {
+  name              = "/ecs/rentdaddy-backend"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "frontend_logs" {
+  name              = "/ecs/rentdaddy-frontend"
+  retention_in_days = 7
+}
+
+resource "aws_cloudwatch_log_group" "documenso_logs" {
+  name              = "/ecs/rentdaddy-documenso"
+  retention_in_days = 7
+}
+
+# ECS Cluster
+resource "aws_ecs_cluster" "main" {
+  name = "rentdaddy-cluster"
+}
+
+# Launch Template for EC2 instances
+resource "aws_launch_template" "ecs_lt" {
+  name_prefix   = "rentdaddy-ecs-"
+  image_id      = "ami-059601b8419c53014" # Amazon ECS-optimized Amazon Linux 2 AMI for us-east-2
+  instance_type = "t3.medium"
+  key_name      = "rentdaddy_key"
+
+  iam_instance_profile {
+    name = aws_iam_instance_profile.ecs_instance_profile.name
+  }
+
+  vpc_security_group_ids = [aws_security_group.ec2_sg.id]
+
+
+  user_data = base64encode(<<-EOF
+    #!/bin/bash
+    echo ECS_CLUSTER=${aws_ecs_cluster.main.name} >> /etc/ecs/ecs.config
+    
+    # Create directories with proper permissions
+    mkdir -p /home/ec2-user/app/{temp,postgres-data}
+    mkdir -p /home/ec2-user/documenso/postgres-data
+    
+    # Set proper ownership and permissions for postgres data directory
+    chown -R 999:999 /home/ec2-user/app/postgres-data
+    chmod -R 700 /home/ec2-user/app/postgres-data
+    
+    # Make sure ec2-user owns other directories
+    chown -R ec2-user:ec2-user /home/ec2-user/app/temp
+    chown -R ec2-user:ec2-user /home/ec2-user/documenso
+    echo "✅ User data script completed successfully" >> /var/log/user-data.log
+    EOF
+  )
+
+  block_device_mappings {
+    device_name = "/dev/xvda"
+    ebs {
+      volume_size           = 30
+      volume_type           = "gp2"
+      delete_on_termination = true
+    }
+  }
+
+  tag_specifications {
+    resource_type = "instance"
+    tags = {
+      Name = "rentdaddy-ecs-instance"
+    }
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+# Auto Scaling Group for EC2 instances
+resource "aws_autoscaling_group" "ecs_asg" {
+  name                = "rentdaddy-ecs-asg"
+  vpc_zone_identifier = aws_subnet.public[*].id
+  desired_capacity    = 2
+  min_size            = 1
+  max_size            = 2
+
+
+
+  launch_template {
+    id      = aws_launch_template.ecs_lt.id
+    version = "$Latest"
+  }
+
+  tag {
+    key                 = "Name"
+    value               = "rentdaddy-ecs-instance"
+    propagate_at_launch = true
+  }
+
+  tag {
+    key                 = "AmazonECSManaged"
+    value               = ""
+    propagate_at_launch = true
+  }
+}
+
+# ECS Task Definitions
+
+resource "aws_ecs_task_definition" "backend_with_frontend" {
+  family                   = "rentdaddy-app"
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
+  cpu                      = "512"
+  memory                   = "1024"
+
+  container_definitions = jsonencode([
+    {
+      name      = "backend"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/backend:latest"
+      essential = true
+      links     = ["main-postgres"],
+      environment = [
+        {
+          name  = "FORCE_REDEPLOY"
+          value = timestamp() # This forces a new revision each deploy
+        },
+        { name = "POSTGRES_PORT", value = "5432" },
+        { name = "POSTGRES_HOST", value = "main-postgres" },
+        { name = "POSTGRES_USER", value = "appuser" },
+        { name = "POSTGRES_DB", value = "appdb" },
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", value = "pk_test_ZXF1YWwtaWd1YW5hLTgwLmNsZXJrLmFjY291bnRzLmRldiQ" },
+        { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
+        { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
+        { name = "VITE_PORT", value = "8080" },
+        { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
+        { name = "PORT", value = "8080" },
+        { name = "DOMAIN_URL", value = "https://app.curiousdev.net" },
+        { name = "TEMP_DIR", value = "/app/temp" },
+        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
+        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
+        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "FRONTEND_PORT", value = "5173" },
+        { name = "SMTP_PORT", value = "587" },
+        { name = "SMTP_ENDPOINT_ADDRESS", value = "email-smtp.us-east-2.amazonaws.com" },
+        { name = "SMTP_USER", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
+        { name = "SMTP_TLS_MODE", value = "starttls" },
+        { name = "SMTP_FROM", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "SMTP_TEST_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "s3Region", value = "us-east-1" },
+        { name = "s3Bucket", value = "rentdaddydocumenso" },
+        { name = "s3BaseURL", value = "https://s3.us-east-1.amazonaws.com" },
+        { name = "awsAccessID", value = "AKIASOMWUJVJOJ63YFFE" },
+        { name = "DOCUMENSO_HOST", value = "documenso" },
+        { name = "DOCUMENSO_PORT", value = "3000" },
+        { name = "DOCUMENSO_API_URL", value = "https://docs.curiousdev.net" },
+        { name = "DOCUMENSO_PUBLIC_URL", value = "https://docs.curiousdev.net" },
+        { name = "ENV", value = "development" },
+        { name = "DEBUG_MODE", value = var.debug_mode }
+      ]
+      portMappings = [{ containerPort = 8080, hostPort = 8080, protocol = "tcp" }]
+      secrets = [
+        { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
+        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
+        { name = "PG_URL", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:PG_URL::" },
+        { name = "SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:SMTP_PASSWORD::" },
+        { name = "awsSecret", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:awsSecret::" },
+        { name = "DOCUMENSO_API_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_API_KEY::" },
+        { name = "DOCUMENSO_WEBHOOK_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:DOCUMENSO_WEBHOOK_SECRET::" },
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.backend_logs.name
+          awslogs-region        = "us-east-2"
+          awslogs-stream-prefix = "backend"
+        }
+      }
+      memoryReservation = 512
+    },
+    {
+      name         = "frontend"
+      image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:latest"
+      essential    = true
+      portMappings = [{ containerPort = 5173, hostPort = 5173, protocol = "tcp" }]
+      environment = [
+        {
+          name  = "FORCE_REDEPLOY"
+          value = timestamp() # This forces a new revision each deploy
+        },
+        { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
+        { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
+        { name = "VITE_PORT", value = "8080" },
+        { name = "VITE_DOMAIN_URL", value = "http://localhost" },
+        { name = "PORT", value = "8080" },
+        { name = "DOMAIN_URL", value = "http://localhost" },
+        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
+        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
+        { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "FRONTEND_PORT", value = "5173" },
+        { name = "ENV", value = "development" },
+        { name = "DEBUG_MODE", value = "false" }
+      ]
+      secrets = [
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:VITE_CLERK_PUBLISHABLE_KEY::" },
+        { name = "CLERK_SECRET_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:CLERK_SECRET_KEY::" },
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          awslogs-group         = aws_cloudwatch_log_group.frontend_logs.name
+          awslogs-region        = "us-east-2"
+          awslogs-stream-prefix = "frontend"
+        }
+      }
+    },
+    {
+      name      = "main-postgres"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy-main:postgres-15-amd64"
+      essential = true
+      user      = "postgres"
+      portMappings = [
+        {
+          containerPort = 5432,
+          protocol      = "tcp"
+        }
+      ]
+      environment = [
+        { name = "POSTGRES_USER", value = "appuser" },
+        { name = "POSTGRES_DB", value = "appdb" },
+        { name = "PGDATA", value = "/var/lib/postgresql/data/pgdata" },
+        { name = "FORCE_REDEPLOY", value = var.deploy_version }
+      ]
+      secrets = [
+        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/main-app-q09OoA:POSTGRES_PASSWORD::" },
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "postgres-data"
+          containerPath = "/var/lib/postgresql/data"
+          readOnly      = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.backend_logs.name
+          "awslogs-region"        = "us-east-2"
+          "awslogs-stream-prefix" = "postgres"
+        }
+      }
+    },
+  ])
+
+  volume {
+    name      = "app-temp"
+    host_path = "/home/ec2-user/app/temp"
+  }
+
+  volume {
+    name = "postgres-data"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      # driver_opts = {
+      #   "type"   = "none",
+      #   "device" = "/home/ec2-user/app/postgres-data",
+      #   "o"      = "bind"
+      # }
+    }
+  }
+}
+
+resource "aws_ecs_task_definition" "documenso" {
+  family                   = "rentdaddy-documenso"
+  network_mode             = "bridge"
+  requires_compatibilities = ["EC2"]
+  execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+  task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
+
+  cpu    = "384"
+  memory = "1024"
+
+  container_definitions = jsonencode([
+    {
+      name      = "documenso"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/documenso:latest"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 3000
+          hostPort      = 3000
+          protocol      = "tcp"
+        }
+      ]
+      links = ["documenso-postgres"],
+      environment = [
+        { name = "NODE_ENV", value = "production" },
+        { name = "POSTGRES_USER", value = "documenso" },
+        { name = "POSTGRES_DB", value = "documenso" },
+        { name = "NEXT_PUBLIC_WEBAPP_URL", value = "http://localhost:3000" },
+        { name = "NEXT_PRIVATE_INTERNAL_WEBAPP_URL", value = "http://documenso:3000" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_NAME", value = "RentDaddy" },
+        { name = "NEXT_PRIVATE_SMTP_TRANSPORT", value = "smtp-auth" },
+        { name = "NEXT_PRIVATE_SMTP_USERNAME", value = "AKIAZ7SAK3WXHK5TJ2Y7" },
+        { name = "NEXT_PRIVATE_SMTP_SECURE", value = "false" },
+        { name = "NEXT_PRIVATE_SMTP_HOST", value = "email-smtp.us-east-2.amazonaws.com" },
+        { name = "NEXT_PRIVATE_SMTP_PORT", value = "587" },
+        { name = "NEXT_PRIVATE_SMTP_FROM_ADDRESS", value = "rentdaddyadmin@gitfor.ge" },
+        { name = "PORT", value = "3000" },
+        { name = "NEXT_PUBLIC_UPLOAD_TRANSPORT", value = "s3" },
+        { name = "NEXT_PRIVATE_UPLOAD_BUCKET", value = "rentdaddydocumenso" },
+        { name = "NEXT_PRIVATE_UPLOAD_ENDPOINT", value = "https://s3.us-east-1.amazonaws.com" },
+        { name = "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE", value = "false" },
+        { name = "NEXT_PRIVATE_UPLOAD_REGION", value = "us-east-1" },
+        { name = "NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID", value = "AKIASOMWUJVJM34XMXUN" },
+        { name = "NEXT_PRIVATE_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:33264/documenso" },
+        { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:33264/documenso" },
+      ]
+      secrets = [
+        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
+        { name = "NEXTAUTH_SECRET", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXTAUTH_SECRET::" },
+        { name = "NEXT_PRIVATE_ENCRYPTION_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_KEY::" },
+        { name = "NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_ENCRYPTION_SECONDARY_KEY::" },
+        { name = "NEXT_PRIVATE_SIGNING_PASSPHRASE", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SIGNING_PASSPHRASE::" },
+        { name = "NEXT_PRIVATE_SMTP_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_SMTP_PASSWORD::" },
+        { name = "NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:NEXT_PRIVATE_UPLOAD_SECRET_ACCESS_KEY::" }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.documenso_logs.name
+          "awslogs-region"        = "us-east-2"
+          "awslogs-stream-prefix" = "documenso"
+        }
+      }
+    },
+    {
+      name      = "documenso-postgres"
+      image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy-main:postgres-15-amd64"
+      user      = "postgres"
+      essential = true
+      portMappings = [
+        {
+          containerPort = 5432,
+          protocol      = "tcp"
+        }
+      ]
+      environment = [
+        { name = "POSTGRES_USER", value = "documenso" },
+        { name = "POSTGRES_DB", value = "documenso" },
+        { name = "PGDATA", value = "/var/lib/postgresql/data/pgdata" },
+        { name = "FORCE_REDEPLOY", value = var.deploy_version },
+      ]
+      secrets = [
+        { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
+      ]
+      mountPoints = [
+        {
+          sourceVolume  = "documenso-postgres-data"
+          containerPath = "/var/lib/postgresql/data"
+          readOnly      = false
+        }
+      ]
+      logConfiguration = {
+        logDriver = "awslogs"
+        options = {
+          "awslogs-group"         = aws_cloudwatch_log_group.documenso_logs.name
+          "awslogs-region"        = "us-east-2"
+          "awslogs-stream-prefix" = "postgres"
+        }
+      }
+    }
+  ])
+
+
+  volume {
+    name = "documenso-postgres-data"
+    docker_volume_configuration {
+      scope         = "shared"
+      autoprovision = true
+      driver        = "local"
+      # driver_opts = {
+      #   "type"   = "none",
+      #   "device" = "/home/ec2-user/documenso/postgres-data",
+      #   "o"      = "bind"
+      # }
+    }
+  }
+}
+
+
+
+# # For Documenso PostgreSQL
+# resource "aws_ecs_task_definition" "documenso_postgres" {
+#   family       = "rentdaddy-documenso-postgres"
+#   network_mode = "bridge"
+
+#   requires_compatibilities = ["EC2"]
+#   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
+#   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
+
+#   cpu    = "256"
+#   memory = "384"
+
+#   container_definitions = jsonencode([
+#     {
+#       name      = "documenso-postgres"
+#       image     = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy-main:postgres-15-amd64"
+#       user      = "postgres"
+#       essential = true
+#       portMappings = [
+#         {
+#           containerPort = 5432,
+#           protocol      = "tcp"
+#         }
+#       ]
+#       environment = [
+#         { name = "POSTGRES_USER", value = "documenso" },
+#         { name = "POSTGRES_DB", value = "documenso" },
+#         { name = "PGDATA", value = "/var/lib/postgresql/data/pgdata" },
+#         { name = "FORCE_REDEPLOY", value = var.deploy_version },
+#       ]
+#       secrets = [
+#         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
+#       ]
+#       mountPoints = [
+#         {
+#           sourceVolume  = "documenso-postgres-data"
+#           containerPath = "/var/lib/postgresql/data"
+#           readOnly      = false
+#         }
+#       ]
+#       logConfiguration = {
+#         logDriver = "awslogs"
+#         options = {
+#           "awslogs-group"         = aws_cloudwatch_log_group.documenso_logs.name
+#           "awslogs-region"        = "us-east-2"
+#           "awslogs-stream-prefix" = "postgres"
+#         }
+#       }
+#     }
+#   ])
+
+#   volume {
+#     name = "documenso-postgres-data"
+#     docker_volume_configuration {
+#       scope         = "shared"
+#       autoprovision = true
+#       driver        = "local"
+#       driver_opts = {
+#         "type"   = "none",
+#         "device" = "/home/ec2-user/documenso/postgres-data",
+#         "o"      = "bind"
+#       }
+#     }
+#   }
+# }
+# ECS Services
+resource "aws_ecs_service" "backend_with_frontend" {
+  name                              = "rentdaddy-app-service"
+  cluster                           = aws_ecs_cluster.main.id
+  task_definition                   = aws_ecs_task_definition.backend_with_frontend.arn
+  desired_count                     = 1
+  health_check_grace_period_seconds = 30
+  enable_execute_command            = true
+  # network_configuration {
+  #   subnets          = aws_subnet.public[*].id
+  #   security_groups  = [aws_security_group.ec2_sg.id]
+  #   assign_public_ip = false
+  # }
+  ordered_placement_strategy {
+    type  = "binpack"
+    field = "memory"
+  }
+  # service_registries {
+  #   registry_arn   = aws_service_discovery_service.documenso.arn
+  #   container_name = "documenso"
+  #   container_port = 3000
+  # }
+  load_balancer {
+    target_group_arn = aws_lb_target_group.backend.arn
+    container_name   = "backend"
+    container_port   = 8080
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+}
+
+
+resource "aws_ecs_service" "documenso" {
+  name            = "rentdaddy-documenso-service"
+  cluster         = aws_ecs_cluster.main.id
+  task_definition = aws_ecs_task_definition.documenso.arn
+  desired_count   = 1
+  # network_configuration {
+  #   subnets          = aws_subnet.public[*].id
+  #   security_groups  = [aws_security_group.ec2_sg.id]
+  #   assign_public_ip = false
+  # }
+  enable_execute_command = true
+  ordered_placement_strategy {
+    type  = "binpack"
+    field = "memory"
+  }
+
+  lifecycle {
+    ignore_changes = [desired_count]
+  }
+}
+
+# resource "aws_ecs_service" "main_postgres" {
+#   name            = "rentdaddy-main-postgres-service"
+#   cluster         = aws_ecs_cluster.main.id
+#   task_definition = aws_ecs_task_definition.main_postgres.arn
+#   desired_count   = 1
+
+#   enable_execute_command = true
+
+#   depends_on = [aws_lb_listener.https]
+
+#   ordered_placement_strategy {
+#     type  = "binpack"
+#     field = "memory"
+#   }
+
+#   lifecycle {
+#     ignore_changes = [desired_count]
+#   }
+# }
+
+# resource "aws_ecs_service" "documenso_postgres" {
+#   name            = "rentdaddy-documenso-postgres-service"
+#   cluster         = aws_ecs_cluster.main.id
+#   task_definition = aws_ecs_task_definition.documenso_postgres.arn
+#   desired_count   = 1
+
+#   enable_execute_command = true
+
+#   ordered_placement_strategy {
+#     type  = "binpack"
+#     field = "memory"
+#   }
+
+#   lifecycle {
+#     ignore_changes = [desired_count]
+#   }
+# }
+
+
+# Elastic IPs
+resource "aws_eip" "main_app_eip" {
+  domain = "vpc"
+  tags = {
+    Name = "rentdaddy-main-app-eip"
+  }
+}
+
+# Create a script in user_data to associate EIP
+data "aws_instances" "ecs_instances" {
+  filter {
+    name   = "tag:AmazonECSManaged"
+    values = [""]
+  }
+
+  depends_on = [
+    aws_autoscaling_group.ecs_asg
+  ]
+}
+
+# Route 53
+data "aws_route53_zone" "main" {
+  zone_id      = "Z037567331JOV8D5N3ZVT"
+  private_zone = false
+
+}
+
+
+
+resource "aws_acm_certificate_validation" "certvalidation" {
+  certificate_arn         = aws_acm_certificate.main.arn
+  validation_record_fqdns = [for r in aws_route53_record.wildcard_cert_validation : r.fqdn]
+}
+
+resource "aws_acm_certificate" "main" {
+  domain_name       = "curiousdev.net"
+  validation_method = "DNS"
+
+  subject_alternative_names = [
+    "*.curiousdev.net"
+  ]
+
+  tags = {
+    Name = "rentdaddy-cert"
+  }
+
+  lifecycle {
+    create_before_destroy = true
+  }
+}
+
+
+resource "aws_lb" "main" {
+  name               = "rentdaddy-alb"
+  internal           = false
+  load_balancer_type = "application"
+  subnets            = aws_subnet.public[*].id
+  security_groups    = [aws_security_group.ec2_sg.id]
+
+  tags = {
+    Name = "rentdaddy-alb"
+  }
+}
+
+resource "aws_lb_target_group" "frontend" {
+  name        = "frontend-tg"
+  port        = 5173
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    path                = "/healthz"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_target_group" "backend" {
+  name        = "backend-tg"
+  port        = 8080
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    path                = "/healthz"
+    matcher             = "200"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+  }
+}
+
+resource "aws_lb_target_group" "documenso" {
+  name        = "documenso-tg"
+  port        = 3000
+  protocol    = "HTTP"
+  vpc_id      = aws_vpc.main.id
+  target_type = "instance"
+
+  health_check {
+    path                = "/"
+    interval            = 30
+    timeout             = 5
+    healthy_threshold   = 2
+    unhealthy_threshold = 2
+    matcher             = "200"
+  }
+}
+
+resource "aws_lb_target_group_attachment" "frontend" {
+  count            = length(data.aws_instances.ecs_instances.ids)
+  target_group_arn = aws_lb_target_group.frontend.arn
+  target_id        = data.aws_instances.ecs_instances.ids[count.index]
+  port             = 5173
+}
+
+resource "aws_lb_target_group_attachment" "backend" {
+  count            = length(data.aws_instances.ecs_instances.ids)
+  target_group_arn = aws_lb_target_group.backend.arn
+  target_id        = data.aws_instances.ecs_instances.ids[count.index]
+  port             = 8080
+}
+
+resource "aws_lb_target_group_attachment" "documenso" {
+  count            = length(data.aws_instances.ecs_instances.ids)
+  target_group_arn = aws_lb_target_group.documenso.arn
+  target_id        = data.aws_instances.ecs_instances.ids[count.index]
+  port             = 3000
+}
+
+
+resource "aws_lb_listener" "https" {
+  load_balancer_arn = aws_lb.main.arn
+  port              = 443
+  protocol          = "HTTPS"
+  ssl_policy        = "ELBSecurityPolicy-2016-08"
+  certificate_arn   = "arn:aws:acm:us-east-2:168356498770:certificate/6951445e-b587-4a56-8d8a-aae2e8a1fa1c"
+
+  default_action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+}
+resource "aws_lb_listener_rule" "backend" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 110
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.backend.arn
+  }
+
+  condition {
+    host_header {
+      values = ["api.curiousdev.net"] # or change to whatever backend domain you want
+    }
+  }
+}
+
+
+
+resource "aws_lb_listener_rule" "frontend" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 100
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.frontend.arn
+  }
+
+  condition {
+    host_header {
+      values = ["app.curiousdev.net"]
+    }
+  }
+}
+
+resource "aws_lb_listener_rule" "redirect_to_app" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 10
+
+  action {
+    type = "redirect"
+
+    redirect {
+      port        = "443"
+      protocol    = "HTTPS"
+      status_code = "HTTP_301"
+      host        = "app.curiousdev.net"
+    }
+  }
+
+  condition {
+    host_header {
+      values = ["curiousdev.net"]
+    }
+  }
+}
+
+
+resource "aws_lb_listener_rule" "documenso" {
+  listener_arn = aws_lb_listener.https.arn
+  priority     = 200
+
+  action {
+    type             = "forward"
+    target_group_arn = aws_lb_target_group.documenso.arn
+  }
+
+  condition {
+    host_header {
+      values = ["docs.curiousdev.net"]
+    }
+  }
+}
+resource "aws_route53_record" "docs_alb" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "docs.curiousdev.net"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+# resource "aws_route53_record" "acm_validation_docs" {
+#   zone_id = data.aws_route53_zone.main.zone_id
+#   name    = "_3202e4d9e072fd2a55853a587e6c3cde.docs.curiousdev.net"
+#   type    = "CNAME"
+#   ttl     = 300
+#   records = ["_34117048b6acc0aa84239bc4fc1dd1a1.xlfgrmvvlj.acm-validations.aws"]
+
+#   lifecycle {
+#     prevent_destroy = true
+#   }
+# }
+
+resource "aws_route53_record" "wildcard_cert_validation" {
+  for_each = {
+    for dvo in distinct([
+      for dvo in aws_acm_certificate.main.domain_validation_options :
+      {
+        name   = dvo.resource_record_name
+        type   = dvo.resource_record_type
+        record = dvo.resource_record_value
+      }
+    ]) : dvo.name => dvo
+  }
+
+  zone_id         = data.aws_route53_zone.main.zone_id
+  name            = each.value.name
+  type            = each.value.type
+  ttl             = 300
+  records         = [each.value.record]
+  allow_overwrite = true
+
+}
+
+
+
+
+
+resource "aws_route53_record" "app_alb" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "app.curiousdev.net"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
+
+# resource "aws_route53_record" "validate_app_cert" {
+#   zone_id = data.aws_route53_zone.main.zone_id
+#   name    = "_26feeea980e5b9a570740aea36c08250.app.curiousdev.net"
+#   type    = "CNAME"
+#   ttl     = 300
+#   records = ["_e3388d6accc1c6e5f41d5c8851d98a40.xlfgrmvvlj.acm-validations.aws"]
+#   lifecycle {
+#     prevent_destroy = true
+#   }
+# }
+
+
+resource "aws_service_discovery_private_dns_namespace" "rentdaddy" {
+  name        = "rentdaddy.local"
+  description = "Private namespace for service discovery"
+  vpc         = aws_vpc.main.id
+}
+
+
+
+
+# Outputs
+output "instance_ids" {
+  description = "IDs of the EC2 instances"
+  value       = data.aws_instances.ecs_instances.ids
+}
+
+output "elastic_ip" {
+  description = "Elastic IP for the application"
+  value       = aws_eip.main_app_eip.public_ip
+}
+output "nameservers" {
+  description = "Nameservers for the Route 53 zone"
+  value       = data.aws_route53_zone.main.name_servers
+}
+
+variable "deploy_version" {
+  description = "Version string or commit SHA used to force ECS task redeployments"
+  type        = string
+}
+
+variable "debug_mode" {
+  description = "Debug backend container startup in ECS"
+  type        = string
+  default     = "false"
+}

@@ -74,20 +74,22 @@ const AdminViewEditSmartLockers = () => {
     });
 
     const { mutate: unlockLocker } = useMutation({
-        mutationFn: async () => {
+        mutationFn: async (lockerID: number) => {
             const token = await getToken();
 
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/lockers/${selectedUserId}`, {
+            const res = await fetch(`${API_URL}/admin/lockers/${lockerID}`, {
                 method: "PUT",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
                 body: JSON.stringify({
+                    locker_id: lockerID,
+                    access_code: accessCode,
                     in_use: false,
                 }),
             });
@@ -118,7 +120,7 @@ const AdminViewEditSmartLockers = () => {
         );
     };
 
-    const UnlockLockerModal = ({ lockerId, handleOkay }: UnlockLockerModalProps) => {
+    const UnlockLockerModal = ({ lockerId, handleOkay, setAccessCode }: UnlockLockerModalProps) => {
         return (
             <ModalComponent
                 buttonTitle="Unlock Locker"
@@ -155,7 +157,7 @@ const AdminViewEditSmartLockers = () => {
                 label: (
                     <UnlockLockerModal
                         lockerId={props.lockerId}
-                        handleOkay={unlockLocker}
+                        handleOkay={() => unlockLocker(props.lockerId)}
                         // setLockerId={setSelectedUserId}
                         setAccessCode={setAccessCode}
                     />

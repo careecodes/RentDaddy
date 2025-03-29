@@ -1,0 +1,49 @@
+# ---------- Builder Stage ----------
+FROM golang:1.23-alpine as builder
+
+WORKDIR /app
+
+# Install necessary build tools
+RUN apk add --no-cache curl git
+
+# Copy only module files to cache dependencies
+COPY go.mod go.sum ./
+RUN go mod download
+
+# Copy the rest of the application
+COPY . .
+
+# Build the binary
+RUN go build -o /tmp/server . || (echo "BUILD FAILED!" && exit 1)
+
+# ---------- Runtime Stage ----------
+FROM golang:1.23-alpine
+
+WORKDIR /app
+
+# Install only runtime dependencies (no build tools)
+RUN apk add --no-cache postgresql-client curl jq
+
+# Install Task CLI
+RUN curl -sL https://github.com/go-task/task/releases/download/v3.37.1/task_linux_amd64.tar.gz | tar -xz -C /usr/local/bin task \
+    && chmod +x /usr/local/bin/task
+
+# Install golang-migrate
+RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz \
+    && tar -xvf migrate.tar.gz \
+    && mv migrate /usr/local/bin/migrate \
+    && chmod +x /usr/local/bin/migrate \
+    && rm migrate.tar.gz
+
+# Copy binary from builder
+COPY --from=builder /tmp/server /tmp/server
+# Copy entrypoint
+COPY entrypoint-prod.sh /app/entrypoint.sh
+RUN chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh
+
+# Copy minimal files if needed (like config files or templates)
+COPY . .
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/entrypoint.sh"]
