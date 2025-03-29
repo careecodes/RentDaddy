@@ -18,7 +18,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jung-kurt/gofpdf"
@@ -297,11 +296,11 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		Availability: true,
 	})
 	if err != nil {
-		log.Printf("[WEBHOOK] Failed to update apartment availability: %v", err)
+		log.Printf("[LEASE_TERMINATE] Failed to update apartment availability: %v", err)
 		return
 	}
 
-	log.Printf("[WEBHOOK] Updated apartment ID %d to unavailable", terminatedLease.ApartmentID)
+	log.Printf("[LEASE_TERMINATE] Updated apartment ID %d to unavailable", terminatedLease.ApartmentID)
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -1262,7 +1261,7 @@ func (h *LeaseHandler) sendExpiringLeasesNotification(expiringLeases []map[strin
 	// Get admin email from environment or use default
 	adminEmail := os.Getenv("CRON_EMAIL")
 	if adminEmail == "" {
-		adminEmail = "rentdaddyadmin@gitfor.ge" // Fallback to global landlord email
+		adminEmail = "ezra@gitfor.ge" // Fallback to global landlord email
 	}
 
 	// Build email subject and body
@@ -1471,14 +1470,14 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	// Process the webhook asynchronously
 	// go func() {
-	ctx := r.Context()
-
+	ctx := context.Background()
+	landlordID := 1
 	// Get landlord ID from middleware-injected context
-	landlordID, _, _, err := h.GetLandlordInfo(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
+	// landlord, err := h.queries.ListUsersByRole(ctx, db.RoleAdmin)
+	// if err != nil {
+	// 	http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	// 	return
+	// }
 	// 1. Get the lease associated with this document ID
 	lease, err := h.queries.GetLeaseByExternalDocID(ctx, documentID)
 	if err != nil {
@@ -1746,21 +1745,6 @@ func (h *LeaseHandler) GetTenantLeaseStatusAndURLByUserID(w http.ResponseWriter,
 		log.Printf("Error encoding response: %v", err)
 		return
 	}
-}
-
-func (*LeaseHandler) extractEmailFromContext(contextEmailEntry []*clerk.EmailAddress, PrimaryEmailAddressId string) string {
-	// DEBUG THIS/LOG THIS
-	var primaryUserEmail string
-	for _, entry := range contextEmailEntry {
-		if entry.ID == PrimaryEmailAddressId {
-			primaryUserEmail = entry.EmailAddress
-			break
-		}
-	}
-	if primaryUserEmail == "" {
-		primaryUserEmail = contextEmailEntry[0].EmailAddress
-	}
-	return primaryUserEmail
 }
 
 // IsDocumensoAvailable checks if the Documenso service is available

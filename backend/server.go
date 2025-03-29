@@ -82,13 +82,13 @@ func main() {
 
 	// Locker Handler
 	lockerHandler := handlers.NewLockerHandler(pool, queries)
-
+	leaseHandler := handlers.NewLeaseHandler(pool, queries)
+	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
 	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
 	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
 	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
 	complaintHandler := handlers.NewComplaintHandler(pool, queries)
-	leaseHandler := handlers.NewLeaseHandler(pool, queries)
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
@@ -192,7 +192,7 @@ func main() {
 				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
 				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
 				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
-				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+
 				r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
 			})
 		})

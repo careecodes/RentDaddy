@@ -9,6 +9,7 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
+import LeaseCard from "../components/LeaseCardComponent";
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
@@ -109,15 +110,15 @@ export const TenantDashBoard = () => {
         ],
     });
 
-      // Fetch lease status using TanStack Query
-      const { data: leaseData, isLoading, isError } = useQuery({
+    // Fetch lease status using TanStack Query
+    const { data: leaseData, isLoading, isError } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
             if (!userId) {
                 console.log("`userId` variable is not populated");
                 return null;
             }
-            const response = await fetch(`${absoluteServerUrl}/leases/${userId}/signing-url`);
+            const response = await fetch(` ${absoluteServerUrl}/tenant/leases/${userId}/signing-url`);
             if (!response.ok) {
                 return null;
             }
@@ -221,20 +222,7 @@ export const TenantDashBoard = () => {
             {/* Quick Access Documents Section */}
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
-                <CardComponent
-                    title="Lease"
-                    description="View or Resign your lease"
-                    hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View Lease"
-                            content="Lease should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
-                />
+                <LeaseCard />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}

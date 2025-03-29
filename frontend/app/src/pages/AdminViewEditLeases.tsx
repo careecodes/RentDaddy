@@ -24,12 +24,13 @@ console.log("API URL:", API_URL);
 
 // Default status filters in case dynamic generation fails
 const DEFAULT_STATUS_FILTERS = [
-    { text: "Active", value: "active" },
-    { text: "Expires Soon", value: "expires_soon" },
-    { text: "Expired", value: "expired" },
     { text: "Draft", value: "draft" },
+    { text: "Pending Approval", value: "pending_approval" },
+    { text: "Active", value: "active" },
+    { text: "Expired", value: "expired" },
     { text: "Terminated", value: "terminated" },
-    { text: "Pending Approval", value: "pending_approval" }
+    { text: "Renewed", value: "renewed" },
+    { text: "Canceled", value: "canceled" }
 ];
 
 export default function AdminViewEditLeases() {
@@ -228,7 +229,7 @@ export default function AdminViewEditLeases() {
             leaseStartDate: dayjs(lease.leaseStartDate).format("YYYY-MM-DD"),
             leaseEndDate: dayjs(lease.leaseEndDate).format("YYYY-MM-DD"),
             rentAmount: lease.rentAmount ? lease.rentAmount / 100 : 0,
-            status: lease.status === "terminated" ? "terminated" : getLeaseStatus(lease),
+            status: lease.status, // Use the status directly from the backend
             adminDocUrl: lease.admin_doc_url
         };
     }) : [];
@@ -394,9 +395,28 @@ export default function AdminViewEditLeases() {
             title: "Status",
             dataIndex: "status",
             key: "status",
-            render: (status) => (
-                <AlertComponent title={status} type={status === "active" ? "success" : "warning"} />
-            ),
+            render: (status) => {
+                // Format the status to display in Title Case (e.g., "pending_approval" -> "Pending Approval")
+                const formattedStatus = status
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+
+                // Determine alert type based on status
+                let alertType: "success" | "info" | "warning" | "error" = "warning";
+                if (status === "active") alertType = "success";
+                else if (status === "draft" || status === "pending_approval") alertType = "info";
+                else if (status === "terminated" || status === "expired") alertType = "error";
+
+                return (
+                    <AlertComponent
+                        title={formattedStatus}
+                        message=""
+                        type={alertType}
+                        description=""
+                    />
+                );
+            },
             filters: statusFilters,
             onFilter: (value, record) => record.status === value,
         },
