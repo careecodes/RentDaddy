@@ -8,26 +8,30 @@ interface TableComponentProps<T> {
     dataSource?: T[];
     onChange?: TableProps<T>["onChange"];
     icon?: React.ReactNode;
-    style?: string;
+    style?: string; // Changed back to string to support class names
+    inlineStyle?: React.CSSProperties; // Added separate prop for inline styles
+    className?: string;
     pagination?: TablePaginationConfig | false;
     onRow?: (record: T) => { onClick: () => void };
     disabled?: boolean | undefined;
     loading?: boolean | undefined;
     scroll?: TableProps<T>["scroll"];
 }
+
 const useStyle = createStyles(({ css, token }) => {
-    const antCls = token.antCls || ""; // Ensure compatibility if antCls is undefined
+    const prefixCls = (token as any).prefixCls || 'ant';
+
     return {
         customTable: css`
-            ${antCls}-table {
-                ${antCls}-table-container {
-                    ${antCls}-table-body,
-                    ${antCls}-table-content {
+            .${prefixCls}-table {
+                .${prefixCls}-table-container {
+                    .${prefixCls}-table-body,
+                    .${prefixCls}-table-content {
                         scrollbar-width: thin;
                         scrollbar-color: #eaeaea transparent;
                         scrollbar-gutter: stable;
                     }
-                    ${antCls}-table-thead {
+                    .${prefixCls}-table-thead {
                         max-height: 100px;
                     }
                 }
@@ -36,21 +40,37 @@ const useStyle = createStyles(({ css, token }) => {
     };
 });
 
-const TableComponent = <T,>({ columns, dataSource = [], onChange, icon, pagination, onRow, style, loading, scroll: scrollProp }: TableComponentProps<T>) => {
+const TableComponent = <T,>({
+    columns,
+    dataSource = [],
+    onChange,
+    icon,
+    pagination,
+    onRow,
+    style,
+    inlineStyle,
+    className,
+    loading,
+    scroll: scrollProp
+}: TableComponentProps<T>) => {
 
     const { styles } = useStyle();
+
+    // Combine all classes: custom styles, provided className, and style (if it starts with a dot)
+    const combinedClassName = `${styles.customTable} ${className || ''} ${style?.startsWith('.') ? style.substring(1) : style || ''}`;
 
     return (
         <>
             {icon && <div className="table-icon">{icon}</div>}
             <Table<T>
-                className={styles.customTable}
+                className={combinedClassName}
                 columns={columns}
                 dataSource={dataSource}
                 pagination={pagination}
                 onChange={onChange}
                 onRow={onRow}
                 loading={loading}
+                style={inlineStyle} // Use the inlineStyle prop for React.CSSProperties
                 scroll={scrollProp ?? { x: "max-content" }}
                 rowKey={(record) => (record as any).key || JSON.stringify(record)}
             />

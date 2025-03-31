@@ -1,6 +1,5 @@
 import React from "react";
 import { Collapse } from "antd";
-import { Link } from "react-router";
 
 const { Panel } = Collapse;
 

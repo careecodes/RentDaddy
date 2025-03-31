@@ -7,8 +7,10 @@ import PageTitleComponent from "../components/reusableComponents/PageTitleCompon
 import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import dayjs from "dayjs";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const isDevelopment = import.meta.env.MODE === 'development';
+const absoluteServerUrl = isDevelopment
+    ? import.meta.env.VITE_SERVER_URL
+    : '/api';
 
 export default function WorkOrders() {
     const { getToken } = useAuth();

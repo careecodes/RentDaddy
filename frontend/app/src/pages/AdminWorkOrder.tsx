@@ -16,9 +16,10 @@ import EmptyState from "../components/reusableComponents/EmptyState";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || "http://localhost";
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || "8080";
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const isDevelopment = import.meta.env.MODE === 'development';
+const API_URL = isDevelopment
+    ? `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`
+    : '/api';
 
 const getWorkOrderColumnSearchProps = (dataIndex: keyof WorkOrderData, title: string): ColumnType<WorkOrderData> => ({
     filterDropdown: (filterDropdownProps) => (
@@ -472,7 +473,7 @@ const AdminWorkOrder = () => {
     const recentlyCompletedServiceCount: number = workOrderData
         ? workOrderData.filter(({ updatedAt, status }) => {
             const hoursSinceUpdate = dayjs().diff(dayjs(updatedAt), "hour");
-            return status === "completed" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
+            return status === "resolved" && hoursSinceUpdate <= hoursSinceRecentlyCompleted;
         }).length
         : 0;
 
@@ -494,6 +495,10 @@ const AdminWorkOrder = () => {
                 alerts.push(`${overdueServiceCount} services open for >${hoursUntilOverdue} hours.`);
             } else if (recentlyCreatedServiceCount > 0) {
                 alerts.push(`${recentlyCreatedServiceCount} services created recently.`);
+            }
+
+            if (recentlyCompletedServiceCount > 0) {
+                alerts.push(`${recentlyCompletedServiceCount} services completed in the last 24 hours.`);
             }
         }
     }
@@ -543,7 +548,16 @@ const AdminWorkOrder = () => {
             <PageTitleComponent title="Work Order & Complaints" />
 
             {/* Alerts headers */}
-            <div className="w-100 justify-content-between mb-4 left-text text-start">{alertDescription ? <AlertComponent description={alertDescription} /> : null}</div>
+            <div className="w-100 justify-content-between mb-4 left-text text-start">
+                {alertDescription ? (
+                    <AlertComponent
+                        title="Alert"
+                        message={alertDescription}
+                        type="info"
+                        description={alertDescription}
+                    />
+                ) : null}
+            </div>
 
             {/* Work Order Table */}
             <div className="mb-5">
@@ -614,6 +628,10 @@ const AdminWorkOrder = () => {
                     isModalOpen={isModalVisible}
                     onCancel={() => setIsModalVisible(false)}
                     apartmentBuildingSetEditBuildingState={() => { }}
+                    setUserId={() => { }}
+                    setAccessCode={() => { }}
+                    selectedUserId=""
+                    accessCode=""
                 />
             )}
         </div>

@@ -8,7 +8,7 @@ import ModalComponent, { Tenant } from "../components/ModalComponent";
 import { useState } from "react";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { ArrowRightOutlined } from "@ant-design/icons";
-import { Button, Dropdown, MenuProps, Modal } from "antd";
+import { Button, Dropdown, MenuProps } from "antd";
 
 const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
 const PORT = import.meta.env.VITE_PORT;
@@ -111,11 +111,13 @@ const AdminViewEditSmartLockers = () => {
                 content={`Current password: ${password}`}
                 type="Update Password Locker"
                 locker={lockerId}
-                // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 handleOkay={async () => {
                     await handleOkay();
                 }}
+                setUserId={setSelectedUserId}
+                selectedUserId={selectedUserId ?? ""}
+                accessCode={accessCode}
             />
         );
     };
@@ -128,12 +130,14 @@ const AdminViewEditSmartLockers = () => {
                 modalTitle="Unlock Locker"
                 content="Are you sure that you would like to unlock the locker?"
                 type="Admin Unlock Locker"
-                // setLockerId={setLockerId}
                 setAccessCode={setAccessCode}
                 locker={lockerId}
                 handleOkay={async () => {
                     await handleOkay();
                 }}
+                setUserId={setSelectedUserId}
+                selectedUserId={selectedUserId ?? ""}
+                accessCode={accessCode}
             />
         );
     };
@@ -423,6 +427,8 @@ const AdminViewEditSmartLockers = () => {
                     type="Smart Locker"
                     setUserId={setSelectedUserId}
                     setAccessCode={setAccessCode}
+                    selectedUserId={selectedUserId ?? ""}
+                    accessCode={accessCode}
                     handleOkay={async () => {
                         await handleAddPackage();
                     }}

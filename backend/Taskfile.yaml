@@ -10,14 +10,24 @@ tasks:
   seed-users:
     desc: "Seed users into the database and syncs with Clerk"
     cmds:
-      - go run scripts/seed_users.go
-      # - docker compose exec backend go run scripts/seed_users.go
+      - cd backend && go run scripts/cmd/seedusers/*.go
     silent: false
 
   seed-users:data:
-    desc: "Seed users into the database"
+    desc: "Seed complaints and work orders into the database"
     cmds:
-      - go run scripts/complaintsAndWork.go
+      - cd scripts && go run scripts/cmd/complaintswork/*.go
+    silent: false
+  seed-users-exec:
+    desc: "Exec into backend container and run user seeder"
+    cmds:
+      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/seedusers/*.go"
+    silent: false
+
+  seed-users-exec:data:
+    desc: "Exec into backend container and run complaints/work_orders seeder"
+    cmds:
+      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/complaintswork/*.go"
     silent: false
 
   build:
@@ -122,3 +132,15 @@ tasks:
     desc: "Test the lease expiration notification system"
     cmds:
       - bash ./scripts/test-lease-notify.sh
+
+  sqlc:generate:
+    desc: "Regenerate Go code from SQL queries"
+    cmds:
+      - cd backend && sqlc generate
+    silent: false
+
+  db:sync:
+    desc: "Run sqlc generate + apply migrations"
+    cmds:
+      - task: sqlc:generate
+      - task: migrate:up

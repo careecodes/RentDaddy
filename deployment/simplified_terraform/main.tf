@@ -300,7 +300,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "POSTGRES_HOST", value = "main-postgres" },
         { name = "POSTGRES_USER", value = "appuser" },
         { name = "POSTGRES_DB", value = "appdb" },
-        { name = "VITE_CLERK_PUBLISHABLE_KEY", value = "pk_test_ZXF1YWwtaWd1YW5hLTgwLmNsZXJrLmFjY291bnRzLmRldiQ" },
+        { name = "VITE_CLERK_PUBLISHABLE_KEY", value = "pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk" },
         { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
         { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
         { name = "VITE_PORT", value = "8080" },
@@ -351,7 +351,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
     },
     {
       name         = "frontend"
-      image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:latest"
+      image        = "168356498770.dkr.ecr.us-east-2.amazonaws.com/rentdaddy/frontend:prod"
       essential    = true
       portMappings = [{ containerPort = 5173, hostPort = 5173, protocol = "tcp" }]
       environment = [
@@ -362,11 +362,11 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
         { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
         { name = "VITE_PORT", value = "8080" },
-        { name = "VITE_DOMAIN_URL", value = "http://localhost" },
+        { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
         { name = "PORT", value = "8080" },
-        { name = "DOMAIN_URL", value = "http://localhost" },
-        { name = "ADMIN_FIRST_NAME", value = "First Landlord" },
-        { name = "ADMIN_LAST_NAME", value = "First Landlord" },
+        { name = "DOMAIN_URL", value = "https://app.curiousdev.net" },
+        { name = "ADMIN_FIRST_NAME", value = "Rent Daddy" },
+        { name = "ADMIN_LAST_NAME", value = "Landlord" },
         { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
         { name = "FRONTEND_PORT", value = "5173" },
         { name = "ENV", value = "development" },
@@ -630,12 +630,14 @@ resource "aws_ecs_task_definition" "documenso" {
 # }
 # ECS Services
 resource "aws_ecs_service" "backend_with_frontend" {
-  name                              = "rentdaddy-app-service"
-  cluster                           = aws_ecs_cluster.main.id
-  task_definition                   = aws_ecs_task_definition.backend_with_frontend.arn
-  desired_count                     = 1
-  health_check_grace_period_seconds = 30
-  enable_execute_command            = true
+  name                               = "rentdaddy-app-service"
+  cluster                            = aws_ecs_cluster.main.id
+  task_definition                    = aws_ecs_task_definition.backend_with_frontend.arn
+  desired_count                      = 1
+  health_check_grace_period_seconds  = 30
+  enable_execute_command             = true
+  deployment_minimum_healthy_percent = 50
+  deployment_maximum_percent         = 100
   # network_configuration {
   #   subnets          = aws_subnet.public[*].id
   #   security_groups  = [aws_security_group.ec2_sg.id]
@@ -748,31 +750,42 @@ data "aws_route53_zone" "main" {
   private_zone = false
 
 }
-
-
-
-resource "aws_acm_certificate_validation" "certvalidation" {
-  certificate_arn         = aws_acm_certificate.main.arn
-  validation_record_fqdns = [for r in aws_route53_record.wildcard_cert_validation : r.fqdn]
-}
-
 resource "aws_acm_certificate" "main" {
-  domain_name       = "curiousdev.net"
-  validation_method = "DNS"
-
-  subject_alternative_names = [
-    "*.curiousdev.net"
-  ]
-
-  tags = {
-    Name = "rentdaddy-cert"
-  }
+  domain_name               = "curiousdev.net"
+  validation_method         = "DNS"
+  subject_alternative_names = ["*.curiousdev.net"]
 
   lifecycle {
     create_before_destroy = true
   }
+  tags = {
+    Name = "rentdaddy-cert"
+  }
 }
 
+# Keep only this validation record resource
+resource "aws_route53_record" "cert_validation" {
+  for_each = {
+    for dvo in aws_acm_certificate.main.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.main.zone_id
+}
+
+# Keep only this validation resource
+resource "aws_acm_certificate_validation" "cert" {
+  certificate_arn         = aws_acm_certificate.main.arn
+  validation_record_fqdns = [for record in aws_route53_record.cert_validation : record.fqdn]
+}
 
 resource "aws_lb" "main" {
   name               = "rentdaddy-alb"
@@ -795,11 +808,11 @@ resource "aws_lb_target_group" "frontend" {
 
   health_check {
     path                = "/healthz"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
+    matcher             = "200-299" # Accept any 2XX response
+    interval            = 60
+    timeout             = 10
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 3
   }
 }
 
@@ -812,11 +825,11 @@ resource "aws_lb_target_group" "backend" {
 
   health_check {
     path                = "/healthz"
-    matcher             = "200"
-    interval            = 30
-    timeout             = 5
+    matcher             = "200-299" # Accept any 2XX response"200"
+    interval            = 60
+    timeout             = 10
     healthy_threshold   = 2
-    unhealthy_threshold = 2
+    unhealthy_threshold = 3
   }
 }
 
@@ -864,7 +877,9 @@ resource "aws_lb_listener" "https" {
   port              = 443
   protocol          = "HTTPS"
   ssl_policy        = "ELBSecurityPolicy-2016-08"
-  certificate_arn   = "arn:aws:acm:us-east-2:168356498770:certificate/6951445e-b587-4a56-8d8a-aae2e8a1fa1c"
+  certificate_arn   = aws_acm_certificate.main.arn
+
+  depends_on = [aws_acm_certificate_validation.cert]
 
   default_action {
     type             = "forward"
@@ -971,28 +986,6 @@ resource "aws_route53_record" "docs_alb" {
 #   }
 # }
 
-resource "aws_route53_record" "wildcard_cert_validation" {
-  for_each = {
-    for dvo in distinct([
-      for dvo in aws_acm_certificate.main.domain_validation_options :
-      {
-        name   = dvo.resource_record_name
-        type   = dvo.resource_record_type
-        record = dvo.resource_record_value
-      }
-    ]) : dvo.name => dvo
-  }
-
-  zone_id         = data.aws_route53_zone.main.zone_id
-  name            = each.value.name
-  type            = each.value.type
-  ttl             = 300
-  records         = [each.value.record]
-  allow_overwrite = true
-
-}
-
-
 
 
 
@@ -1053,4 +1046,84 @@ variable "debug_mode" {
   description = "Debug backend container startup in ECS"
   type        = string
   default     = "false"
+}
+
+
+# resource "aws_route53_record" "domain_ns" {
+#   zone_id = data.aws_route53_zone.main.zone_id
+#   name    = "curiousdev.net"
+#   type    = "NS"
+#   ttl     = "172800"
+
+#   records = [
+#     "ns-74.awsdns-09.com",
+#     "ns-1128.awsdns-13.org",
+#     "ns-890.awsdns-47.net",
+#     "ns-1537.awsdns-00.co.uk"
+#   ]
+# }
+
+resource "aws_route53_record" "api_alb" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "api.curiousdev.net"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
+
+resource "aws_route53_record" "apex_alb" {
+  zone_id = data.aws_route53_zone.main.zone_id
+  name    = "curiousdev.net"
+  type    = "A"
+
+  alias {
+    name                   = aws_lb.main.dns_name
+    zone_id                = aws_lb.main.zone_id
+    evaluate_target_health = true
+  }
+}
+
+
+resource "aws_route53_record" "clerk_api" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clerk.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["frontend-api.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_accounts" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "accounts.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["accounts.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_dkim1" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clk._domainkey.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["dkim1.fpd2ed3v56gb.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_dkim2" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clk2._domainkey.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["dkim2.fpd2ed3v56gb.clerk.services"]
+}
+
+resource "aws_route53_record" "clerk_mail" {
+  zone_id = "Z037567331JOV8D5N3ZVT"
+  name    = "clkmail.curiousdev.net"
+  type    = "CNAME"
+  ttl     = 300
+  records = ["mail.fpd2ed3v56gb.clerk.services"]
 }

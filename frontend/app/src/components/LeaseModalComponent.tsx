@@ -4,7 +4,7 @@ import { Form, Input, Modal, Select, Spin, DatePicker, message } from "antd";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 import dayjs from "dayjs";
 import { LeaseData } from "../types/types.ts";
-import { useQuery, useMutation, useQueryClient, UseQueryOptions } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 
 
@@ -163,89 +163,48 @@ export const LeaseModalComponent = ({
 
 
     // Terminate Lease Mutation (for active leases)
-    const terminateLeaseMutation = useMutation({
-        mutationFn: async (leaseId: number) => {
-            const token = await getToken();
-            if (!token) throw new Error("Authentication token required");
+    // const terminateLeaseMutation = useMutation({
+    //     mutationFn: async (leaseId: number) => {
+    //         const token = await getToken();
+    //         if (!token) throw new Error("Authentication token required");
 
-            const response = await fetch(
-                `${API_URL}/admin/leases/terminate/${leaseId}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
+    //         const response = await fetch(
+    //             `${API_URL}/admin/leases/terminate/${leaseId}`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: {
+    //                     'Authorization': `Bearer ${token}`,
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             }
+    //         );
 
-            if (!response.ok) {
-                const errorData = await response.text();
-                throw new Error(errorData || response.statusText);
-            }
+    //         if (!response.ok) {
+    //             const errorData = await response.text();
+    //             throw new Error(errorData || response.statusText);
+    //         }
 
-            return await response.json();
-        },
-        onSuccess: () => {
-            setStatus('success');
-            message.success("Lease terminated successfully!");
-            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+    //         return await response.json();
+    //     },
+    //     onSuccess: () => {
+    //         setStatus('success');
+    //         message.success("Lease terminated successfully!");
+    //         queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
 
-            setTimeout(() => {
-                onClose();
-            }, 2000);
-        },
-        onError: (error: Error) => {
-            setStatus('error');
-            const errMsg = error.message || "Failed to terminate lease";
-            setErrorMessage(`Server error: ${errMsg}`);
-            message.error(`Error: ${errMsg}`);
-            console.error("Error in terminate operation:", error);
-        }
-    });
+    //         setTimeout(() => {
+    //             onClose();
+    //         }, 2000);
+    //     },
+    //     onError: (error: Error) => {
+    //         setStatus('error');
+    //         const errMsg = error.message || "Failed to terminate lease";
+    //         setErrorMessage(`Server error: ${errMsg}`);
+    //         message.error(`Error: ${errMsg}`);
+    //         console.error("Error in terminate operation:", error);
+    //     }
+    // });
 
-    // Cancel Lease Mutation (for pending_approval leases)
-    const cancelLeaseMutation = useMutation({
-        mutationFn: async (leaseId: number) => {
-            const token = await getToken();
-            if (!token) throw new Error("Authentication token required");
 
-            // You might need to create a new endpoint for cancel if it doesn't exist yet
-            const response = await fetch(
-                `${API_URL}/admin/leases/cancel/${leaseId}`,
-                {
-                    method: 'POST',
-                    headers: {
-                        'Authorization': `Bearer ${token}`,
-                        'Content-Type': 'application/json'
-                    }
-                }
-            );
-
-            if (!response.ok) {
-                const errorData = await response.text();
-                throw new Error(errorData || response.statusText);
-            }
-
-            return await response.json();
-        },
-        onSuccess: () => {
-            setStatus('success');
-            message.success("Lease canceled successfully!");
-            queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
-
-            setTimeout(() => {
-                onClose();
-            }, 2000);
-        },
-        onError: (error: Error) => {
-            setStatus('error');
-            const errMsg = error.message || "Failed to cancel lease";
-            setErrorMessage(`Server error: ${errMsg}`);
-            message.error(`Error: ${errMsg}`);
-            console.error("Error in cancel operation:", error);
-        }
-    });
     // Add Lease Mutation
     const addLeaseMutation = useMutation({
         mutationFn: async (values: any) => {

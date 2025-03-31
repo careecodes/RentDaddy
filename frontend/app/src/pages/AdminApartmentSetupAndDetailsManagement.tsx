@@ -8,10 +8,10 @@ import { useMutation } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useAuth } from "@clerk/clerk-react";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
-
+const isDevelopment = import.meta.env.MODE === 'development';
+const API_URL = isDevelopment
+    ? `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`
+    : '/api';
 // Make the Add Locations a Modal that adds a building, floor, and room number
 // The user can add multiple locations
 
@@ -195,7 +195,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         {
             title: "Action",
             key: "action",
-            render: (text: string, record: { building: number; floors: number; rooms: number }) => (
+            render: (_: any, record: { building: number; floors: number; rooms: number }) => (
                 <div className="flex gap-2">
                     <ButtonComponent
                         title="Delete"
@@ -221,7 +221,14 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             floorNumbers: record.floors,
                             numberOfRooms: record.rooms,
                         }}
-                        handleOkay={handleEditLocation}
+                        handleOkay={() => {
+                            handleEditLocation();
+                            return Promise.resolve();
+                        }}
+                        setUserId={() => { }}
+                        setAccessCode={() => { }}
+                        selectedUserId=""
+                        accessCode=""
                     />
                 </div>
             ),

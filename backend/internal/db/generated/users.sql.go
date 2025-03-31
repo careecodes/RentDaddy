@@ -232,6 +232,46 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, er
 	return i, err
 }
 
+const insertAdminWithID = `-- name: InsertAdminWithID :one
+INSERT INTO users (id, clerk_id, first_name, last_name, email, role)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING id, clerk_id, first_name, last_name, email, phone, role, status, updated_at, created_at
+`
+
+type InsertAdminWithIDParams struct {
+	ID        int64  `json:"id"`
+	ClerkID   string `json:"clerk_id"`
+	FirstName string `json:"first_name"`
+	LastName  string `json:"last_name"`
+	Email     string `json:"email"`
+	Role      Role   `json:"role"`
+}
+
+func (q *Queries) InsertAdminWithID(ctx context.Context, arg InsertAdminWithIDParams) (User, error) {
+	row := q.db.QueryRow(ctx, insertAdminWithID,
+		arg.ID,
+		arg.ClerkID,
+		arg.FirstName,
+		arg.LastName,
+		arg.Email,
+		arg.Role,
+	)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.ClerkID,
+		&i.FirstName,
+		&i.LastName,
+		&i.Email,
+		&i.Phone,
+		&i.Role,
+		&i.Status,
+		&i.UpdatedAt,
+		&i.CreatedAt,
+	)
+	return i, err
+}
+
 const listTenantsWithLeases = `-- name: ListTenantsWithLeases :many
 SELECT 
     users.id,

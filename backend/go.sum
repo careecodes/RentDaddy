@@ -1,4 +1,6 @@
 github.com/boombuler/barcode v1.0.0/go.mod h1:paBWMcWSl3LHKBqUq+rly7CNSldXjb2rDl3JlRe0mD8=
+github.com/bxcodec/faker/v4 v4.0.0-beta.3 h1:gqYNBvN72QtzKkYohNDKQlm+pg+uwBDVMN28nWHS18k=
+github.com/bxcodec/faker/v4 v4.0.0-beta.3/go.mod h1:m6+Ch1Lj3fqW/unZmvkXIdxWS5+XQWPWxcbbQW2X+Ho=
 github.com/clerk/clerk-sdk-go/v2 v2.2.0 h1:7z2HBQ7L1sW+xVm5LM/bOpzmfhExwa4xgII4fMNFk64=
 github.com/clerk/clerk-sdk-go/v2 v2.2.0/go.mod h1:tA+JDYh9xEmysBRs+BfJH9HeR0J0HOh8txfsiB115zY=
 github.com/davecgh/go-spew v1.1.0/go.mod h1:J7Y8YcW2NihsgmVo/mv3lAwl/skON4iLHjSsI+c5H38=

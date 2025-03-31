@@ -1471,7 +1471,20 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	// Process the webhook asynchronously
 	// go func() {
 	ctx := context.Background()
-	landlordID := 1
+	lease, err := h.queries.GetLeaseByExternalDocID(ctx, documentID)
+	if err != nil {
+		log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", documentID, err)
+		return
+	}
+
+	// Try to find matching landlord by lease.LandlordID
+	landlord, err := h.queries.GetUserByID(ctx, lease.LandlordID)
+	if err != nil {
+		log.Printf("[WEBHOOK] Failed to fetch landlord from lease ID %d: %v", lease.ID, err)
+		return
+	}
+	landlordID := landlord.ID
+
 	// Get landlord ID from middleware-injected context
 	// landlord, err := h.queries.ListUsersByRole(ctx, db.RoleAdmin)
 	// if err != nil {
@@ -1479,11 +1492,6 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 	// 	return
 	// }
 	// 1. Get the lease associated with this document ID
-	lease, err := h.queries.GetLeaseByExternalDocID(ctx, documentID)
-	if err != nil {
-		log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", documentID, err)
-		return
-	}
 
 	log.Printf("[WEBHOOK] Document %s signed, marking lease %d as active", documentID, lease.ID)
 

@@ -93,7 +93,7 @@ services:
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile.dev
+      dockerfile: Dockerfile.prod
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
       - "2345:2345" 
@@ -119,7 +119,7 @@ services:
   frontend:
     build:
       context: ./frontend/app
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.prod
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     volumes:

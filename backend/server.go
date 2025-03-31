@@ -79,6 +79,10 @@ func main() {
 
 	// Routers
 	userHandler := handlers.NewUserHandler(pool, queries)
+	r.Post("/api/setup/admin", userHandler.SetupAdminUser)
+	r.Get("/api/check-admin", userHandler.CheckAdminExists)
+	r.Post("/seed-users", userHandler.AdminSeedUsers)
+	r.Post("/seed-demo-data", userHandler.AdminSeedData)
 
 	// Locker Handler
 	lockerHandler := handlers.NewLockerHandler(pool, queries)

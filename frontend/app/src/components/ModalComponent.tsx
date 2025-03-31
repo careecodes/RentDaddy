@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, Divider, Form, FormProps, Input, Modal, Select } from "antd";
+import { Button, Divider, Form, Input, Modal, Select } from "antd";
 import { EditOutlined } from "@ant-design/icons";
 import ButtonComponent from "./reusableComponents/ButtonComponent";
 
@@ -40,20 +40,20 @@ interface ModalComponentProps {
     buttonType: "default" | "primary" | "secondary" | "accent" | "info" | "success" | "warning" | "danger";
     content: string | React.ReactNode;
     type:
-        | "default"
-        | "Smart Locker"
-        | "Guest Parking"
-        | "Invite Tenant"
-        | "Edit Tenant"
-        | "View Tenant Complaints"
-        | "View Tenant Work Orders"
-        | "Send Tenant Lease"
-        | "Edit Apartment Building"
-        | "Update Password Locker"
-        | "Edit Tenant"
-        | "Admin Unlock Locker"
-        | "Update Password Locker"
-        | "Unlock Locker";
+    | "default"
+    | "Smart Locker"
+    | "Guest Parking"
+    | "Invite Tenant"
+    | "Edit Tenant"
+    | "View Tenant Complaints"
+    | "View Tenant Work Orders"
+    | "Send Tenant Lease"
+    | "Edit Apartment Building"
+    | "Update Password Locker"
+    | "Edit Tenant"
+    | "Admin Unlock Locker"
+    | "Update Password Locker"
+    | "Unlock Locker";
     handleOkay: (data?: any) => Promise<void>;
     modalTitle?: string;
     apartmentBuildingEditProps?: Building;
@@ -78,9 +78,9 @@ const ModalComponent = (props: ModalComponentProps) => {
 
     const isModalOpen = props.isModalOpen !== undefined ? props.isModalOpen : internalModalOpen;
 
-    const onFinish: FormProps<any>["onFinish"] = (values: any) => {
-        console.log("Success:", values);
-    };
+    // const onFinish: FormProps<any>["onFinish"] = (values: any) => {
+    //     console.log("Success:", values);
+    // };
 
     if (props.userRole === "") {
         props.userRole = "admin";
@@ -126,12 +126,12 @@ const ModalComponent = (props: ModalComponentProps) => {
                     open={internalModalOpen}
                     onOk={async () => {
                         try {
-                                props.setUserId(props.selectedUserId);
-                                props.setAccessCode(props.accessCode);
-                                console.log("props: ", props);
-                                await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
-                                setInternalModalOpen(false);
-                                handleCancel();
+                            props.setUserId(props.selectedUserId);
+                            props.setAccessCode(props.accessCode);
+                            console.log("props: ", props);
+                            await props.handleOkay({ userId: props.selectedUserId, accessCode: props.accessCode });
+                            setInternalModalOpen(false);
+                            handleCancel();
 
                         } catch (error) {
                             console.error("Error in modal onOk:", error);
@@ -201,7 +201,8 @@ const ModalComponent = (props: ModalComponentProps) => {
                         <Button
                             type="primary"
                             onClick={() => {
-                                props.handleOkay;
+                                // Fixed: Actually call the function
+                                props.handleOkay();
                                 handleCancel();
                             }}>
                             Okay
@@ -277,6 +278,55 @@ const ModalComponent = (props: ModalComponentProps) => {
                     </Modal>
                 </>
             )}
+            {props.type === "Invite Tenant" && (
+                <>
+                    <ButtonComponent
+                        type="primary"
+                        onClick={showModal}
+                        title={props.buttonTitle}
+                    />
+                    <Modal
+                        className="p-3 flex-wrap-row"
+                        title={<h3>{titles[props.type]}</h3>}
+                        open={isModalOpen}
+                        onOk={() => props.handleOkay()}
+                        onCancel={handleCancel}
+                        okButtonProps={{ hidden: true, disabled: true }}
+                        cancelButtonProps={{ hidden: true, disabled: true }}>
+                        <Divider />
+                        <Form onFinish={(values) => {
+                            const inviteData: InviteTenant = {
+                                email: values.email,
+                                unitNumber: values.unitNumber,
+                                management_id: user?.id || ''
+                            };
+                            props.handleOkay(inviteData);
+                            handleCancel();
+                        }}>
+                            <Form.Item
+                                name="email"
+                                label="Tenant Email"
+                                rules={[{ required: true, message: 'Please enter tenant email' }]}>
+                                <Input placeholder="tenant@example.com" />
+                            </Form.Item>
+                            <Form.Item
+                                name="unitNumber"
+                                label="Unit Number"
+                                rules={[{ required: true, message: 'Please enter unit number' }]}>
+                                <Input type="number" placeholder="Unit Number" />
+                            </Form.Item>
+                            <div className="flex justify-content-end gap-2">
+                                <Button type="default" onClick={handleCancel}>
+                                    Cancel
+                                </Button>
+                                <Button type="primary" htmlType="submit">
+                                    Send Invite
+                                </Button>
+                            </div>
+                        </Form>
+                    </Modal>
+                </>
+            )}
             {props.type === "Smart Locker" && <>{user?.publicMetadata.role === "admin" ? getAdminSmartLocker() : getTenantSmartLocker()}</>}
             {props.type === "Guest Parking" && (
                 <>
@@ -294,7 +344,11 @@ const ModalComponent = (props: ModalComponentProps) => {
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}>
                         <Divider />
-                        <Form>
+                        <Form onFinish={(values) => {
+                            props.handleOkay(values);
+                            handleCancel();
+                        }}>
+
                             <p className="fs-6">Guest Name</p>
                             <Form.Item
                                 name="tenant-name"
@@ -356,12 +410,12 @@ const ModalComponent = (props: ModalComponentProps) => {
                         open={isModalOpen}
                         onOk={props.handleOkay}
                         onCancel={handleCancel}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
-                        // okButtonProps={{ hidden: true, disabled: true }}
-                        // cancelButtonProps={{ hidden: true, disabled: true }}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
+                    // okButtonProps={{ hidden: true, disabled: true }}
+                    // cancelButtonProps={{ hidden: true, disabled: true }}
                     >
                         <Divider />
                         <Form>
@@ -408,10 +462,14 @@ const ModalComponent = (props: ModalComponentProps) => {
                         okButtonProps={{ hidden: true, disabled: true }}
                         cancelButtonProps={{ hidden: true, disabled: true }}>
                         <Divider />
-                        <Form>
+                        <Form onFinish={(values) => {
+                            props.handleOkay(values);
+                            handleCancel();
+                        }}>
                             <Form.Item name="tenant-name">
                                 <Input placeholder="Tenant Name" />
                             </Form.Item>
+
                             <Form.Item name="tenant-email">
                                 <Input placeholder="Tenant Email" />
                             </Form.Item>
@@ -437,7 +495,6 @@ const ModalComponent = (props: ModalComponentProps) => {
                             </Form.Item>
                             <Divider />
                             <div className="flex justify-content-end gap-2">
-                                {/* Cancel button */}
                                 <Form.Item name="cancel">
                                     <Button
                                         type="default"
@@ -458,214 +515,228 @@ const ModalComponent = (props: ModalComponentProps) => {
                         </Form>
                     </Modal>
                 </>
-            )}
+            )
+            }
             {/* View Recent (3) Tenant Complaints */}
-            {props.type === "View Tenant Complaints" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
-                        okButtonProps={{ hidden: true, disabled: true }}
-                        cancelButtonProps={{ hidden: true, disabled: true }}>
-                        <Divider />
-                        <p>{props.content}</p>
-                        <Divider />
-                        <div className="flex justify-content-end gap-2">
-                            <Button
-                                type="default"
-                                onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                onClick={props.handleOkay}>
-                                Confirm
-                            </Button>
-                        </div>
-                    </Modal>
-                </>
-            )}
+            {
+                props.type === "View Tenant Complaints" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
+                            okButtonProps={{ hidden: true, disabled: true }}
+                            cancelButtonProps={{ hidden: true, disabled: true }}>
+                            <Divider />
+                            <p>{props.content}</p>
+                            <Divider />
+                            <div className="flex justify-content-end gap-2">
+                                <Button
+                                    type="default"
+                                    onClick={handleCancel}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    onClick={props.handleOkay}>
+                                    Confirm
+                                </Button>
+                            </div>
+                        </Modal>
+                    </>
+                )
+            }
             {/* View Recent (3) Tenant Work Orders */}
-            {props.type === "View Tenant Work Orders" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
-                        okButtonProps={{ hidden: true, disabled: true }}
-                        cancelButtonProps={{ hidden: true, disabled: true }}>
-                        <Divider />
-                        <p>{props.content}</p>
-                        <Divider />
-                        <div className="flex justify-content-end gap-2">
-                            <Button
-                                type="default"
-                                onClick={handleCancel}>
-                                Cancel
-                            </Button>
-                            <Button
-                                type="primary"
-                                onClick={props.handleOkay}>
-                                Confirm
-                            </Button>
-                        </div>
-                    </Modal>
-                </>
-            )}
-            {props.type === "Send Tenant Lease" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
-                        // leases={leaseTemplates || []} // Add null check
-                        okButtonProps={{ disabled: !props.leases?.length }}
+            {
+                props.type === "View Tenant Work Orders" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
+                            okButtonProps={{ hidden: true, disabled: true }}
+                            cancelButtonProps={{ hidden: true, disabled: true }}>
+                            <Divider />
+                            <p>{props.content}</p>
+                            <Divider />
+                            <div className="flex justify-content-end gap-2">
+                                <Button
+                                    type="default"
+                                    onClick={handleCancel}>
+                                    Cancel
+                                </Button>
+                                <Button
+                                    type="primary"
+                                    onClick={props.handleOkay}>
+                                    Confirm
+                                </Button>
+                            </div>
+                        </Modal>
+                    </>
+                )
+            }
+            {
+                props.type === "Send Tenant Lease" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
+                            // leases={leaseTemplates || []} // Add null check
+                            okButtonProps={{ disabled: !props.leases?.length }}
                         // cancelButtonProps={{ hidden: true, disabled: !props.leases?.length }}
-                    >
-                        <Form>
-                            {/* Pick a Lease */}
-                            <Form.Item name="lease-template">
-                                <Select
-                                    placeholder="Select a Lease Template"
-                                    options={
-                                        props.leases?.map((lease) => ({
-                                            label: lease.title,
-                                            value: lease.id,
-                                        })) || []
-                                    }
-                                />
-                            </Form.Item>
-                            <p>Please go create a template in Documenso.</p>
-                        </Form>
-                    </Modal>
-                </>
-            )}
-            {props.type === "Admin Unlock Locker" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
+                        >
+                            <Form>
+                                {/* Pick a Lease */}
+                                <Form.Item name="lease-template">
+                                    <Select
+                                        placeholder="Select a Lease Template"
+                                        options={
+                                            props.leases?.map((lease) => ({
+                                                label: lease.title,
+                                                value: lease.id,
+                                            })) || []
+                                        }
+                                    />
+                                </Form.Item>
+                                <p>Please go create a template in Documenso.</p>
+                            </Form>
+                        </Modal>
+                    </>
+                )
+            }
+            {
+                props.type === "Admin Unlock Locker" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
                         // okButtonProps={{ hidden: true, disabled: true }}
                         // cancelButtonProps={{ hidden: true, disabled: true }}
-                    >
-                        <Divider />
-                        <p>{props.content}</p>
-                        <Divider />
-                    </Modal>
-                </>
-            )}
-            {props.type === "Update Password Locker" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
+                        >
+                            <Divider />
+                            <p>{props.content}</p>
+                            <Divider />
+                        </Modal>
+                    </>
+                )
+            }
+            {
+                props.type === "Update Password Locker" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
                         // okButtonProps={{ hidden: true, disabled: true }}
                         // cancelButtonProps={{ hidden: true, disabled: true }}
-                    >
-                        <Divider />
-                        <p>{props.content}</p>
-                        <Form>
-                            <Form.Item name="password">
-                                <Input
-                                    placeholder="New Password"
-                                    maxLength={4}
-                                />
-                            </Form.Item>
-                        </Form>
-                        <Divider />
-                    </Modal>
-                </>
-            )}
-            {props.type === "Unlock Locker" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
+                        >
+                            <Divider />
+                            <p>{props.content}</p>
+                            <Form>
+                                <Form.Item name="password">
+                                    <Input
+                                        placeholder="New Password"
+                                        maxLength={4}
+                                    />
+                                </Form.Item>
+                            </Form>
+                            <Divider />
+                        </Modal>
+                    </>
+                )
+            }
+            {
+                props.type === "Unlock Locker" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
                         // okButtonProps={{ hidden: true, disabled: true }}
                         // cancelButtonProps={{ hidden: true, disabled: true }}
-                    >
-                        <Divider />
-                        <p>{props.content}</p>
-                        <Divider />
-                    </Modal>
-                </>
-            )}
-            {props.type === "Update Password Locker" && (
-                <>
-                    <ButtonComponent
-                        type="primary"
-                        onClick={showModal}
-                        title={props.buttonTitle}
-                    />
-                    <Modal
-                        className="p-3 flex-wrap-row"
-                        title={<h3>{props.modalTitle}</h3>}
-                        open={isModalOpen}
-                        onOk={props.handleOkay}
-                        onCancel={handleCancel}
+                        >
+                            <Divider />
+                            <p>{props.content}</p>
+                            <Divider />
+                        </Modal>
+                    </>
+                )
+            }
+            {
+                props.type === "Update Password Locker" && (
+                    <>
+                        <ButtonComponent
+                            type="primary"
+                            onClick={showModal}
+                            title={props.buttonTitle}
+                        />
+                        <Modal
+                            className="p-3 flex-wrap-row"
+                            title={<h3>{props.modalTitle}</h3>}
+                            open={isModalOpen}
+                            onOk={props.handleOkay}
+                            onCancel={handleCancel}
                         // okButtonProps={{ hidden: true, disabled: true }}
                         // cancelButtonProps={{ hidden: true, disabled: true }}
-                    >
-                        <Divider />
-                        <p>{props.content}</p>
-                        <Form>
-                            <Form.Item>
-                                <Input
-                                    placeholder="Enter New Password"
-                                    type="password"
+                        >
+                            <Divider />
+                            <p>{props.content}</p>
+                            <Form>
+                                <Form.Item>
+                                    <Input
+                                        placeholder="Enter New Password"
+                                        type="password"
                                     // value={password}
                                     // onChange={(e) => setPassword(e.target.value)}
-                                />
-                            </Form.Item>
-                        </Form>
-                        <Divider />
-                        {/* <div className="flex justify-content-end gap-2">
+                                    />
+                                </Form.Item>
+                            </Form>
+                            <Divider />
+                            {/* <div className="flex justify-content-end gap-2">
                             <Button
                                 type="default"
                                 onClick={handleCancel}>
@@ -677,9 +748,10 @@ const ModalComponent = (props: ModalComponentProps) => {
                                 Confirm
                             </Button>
                         </div> */}
-                    </Modal>
-                </>
-            )}
+                        </Modal>
+                    </>
+                )
+            }
         </>
     );
 };

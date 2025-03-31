@@ -85,3 +85,7 @@ FROM users
 WHERE role = 'tenant' 
 AND id NOT IN (SELECT tenant_id FROM leases);
 
+-- name: InsertAdminWithID :one
+INSERT INTO users (id, clerk_id, first_name, last_name, email, role)
+VALUES ($1, $2, $3, $4, $5, $6)
+RETURNING *;

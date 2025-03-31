@@ -34,7 +34,7 @@ services:
       - ./backend/tmp:/app/tmp
       - ./backend/temp:/app/temp
       - go-mod-cache:/go/pkg/mod
-    env_file: .env
+    env_file: backend/.env.development
     networks:
         - app-network
         - documenso-rentdaddy
@@ -44,7 +44,7 @@ services:
   frontend:
     build:
       context: ./frontend/app
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     volumes:
@@ -53,7 +53,7 @@ services:
     networks:
       - app-network
     env_file:
-      - .env  # Load .env file
+      - frontend/.env.development  # Load .env file
 
 networks:
   app-network:

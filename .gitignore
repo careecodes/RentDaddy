@@ -35,6 +35,14 @@ backend/vendor
 # *.sqlite3
 # *.db
 
+
+# Backend environment files
+backend/.env
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+
 # Editor directories and files
 .vscode/*
 !.vscode/extensions.json

@@ -15,9 +15,11 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 import { FileTextOutlined } from "@ant-design/icons";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const isDevelopment = import.meta.env.MODE === 'development';
+
+const API_URL = isDevelopment
+    ? `${import.meta.env.VITE_DOMAIN_URL}:${import.meta.env.VITE_PORT}`
+    : '/api';
 
 // Log the API_URL to ensure it's correctly formed
 console.log("API URL:", API_URL);
@@ -85,7 +87,7 @@ export default function AdminViewEditLeases() {
                         // Parse the status string
                         const text = String(status)
                             .split('_')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                             .join(' ');
 
                         return { text, value: status };
@@ -202,17 +204,6 @@ export default function AdminViewEditLeases() {
                 return recordValue.toString().toLowerCase().includes(value.toString().toLowerCase());
             },
         };
-    };
-
-    // Status is calculated on the backend, but we maintain this function for backward compatibility
-    const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
-        // If the status is already set to terminated, respect that
-        if (record.status === "active") {
-            const today = dayjs();
-            const leaseEnd = dayjs(record.leaseEndDate);
-            if (leaseEnd.diff(today, "days") <= 60) return "expires_soon";
-        }
-        return record.status;
     };
 
 
@@ -354,7 +345,48 @@ export default function AdminViewEditLeases() {
             message.error("Failed to terminate lease");
         }
     };
+    // TODO: Cancel Lease Mutation (for pending_approval leases)
+    // const cancelLeaseMutation = useMutation({
+    //     mutationFn: async (leaseId: number) => {
+    //         const token = await getToken();
+    //         if (!token) throw new Error("Authentication token required");
 
+    //         // You might need to create a new endpoint for cancel if it doesn't exist yet
+    //         const response = await fetch(
+    //             `${API_URL}/admin/leases/cancel/${leaseId}`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: {
+    //                     'Authorization': `Bearer ${token}`,
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             }
+    //         );
+
+    //         if (!response.ok) {
+    //             const errorData = await response.text();
+    //             throw new Error(errorData || response.statusText);
+    //         }
+
+    //         return await response.json();
+    //     },
+    //     onSuccess: () => {
+    //         setStatus('success');
+    //         message.success("Lease canceled successfully!");
+    //         queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+    //         setTimeout(() => {
+    //             onClose();
+    //         }, 2000);
+    //     },
+    //     onError: (error: Error) => {
+    //         setStatus('error');
+    //         const errMsg = error.message || "Failed to cancel lease";
+    //         setErrorMessage(`Server error: ${errMsg}`);
+    //         message.error(`Error: ${errMsg}`);
+    //         console.error("Error in cancel operation:", error);
+    //     }
+    // });
     // Define lease table columns
     const leaseColumns: ColumnsType<LeaseData> = [
         {
@@ -397,9 +429,9 @@ export default function AdminViewEditLeases() {
             key: "status",
             render: (status) => {
                 // Format the status to display in Title Case (e.g., "pending_approval" -> "Pending Approval")
-                const formattedStatus = status
+                const formattedStatus: string = status
                     .split('_')
-                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .map((word: string): string => word.charAt(0).toUpperCase() + word.slice(1))
                     .join(' ');
 
                 // Determine alert type based on status
@@ -466,6 +498,13 @@ export default function AdminViewEditLeases() {
                             onClick={() => handleTerminate(record.id)}
                         />
                     )}
+                    {/* TODO: {(record.status === "pending_approval") && (
+                        <ButtonComponent
+                            type="danger"
+                            title="Terminate Lease"
+                            onClick={() => handleCancel(record.id)}
+                        />
+                    )} */}
                 </Space>
             ),
         }
@@ -554,3 +593,4 @@ export default function AdminViewEditLeases() {
         </div>
     );
 }
+

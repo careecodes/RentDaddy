@@ -455,6 +455,7 @@ const AdminDashboard = () => {
             <PageTitleComponent title="Admin Dashboard" />
             <AlertComponent
                 title="Welcome to the Admin Dashboard"
+                message="Admin Dashboard Alert"
                 description="This is the Admin Dashboard. Here's a demo alert component."
                 type="success"
             />
@@ -478,8 +479,8 @@ const AdminDashboard = () => {
                 />
                 <CardComponent
                     title="Complaints"
-                    value={isLoadingComplaints ? <Spin size="small" /> : COMPLAINTS_COUNT ?? 0}
-                    description="Pending tenant issues"
+                    value={isLoadingComplaints ? undefined : COMPLAINTS_COUNT ?? 0}
+                    description={isLoadingComplaints ? "Loading..." : "Pending tenant issues"}
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: "24px", color: "#faad14", marginBottom: "16px" }} />}
                     button={
@@ -555,7 +556,7 @@ const AdminDashboard = () => {
                         columns={columnsComplaints}
                         dataSource={combinedItems.filter((item) => item.type === "complaint").slice(0, 5)}
                         loading={isLoadingComplaints}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         pagination={false}
                     />
                 </div>
@@ -570,7 +571,7 @@ const AdminDashboard = () => {
                         columns={columnsWorkOrders}
                         dataSource={combinedItems.filter((item) => item.type === "work_order").slice(0, 5)}
                         loading={isLoadingWorkOrders}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         pagination={false}
                     />
                 </div>
@@ -586,7 +587,7 @@ const AdminDashboard = () => {
                 <TableComponent
                     columns={columnsLeases}
                     dataSource={tenantsWithKeys.slice(0, 5)}
-                    onChange={() => {}}
+                    onChange={() => { }}
                     loading={isLoadingTenants}
                     pagination={false}
                 />

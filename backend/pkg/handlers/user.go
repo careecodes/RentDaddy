@@ -7,6 +7,7 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os/exec"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/middleware"
@@ -18,6 +19,9 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
+type SetupAdminRequest struct {
+	ClerkID string `json:"clerk_id"`
+}
 type AdminOverviewRequest struct {
 	WorkeOrders []db.WorkOrder `json:"work_orders"`
 	Complaints  []db.Complaint `json:"complaints"`
@@ -671,3 +675,148 @@ func (u UserHandler) TenantCreateWorkOrder(w http.ResponseWriter, r *http.Reques
 }
 
 // TENANT END
+func (u UserHandler) SetupAdminUser(w http.ResponseWriter, r *http.Request) {
+	var payload SetupAdminRequest
+	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	ctx := r.Context()
+
+	// Always fetch Clerk user first
+	clerkUser, err := user.Get(ctx, payload.ClerkID)
+	if err != nil {
+		log.Printf("[SETUP] Failed to fetch Clerk user: %v", err)
+		http.Error(w, "Invalid Clerk ID", http.StatusBadRequest)
+		return
+	}
+
+	// Extract primary email
+	primaryEmail := ""
+	for _, email := range clerkUser.EmailAddresses {
+		if clerkUser.PrimaryEmailAddressID != nil && email.ID == *clerkUser.PrimaryEmailAddressID {
+			primaryEmail = email.EmailAddress
+			break
+		}
+	}
+	if primaryEmail == "" && len(clerkUser.EmailAddresses) > 0 {
+		primaryEmail = clerkUser.EmailAddresses[0].EmailAddress
+	}
+
+	// Parse public metadata from Clerk
+	var metadata ClerkUserPublicMetaData
+	if err := json.Unmarshal(clerkUser.PublicMetadata, &metadata); err != nil {
+		log.Printf("[SETUP] Failed parsing Clerk metadata: %v", err)
+		http.Error(w, "Invalid Clerk metadata", http.StatusBadRequest)
+		return
+	}
+
+	// Check if an admin already exists in the DB
+	admins, err := u.queries.ListUsersByRole(ctx, db.RoleAdmin)
+	if err == nil && len(admins) > 0 {
+		// Allow only if this is the default admin
+		if primaryEmail == "wrldconnect1@gmail.com" && metadata.DbId == 1 {
+			log.Println("[SETUP] Default admin override accepted")
+			w.WriteHeader(http.StatusOK)
+			w.Write([]byte("Default admin recognized"))
+			return
+		}
+		log.Println("[SETUP] Admin already exists and override not allowed")
+		http.Error(w, "Admin already seeded", http.StatusConflict)
+		return
+	}
+
+	// Check if the intended db_id already exists
+	if _, err := u.queries.GetUserByID(ctx, int64(metadata.DbId)); err == nil {
+		log.Printf("[SETUP] db_id %d already exists in DB", metadata.DbId)
+		http.Error(w, "db_id already in use", http.StatusConflict)
+		return
+	}
+
+	// Insert the admin into the DB using provided db_id
+	admin, err := u.queries.InsertAdminWithID(ctx, db.InsertAdminWithIDParams{
+		ID:        int64(metadata.DbId),
+		ClerkID:   clerkUser.ID,
+		FirstName: deref(clerkUser.FirstName),
+		LastName:  deref(clerkUser.LastName),
+		Email:     primaryEmail,
+		Role:      db.RoleAdmin,
+	})
+	if err != nil {
+		log.Printf("[SETUP] Failed to insert admin into DB: %v", err)
+		http.Error(w, "Failed to insert admin", http.StatusInternalServerError)
+		return
+	}
+
+	// Update Clerk metadata if needed
+	meta := ClerkUserPublicMetaData{
+		DbId: int32(admin.ID),
+		Role: db.RoleAdmin,
+	}
+	metaBytes, _ := json.Marshal(meta)
+	metaRawMessage := json.RawMessage(metaBytes)
+	_, err = user.Update(ctx, clerkUser.ID, &user.UpdateParams{
+		PublicMetadata: &metaRawMessage,
+	})
+	if err != nil {
+		log.Printf("[SETUP] Failed to update Clerk metadata: %v", err)
+	}
+
+	w.WriteHeader(http.StatusCreated)
+	w.Write([]byte("Admin seeded successfully"))
+}
+
+// deref returns the string value of a pointer or "" if nil
+func deref(s *string) string {
+	if s != nil {
+		return *s
+	}
+	return ""
+}
+func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
+	log.Println("[SEED_USERS] Triggered by admin")
+
+	cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go")
+	cmd.Dir = "/app" // ECS container working directory
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[SEED_USERS] Failed: %v\nOutput: %s", err, string(output))
+		http.Error(w, "Failed to seed users", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("[SEED_USERS] Seeding complete")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Users seeded successfully"))
+}
+
+func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
+	log.Println("[SEED_DATA] Triggered by admin")
+
+	cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go")
+	cmd.Dir = "/app"
+	output, err := cmd.CombinedOutput()
+	if err != nil {
+		log.Printf("[SEED_DATA] Failed: %v\nOutput: %s", err, string(output))
+		http.Error(w, "Failed to seed demo data", http.StatusInternalServerError)
+		return
+	}
+
+	log.Println("[SEED_DATA] Seeding complete")
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("Complaints and work orders seeded"))
+}
+
+func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
+	admins, err := u.queries.ListUsersByRole(r.Context(), db.RoleAdmin)
+	if err != nil {
+		log.Printf("[CHECK_ADMIN] DB error: %v", err)
+		http.Error(w, "Error checking admin", http.StatusInternalServerError)
+		return
+	}
+
+	hasAdmin := len(admins) > 0
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]bool{"exists": hasAdmin})
+}

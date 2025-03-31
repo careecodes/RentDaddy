@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import { JSX, useState, useEffect } from 'react';
 import { Modal, Button, Spin } from 'antd';
 import { FileTextOutlined, WarningOutlined } from '@ant-design/icons';
 import { CardComponent } from '../components/reusableComponents/CardComponent';
@@ -6,12 +6,28 @@ import ButtonComponent from '../components/reusableComponents/ButtonComponent';
 import { useAuth } from '@clerk/react-router';
 import { useQuery } from '@tanstack/react-query';
 
+// Define UI state types
+interface LeaseCardState {
+    buttonTitle: string;
+    buttonDisabled: boolean;
+    cardDescription: string;
+    actionIcon: JSX.Element;
+}
+
 const LeaseCard = () => {
     const [isLeaseModalVisible, setIsLeaseModalVisible] = useState(false);
-    const [leaseDocument, setLeaseDocument] = useState(null);
+    const [leaseDocument, setLeaseDocument] = useState<Blob | null>(null);
     const { userId, getToken } = useAuth();
     const serverUrl = import.meta.env.VITE_SERVER_URL;
     const absoluteServerUrl = `${serverUrl}`;
+
+    // UI state management
+    const [uiState, setUiState] = useState<LeaseCardState>({
+        buttonTitle: "View Lease",
+        buttonDisabled: false,
+        cardDescription: "View or resign your lease",
+        actionIcon: <FileTextOutlined className="icon" />
+    });
 
     // Fetch lease status and URL using TanStack Query
     const { data: leaseData, isLoading, isError } = useQuery({
@@ -22,7 +38,13 @@ const LeaseCard = () => {
                 return null;
             }
 
-            const response = await fetch(`${absoluteServerUrl}/tenant/leases/${userId}/signing-url`);
+            const token = await getToken();
+            const response = await fetch(`${absoluteServerUrl}/tenant/leases/${userId}/signing-url`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
             if (!response.ok) {
                 console.error("Error fetching lease data:", response.statusText);
                 return null;
@@ -47,87 +69,152 @@ const LeaseCard = () => {
                 return null;
             }
 
-            const response = await fetch(`${absoluteServerUrl}/tenant/leases/${leaseData.leaseId}/document`);
+            // Get auth token for secure requests
+            const token = await getToken();
+
+            const response = await fetch(`${absoluteServerUrl}/tenant/leases/${leaseData.leaseId}/document`, {
+                headers: {
+                    Authorization: `Bearer ${token}`
+                }
+            });
+
             if (!response.ok) {
                 console.error("Error fetching signed lease document:", response.statusText);
                 return null;
             }
 
-            return await response.json();
+            const data = await response.json();
+            return data;
         },
         enabled: !!leaseData?.leaseId && leaseData.status === 'active',
     });
 
+    // Effect to fetch PDF when signed lease data is available
+    useEffect(() => {
+        const fetchPdf = async () => {
+            if (signedLeaseData?.lease_pdf_s3) {
+                try {
+                    const token = await getToken();
+                    const pdfResponse = await fetch(signedLeaseData.lease_pdf_s3, {
+                        headers: {
+                            Authorization: `Bearer ${token}`
+                        }
+                    });
+                    const pdfBlob = await pdfResponse.blob();
+                    setLeaseDocument(pdfBlob);
+                } catch (error) {
+                    console.error("Error fetching PDF content:", error);
+                }
+            }
+        };
+
+        fetchPdf();
+    }, [signedLeaseData, getToken]);
+
+    // Effect to update UI state based on query results
+    useEffect(() => {
+        // Handle error state
+        if (isError) {
+            setUiState({
+                buttonTitle: "Error",
+                buttonDisabled: true,
+                cardDescription: "An error occurred while fetching lease data.",
+                actionIcon: <WarningOutlined className="icon" style={{ color: '#ff4d4f' }} />
+            });
+            return;
+        }
+
+        // Handle loading state
+        if (isLoading || isLoadingSignedLease) {
+            setUiState({
+                buttonTitle: "Loading...",
+                buttonDisabled: true,
+                cardDescription: "Checking lease status...",
+                actionIcon: <FileTextOutlined className="icon" />
+            });
+            return;
+        }
+
+        // Handle lease data state
+        if (leaseData) {
+            switch (leaseData.status) {
+                case 'pending_approval':
+                    setUiState({
+                        buttonTitle: "Sign Lease",
+                        buttonDisabled: false,
+                        cardDescription: "Your lease requires signing",
+                        actionIcon: <WarningOutlined className="icon" style={{ color: '#faad14' }} />
+                    });
+                    break;
+                case 'active':
+                    setUiState({
+                        buttonTitle: "View Lease",
+                        buttonDisabled: false,
+                        cardDescription: "View your active lease",
+                        actionIcon: <FileTextOutlined className="icon" />
+                    });
+                    break;
+                case 'terminated':
+                case 'expired':
+                    setUiState({
+                        buttonTitle: "Lease Expired",
+                        buttonDisabled: true,
+                        cardDescription: "Contact management to renew your lease",
+                        actionIcon: <FileTextOutlined className="icon" />
+                    });
+                    break;
+                case 'draft':
+                    setUiState({
+                        buttonTitle: "Lease Pending",
+                        buttonDisabled: true,
+                        cardDescription: "Your lease is being prepared",
+                        actionIcon: <FileTextOutlined className="icon" />
+                    });
+                    break;
+                default:
+                    setUiState({
+                        buttonTitle: "Contact Management",
+                        buttonDisabled: true,
+                        cardDescription: "No active lease found",
+                        actionIcon: <FileTextOutlined className="icon" />
+                    });
+            }
+        }
+    }, [leaseData, isLoading, isLoadingSignedLease, isError]);
+
     const handleViewLease = () => {
-        if (leaseData?.status === 'active' && signedLeaseData?.lease_pdf_s3) {
-            // Open signed lease document in new tab
-            window.open(signedLeaseData.lease_pdf_s3, '_blank');
+        if (leaseData?.status === 'active') {
+            if (leaseDocument) {
+                const objectUrl = URL.createObjectURL(leaseDocument);
+                window.open(objectUrl, '_blank');
+                URL.revokeObjectURL(objectUrl);
+            } else if (signedLeaseData?.lease_pdf_s3) {
+                window.open(signedLeaseData.lease_pdf_s3, '_blank');
+            }
         } else if (leaseData?.url) {
-            // Open the signing URL if available
             window.open(leaseData.url, '_blank');
         } else {
-            // Open modal if no URLs available
             setIsLeaseModalVisible(true);
         }
     };
-
-    let buttonTitle = "View Lease";
-    let buttonDisabled = false;
-    let cardDescription = "View or resign your lease";
-    let actionIcon = <FileTextOutlined className="icon" />;
-
-    // Determine button title and description based on lease status
-    if (isLoading || isLoadingSignedLease) {
-        buttonTitle = "Loading...";
-        buttonDisabled = true;
-        cardDescription = "Checking lease status...";
-    } else if (leaseData) {
-        switch (leaseData.status) {
-            case 'pending_approval':
-                buttonTitle = "Sign Lease";
-                cardDescription = "Your lease requires signing";
-                actionIcon = <WarningOutlined className="icon" style={{ color: '#faad14' }} />;
-                break;
-            case 'active':
-                buttonTitle = "View Lease";
-                cardDescription = "View your active lease";
-                break;
-            case 'terminated':
-            case 'expired':
-                buttonTitle = "Lease Expired";
-                cardDescription = "Contact management to renew your lease";
-                buttonDisabled = true;
-                break;
-            case 'draft':
-                buttonTitle = "Lease Pending";
-                cardDescription = "Your lease is being prepared";
-                buttonDisabled = true;
-                break;
-            default:
-                buttonTitle = "Contact Management";
-                cardDescription = "No active lease found";
-                buttonDisabled = true;
-        }
-    }
 
     return (
         <>
             <CardComponent
                 title="Lease"
-                description={cardDescription}
+                description={uiState.cardDescription}
                 hoverable={true}
-                icon={actionIcon}
+                icon={uiState.actionIcon}
                 button={
                     <ButtonComponent
-                        title={buttonTitle}
+                        title={uiState.buttonTitle}
                         type="primary"
                         onClick={handleViewLease}
-                        disabled={buttonDisabled}
+                        disabled={uiState.buttonDisabled}
                     />
                 }
             />
 
-            {/* Informational Modal when no lease URL is available */}
             <Modal
                 title="Lease Information"
                 open={isLeaseModalVisible}

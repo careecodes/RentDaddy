@@ -1,39 +1,13 @@
-package main
+package complaintswork
 
 import (
 	"context"
+	"log"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/jackc/pgx/v5/pgxpool"
-	"log"
-	"os"
 )
-
-func main() {
-	ctx := context.Background()
-
-	pool, err := pgxpool.New(ctx, os.Getenv("PG_URL"))
-	if err != nil {
-		log.Printf("[DB_Seeder] Error initializing pg: %v", err)
-		return
-	}
-	defer pool.Close()
-
-	queries := db.New(pool)
-
-	users, err := queries.ListUsersByRole(ctx, db.RoleTenant)
-	if err != nil {
-		log.Println("[DB_Seeder] error counting users: ", err)
-	}
-	if len(users) > 0 {
-		log.Println("[DB_Seeder] tenant users found")
-	}
-
-	if run(ctx, pool) != nil {
-		log.Printf("[DB_Seeder] Error running scripts: %v", err)
-	}
-
-}
 
 func run(ctx context.Context, pool *pgxpool.Pool) error {
 	aUser := pool.QueryRow(ctx, "SELECT id FROM users WHERE role = $1", db.RoleAdmin)
