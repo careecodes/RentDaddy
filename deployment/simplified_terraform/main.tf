@@ -196,7 +196,7 @@ resource "aws_ecs_cluster" "main" {
 resource "aws_launch_template" "ecs_lt" {
   name_prefix   = "rentdaddy-ecs-"
   image_id      = "ami-059601b8419c53014" # Amazon ECS-optimized Amazon Linux 2 AMI for us-east-2
-  instance_type = "t3.medium"
+  instance_type = "t3.xlarge"
   key_name      = "rentdaddy_key"
 
   iam_instance_profile {
@@ -251,8 +251,9 @@ resource "aws_autoscaling_group" "ecs_asg" {
   name                = "rentdaddy-ecs-asg"
   vpc_zone_identifier = aws_subnet.public[*].id
   desired_capacity    = 2
-  min_size            = 1
+  min_size            = 2
   max_size            = 2
+
 
 
 
@@ -282,9 +283,8 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
   requires_compatibilities = ["EC2"]
   execution_role_arn       = aws_iam_role.ecs_task_execution_role.arn
   task_role_arn            = aws_iam_role.ecs_task_execution_role.arn
-  cpu                      = "512"
-  memory                   = "1024"
-
+  cpu                      = "1024"
+  memory                   = "4096"
   container_definitions = jsonencode([
     {
       name      = "backend"
@@ -302,7 +302,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "POSTGRES_DB", value = "appdb" },
         { name = "VITE_CLERK_PUBLISHABLE_KEY", value = "pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk" },
         { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
-        { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
+        { name = "ADMIN_CLERK_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
         { name = "VITE_PORT", value = "8080" },
         { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
         { name = "PORT", value = "8080" },
@@ -347,7 +347,8 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           awslogs-stream-prefix = "backend"
         }
       }
-      memoryReservation = 512
+      memoryReservation = 1536,
+      memory            = 1536,
     },
     {
       name         = "frontend"
@@ -360,7 +361,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           value = timestamp() # This forces a new revision each deploy
         },
         { name = "CLERK_WEBHOOK", value = "whsec_9dYgX/L5GlKgkejOh9cYSEtDTgbjVm8X" },
-        { name = "CLERK_LANDLORD_USER_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
+        { name = "ADMIN_CLERK_ID", value = "user_2uciuYs8U4OAzq7ysVjOP7qWfbJ" },
         { name = "VITE_PORT", value = "8080" },
         { name = "VITE_DOMAIN_URL", value = "https://app.curiousdev.net" },
         { name = "PORT", value = "8080" },
@@ -369,7 +370,7 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
         { name = "ADMIN_LAST_NAME", value = "Landlord" },
         { name = "ADMIN_EMAIL", value = "rentdaddyadmin@gitfor.ge" },
         { name = "FRONTEND_PORT", value = "5173" },
-        { name = "ENV", value = "development" },
+        { name = "ENV", value = "production" },
         { name = "DEBUG_MODE", value = "false" }
       ]
       secrets = [
@@ -384,6 +385,8 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           awslogs-stream-prefix = "frontend"
         }
       }
+      memoryReservation = 256,
+      memory            = 512,
     },
     {
       name      = "main-postgres"
@@ -420,6 +423,8 @@ resource "aws_ecs_task_definition" "backend_with_frontend" {
           "awslogs-stream-prefix" = "postgres"
         }
       }
+      memoryReservation = 512,
+      memory            = 1024,
     },
   ])
 
@@ -486,8 +491,8 @@ resource "aws_ecs_task_definition" "documenso" {
         { name = "NEXT_PRIVATE_UPLOAD_FORCE_PATH_STYLE", value = "false" },
         { name = "NEXT_PRIVATE_UPLOAD_REGION", value = "us-east-1" },
         { name = "NEXT_PRIVATE_UPLOAD_ACCESS_KEY_ID", value = "AKIASOMWUJVJM34XMXUN" },
-        { name = "NEXT_PRIVATE_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:33264/documenso" },
-        { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:33264/documenso" },
+        { name = "NEXT_PRIVATE_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
+        { name = "NEXT_PRIVATE_DIRECT_DATABASE_URL", value = "postgresql://documenso:password@documenso-postgres:5432/documenso" },
       ]
       secrets = [
         { name = "POSTGRES_PASSWORD", valueFrom = "arn:aws:secretsmanager:us-east-2:168356498770:secret:rentdaddy/production/documenso-FYv9hn:POSTGRES_PASSWORD::" },
@@ -657,7 +662,9 @@ resource "aws_ecs_service" "backend_with_frontend" {
     container_name   = "backend"
     container_port   = 8080
   }
-
+  placement_constraints {
+    type = "distinctInstance"
+  }
   lifecycle {
     ignore_changes = [desired_count]
   }
@@ -679,7 +686,9 @@ resource "aws_ecs_service" "documenso" {
     type  = "binpack"
     field = "memory"
   }
-
+  placement_constraints {
+    type = "distinctInstance"
+  }
   lifecycle {
     ignore_changes = [desired_count]
   }

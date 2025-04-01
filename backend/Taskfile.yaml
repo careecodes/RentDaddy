@@ -7,27 +7,30 @@ vars:
   PG_URL: postgresql://{{.POSTGRES_USER}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
   DATABASE_URL: .PG_URL
 tasks:
-  seed-users:
-    desc: "Seed users into the database and syncs with Clerk"
+  # 🧑‍💻 Local Docker Compose: Default naming
+  seed:users:
+    desc: "Run user seeder inside local rentdaddy-backend container (Docker Compose)"
     cmds:
-      - cd backend && go run scripts/cmd/seedusers/*.go
+      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go"
     silent: false
 
-  seed-users:data:
-    desc: "Seed complaints and work orders into the database"
+  seed:data:
+    desc: "Run complaints/work_orders seeder inside local rentdaddy-backend container (Docker Compose)"
     cmds:
-      - cd scripts && go run scripts/cmd/complaintswork/*.go
-    silent: false
-  seed-users-exec:
-    desc: "Exec into backend container and run user seeder"
-    cmds:
-      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/seedusers/*.go"
+      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go"
     silent: false
 
-  seed-users-exec:data:
-    desc: "Exec into backend container and run complaints/work_orders seeder"
+  # 🚀 Production-compatible: Explicit naming
+  seed:users:prod:
+    desc: "Run user seeder directly (ECS or inside backend container shell)"
     cmds:
-      - docker exec rentdaddy-backend sh -c "cd /app && go run scripts/cmd/complaintswork/*.go"
+      - cd backend && go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go
+    silent: false
+
+  seed:data:prod:
+    desc: "Run complaints/work_orders seeder directly (ECS or inside backend container shell)"
+    cmds:
+      - cd backend && go run scripts/cmd/complaintswork/main.go
     silent: false
 
   build:

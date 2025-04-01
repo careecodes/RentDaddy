@@ -1,19 +1,9 @@
-// Place variable overrides first, then import just the styles you need. Note that some stylesheets are required no matter what.
-
-// Toggle global options
-$enable-gradients: true;
-$enable-shadows: true;
-
-$offcanvas-box-shadow: 0 1rem 3rem rgba(0, 0, 0, 0.175);
-
-// Include functions first
+// Import Bootstrap functions first
 @import "bootstrap/scss/functions";
 
-// Customize some defaults
+// Define custom colors and variables
 $text: #00050a;
 $background: #ffffff;
-
-// Colors
 
 // Primary
 $primary: #00674f;
@@ -36,55 +26,193 @@ $warning95: hsl(359, 60%, 62%, 95%);
 // Info
 $info: #f3f3f3;
 
-// Text Contrast
-$text-contrast: #64d97b;
-
-// Background Contrast
-$bg-contrast: #64d97b;
-$primary-contrast: #ffdd00;
-$secondary-contrast: #ffdd00;
-$accent-contrast: #ffdd00;
-
-// Text
-$text5: hsl(210, 100%, 2%, 5%);
-$text50: hsl(210, 100%, 2%, 50%);
-$text95: hsl(210, 100%, 2%, 95%);
-
-// Gradients
-$linearPrimarySecondary: linear-gradient(#00674f, #7789f4);
-$linearPrimaryAccent: linear-gradient(#00674f, #d86364);
-$linearSecondaryAccent: linear-gradient(#7789f4, #d86364);
-$radialPrimarySecondary: radial-gradient(#00674f, #7789f4);
-$radialPrimaryAccent: radial-gradient(#00674f, #d86364);
-$radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
-
-// Required
+// Required Bootstrap setup - in the correct order
 @import "bootstrap/scss/variables";
 @import "bootstrap/scss/variables-dark";
 @import "bootstrap/scss/maps";
 @import "bootstrap/scss/mixins";
-@import "bootstrap/scss/utilities";
 @import "bootstrap/scss/root";
-@import "bootstrap/scss/reboot";
 
-@import "bootstrap/scss/type";
-// @import "bootstrap/scss/images";
-@import "bootstrap/scss/containers";
-@import "bootstrap/scss/grid";
-// @import "bootstrap/scss/tables";
-// @import "bootstrap/scss/forms";
+// Components
+@import "bootstrap/scss/utilities";
 @import "bootstrap/scss/buttons";
 @import "bootstrap/scss/transitions";
 @import "bootstrap/scss/dropdown";
-// @import "bootstrap/scss/
+@import "bootstrap/scss/nav";
+@import "bootstrap/scss/navbar";
+@import "bootstrap/scss/card";
+@import "bootstrap/scss/close";
+@import "bootstrap/scss/modal";
+@import "bootstrap/scss/popover";
+@import "bootstrap/scss/offcanvas";
 
-// Modal content scrollable container
+// Finally, API to generate utility classes
+@import "bootstrap/scss/utilities/api";
+
+// Base Styles
+:root {
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    line-height: 1.5;
+    font-weight: 400;
+    font-synthesis: none;
+    text-rendering: optimizeLegibility;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    margin: 0;
+}
+
+// Utility Classes
+.flex {
+    display: flex;
+}
+
+.flex-column {
+    flex-direction: column;
+}
+
+.flex-grow-1 {
+    flex-grow: 1;
+}
+
+.flex-container {
+    display: flex;
+    flex-wrap: wrap;
+    flex-direction: row;
+    overflow: hidden;
+    gap: 2rem;
+    align-items: stretch;
+    justify-content: center;
+}
+
+.text-center {
+    text-align: center;
+}
+
+.text-success {
+    color: green;
+}
+
+.disabled-link {
+    pointer-events: none;
+}
+
+.card {
+    width: 300px;
+    height: 300px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    align-items: center;
+    text-align: center;
+}
+
+.card-primary {
+    background: $primary5;
+}
+
+.card-secondary {
+    background: $secondary50;
+}
+
+.card-accent {
+    background: $warning95;
+}
+
+.card-content {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: stretch;
+    min-height: 50%;
+    max-height: 90%;
+}
+
+// Footer & Header
+.footer {
+    text-align: center;
+    padding: 24px 50px;
+}
+
+.footer-title {
+    margin: 0 0 16px 0;
+    color: #1a1a1a;
+}
+
+.footer-logo {
+    margin: 1rem auto;
+    max-height: 50px;
+    border-radius: 8px;
+}
+
+.footer-text {
+    margin: 0;
+    color: #8c8c8c;
+    font-size: 14px;
+}
+
+.header {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    padding: 2% 2%;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    background-color: #00674f;
+}
+
+// Ant Design overrides
+.hoverable-row {
+    &:hover {
+        background-color: #1890ff20 !important;
+        transition: background-color 0.3s;
+    }
+}
+
+.ant-table-tbody>tr.hoverable-row:hover>td {
+    background-color: #1890ff20 !important;
+}
+
+.ant-table-filter-dropdown {
+    background: #fff !important;
+    border: 1px solid #ccc !important;
+    padding: 10px !important;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+// Dropdown tweaks
+.custom-dropdown .ant-dropdown-menu-item,
+.custom-dropdown .ant-dropdown-menu-submenu-title {
+    background-color: white !important;
+    color: inherit !important;
+}
+
+.custom-dropdown .ant-dropdown-menu-item:hover,
+.custom-dropdown .ant-dropdown-menu-submenu-title:hover,
+.custom-dropdown .ant-dropdown-menu-item:active,
+.custom-dropdown .ant-dropdown-menu-submenu-title:active {
+    background-color: #eeeeee !important;
+    color: inherit !important;
+}
+
+// Hover Effects
+.hover-lift {
+    transition: transform 0.3s ease-in-out;
+}
+
+.hover-lift:hover {
+    transform: translateY(-5px);
+}
+
+// Modal Styles
 .modal-scroll-container {
     overflow-y: auto;
     max-height: 200px;
 }
 
-// Lease modal styles
 .warning-icon {
     font-size: 4rem;
     color: #faad14;
@@ -100,49 +228,12 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
     font-style: italic;
 }
 
-// Success text color for statuses
-.text-success {
-    color: green;
+// Buttons
+.btn-loading {
+    opacity: 0.65;
+    pointer-events: none;
 }
 
-// Text center utility
-.text-center {
-    text-align: center;
-}
-
-// Modal content scrollable container
-.modal-scroll-container {
-    overflow-y: auto;
-    max-height: 200px;
-}
-
-// Lease modal styles
-.warning-icon {
-    font-size: 4rem;
-    color: #faad14;
-    margin-bottom: 1rem;
-}
-
-.lease-modal-title {
-    margin-bottom: 1rem;
-}
-
-.lease-modal-note {
-    margin-top: 1rem;
-    font-style: italic;
-}
-
-// Success text color for statuses
-.text-success {
-    color: green;
-}
-
-// Text center utility
-.text-center {
-    text-align: center;
-}
-
-/* Loading spinner for forms */
 .spinner-border {
     display: inline-block;
     width: 2rem;
@@ -158,6 +249,12 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
     color: $primary;
 }
 
+@keyframes spinner-border {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .visually-hidden {
     position: absolute;
     width: 1px;
@@ -170,18 +267,7 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
     border: 0;
 }
 
-@keyframes spinner-border {
-    to {
-        transform: rotate(360deg);
-    }
-}
-
-/* Button state when loading */
-.btn-loading {
-    opacity: 0.65;
-    pointer-events: none;
-}
-
+// Button colors
 .btn-success {
     background-color: #52c41a !important;
     color: white !important;
@@ -205,7 +291,7 @@ $radialSecondaryAccent: radial-gradient(#7789f4, #d86364);
 }
 
 .btn-accent {
-    background-color: $warning !important; // Using your warning color for accent
+    background-color: $warning !important;
     color: white !important;
     border-color: $warning !important;
 

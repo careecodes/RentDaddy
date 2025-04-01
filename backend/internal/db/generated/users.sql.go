@@ -234,6 +234,7 @@ func (q *Queries) GetUserByID(ctx context.Context, id int64) (GetUserByIDRow, er
 
 const insertAdminWithID = `-- name: InsertAdminWithID :one
 INSERT INTO users (id, clerk_id, first_name, last_name, email, role)
+OVERRIDING SYSTEM VALUE
 VALUES ($1, $2, $3, $4, $5, $6)
 RETURNING id, clerk_id, first_name, last_name, email, phone, role, status, updated_at, created_at
 `

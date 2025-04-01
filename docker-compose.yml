@@ -34,7 +34,7 @@ services:
       - ./backend/tmp:/app/tmp
       - ./backend/temp:/app/temp
       - go-mod-cache:/go/pkg/mod
-    env_file: backend/.env.development
+    env_file: backend/.env.development.local
     networks:
         - app-network
         - documenso-rentdaddy
@@ -53,7 +53,7 @@ services:
     networks:
       - app-network
     env_file:
-      - frontend/.env.development  # Load .env file
+      - frontend/app/.env.development.local  # Load .env file
 
 networks:
   app-network:

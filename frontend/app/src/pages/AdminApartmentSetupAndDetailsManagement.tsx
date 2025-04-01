@@ -33,6 +33,20 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     // TODO: When no longer needed for development, delete the clear locations button and mock data
     const [locations, setLocations] = React.useState<{ building: number; floors: number; rooms: number }[]>([]);
     const { getToken } = useAuth();
+    const [tenantsExist, setTenantsExist] = useState(true);
+    React.useEffect(() => {
+        const checkTenants = async () => {
+            try {
+                const res = await fetch(`${API_URL}/api/check-admin`);
+                const data = await res.json();
+                setTenantsExist(data.tenants_exist);
+            } catch (err) {
+                console.error("Failed to check tenants", err);
+            }
+        };
+
+        checkTenants();
+    }, []);
 
     console.log("locations on load", locations);
 
@@ -79,6 +93,34 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         },
         onError: (e: any) => {
             console.log("error ", e);
+        },
+    });
+    const {
+        mutate: triggerSeedUsers,
+        status: seedStatus
+    } = useMutation({
+
+        mutationFn: async () => {
+            const token = await getToken();
+            const res = await fetch(`${API_URL}/seed-users`, {
+                method: "POST",
+                headers: {
+                    Authorization: `Bearer ${token}`,
+                },
+            });
+
+            if (!res.ok) {
+                const errText = await res.text();
+                throw new Error(errText || "Failed to seed users");
+            }
+
+            return res;
+        },
+        onSuccess: () => {
+            console.log("✅ Users seeded successfully");
+        },
+        onError: (e: any) => {
+            console.log("❌ Error seeding users:", e);
         },
     });
 
@@ -239,6 +281,19 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         <div className="container">
             {/* <h1 className="mb-3">Admin Apartment Setup And Details Management</h1> */}
             <PageTitleComponent title="Admin Apartment Setup and Details Management" />
+            {!tenantsExist && (
+                <div className="mb-4">
+                    <Button
+                        type="dashed"
+                        onClick={() => triggerSeedUsers()}
+                        loading={seedStatus === "pending"}>
+                        Seed Demo Users
+                    </Button>
+
+                </div>
+            )}
+
+
             <Form
                 onFinish={handleSendAdminSetup}
                 onValuesChange={handleFormValuesChange}

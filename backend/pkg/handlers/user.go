@@ -775,9 +775,12 @@ func deref(s *string) string {
 	return ""
 }
 func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
+	log.Println("[SEED_USERS] Admin login detected, no tenants found. Auto-seeding.")
+
 	log.Println("[SEED_USERS] Triggered by admin")
 
-	cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go")
+	cmd := exec.Command("go", "run", "scripts/cmd/seedusers/main.go", "scripts/cmd/seedusers/seed_users.go")
+
 	cmd.Dir = "/app" // ECS container working directory
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -794,7 +797,7 @@ func (u UserHandler) AdminSeedUsers(w http.ResponseWriter, r *http.Request) {
 func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 	log.Println("[SEED_DATA] Triggered by admin")
 
-	cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go")
+	cmd := exec.Command("go", "run", "scripts/cmd/complaintswork/main.go", "scripts/cmd/complaintswork/complaintsAndWork.go")
 	cmd.Dir = "/app"
 	output, err := cmd.CombinedOutput()
 	if err != nil {
@@ -809,14 +812,25 @@ func (u UserHandler) AdminSeedData(w http.ResponseWriter, r *http.Request) {
 }
 
 func (u UserHandler) CheckAdminExists(w http.ResponseWriter, r *http.Request) {
-	admins, err := u.queries.ListUsersByRole(r.Context(), db.RoleAdmin)
+	ctx := r.Context()
+
+	admins, err := u.queries.ListUsersByRole(ctx, db.RoleAdmin)
 	if err != nil {
 		log.Printf("[CHECK_ADMIN] DB error: %v", err)
 		http.Error(w, "Error checking admin", http.StatusInternalServerError)
 		return
 	}
 
-	hasAdmin := len(admins) > 0
+	tenants, err := u.queries.ListUsersByRole(ctx, db.RoleTenant)
+	if err != nil {
+		log.Printf("[CHECK_ADMIN] DB error listing tenants: %v", err)
+		http.Error(w, "Error checking tenants", http.StatusInternalServerError)
+		return
+	}
+
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]bool{"exists": hasAdmin})
+	json.NewEncoder(w).Encode(map[string]any{
+		"admin_exists":  len(admins) > 0,
+		"tenants_exist": len(tenants) > 0,
+	})
 }

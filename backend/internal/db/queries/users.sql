@@ -87,5 +87,7 @@ AND id NOT IN (SELECT tenant_id FROM leases);
 
 -- name: InsertAdminWithID :one
 INSERT INTO users (id, clerk_id, first_name, last_name, email, role)
+OVERRIDING SYSTEM VALUE
 VALUES ($1, $2, $3, $4, $5, $6)
-RETURNING *;
+RETURNING id, clerk_id, first_name, last_name, email, phone, role, status, updated_at, created_at;
+

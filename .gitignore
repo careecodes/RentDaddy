@@ -60,3 +60,5 @@ log/
 logs/
 logging/
 *.log.*
+rentdaddy_key
+rentdaddy_key.pub

@@ -1,4 +1,4 @@
-package complaintswork
+package main
 
 import (
 	"context"
