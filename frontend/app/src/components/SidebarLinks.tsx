@@ -53,7 +53,7 @@ const SidebarLinks = () => {
                         />
                         <Link
                             to="/admin"
-                            className="text-white text-decoration-none hover:text-secondary hover-lift transition-all">
+                            className="text-white text-decoration-none hover:text-secondary transition-all">
                             Admin
                         </Link>
                     </div>

@@ -123,14 +123,33 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	userRole := db.RoleTenant
 	AdminFirstName := os.Getenv("ADMIN_FIRST_NAME")
 	AdminLastName := os.Getenv("ADMIN_LAST_NAME")
+
+	// Check if the database has any users first
+	checkIfFirstUser := true
 	if AdminFirstName == "" || AdminLastName == "" {
-		log.Println("[CLERK_WEBHOOK] Missing admin credentials")
-		http.Error(w, "Missing admin credentials", http.StatusInternalServerError)
-		return
+		log.Println("[CLERK_WEBHOOK] Warning: ADMIN_FIRST_NAME or ADMIN_LAST_NAME not set")
+		// We'll continue and check if this is the first user in the system
+	} else {
+		if userData.FirstName == AdminFirstName && userData.LastName == AdminLastName {
+			log.Printf("[CLERK_WEBHOOK] User matches admin name criteria: %s %s", userData.FirstName, userData.LastName)
+			userRole = db.RoleAdmin
+			checkIfFirstUser = false // We already know this is an admin
+		}
 	}
 
-	if userData.FirstName == AdminFirstName && userData.LastName == AdminLastName {
-		userRole = db.RoleAdmin
+	// If we need to check if this is the first user
+	if checkIfFirstUser {
+		// Query to check if any users exist in the database
+		userCount, err := queries.GetUserCount(r.Context())
+		if err != nil {
+			log.Printf("[CLERK_WEBHOOK] Error checking user count: %v", err)
+			// Continue with tenant role as fallback
+		} else if userCount == 0 {
+			// If this is the first user, make them an admin
+			log.Printf("[CLERK_WEBHOOK] First user detected, setting role to Admin: %s %s",
+				userData.FirstName, userData.LastName)
+			userRole = db.RoleAdmin
+		}
 	}
 
 	var primaryUserEmail string
@@ -148,8 +167,8 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 	err := json.Unmarshal(userData.PublicMetaData, &userMetadata)
 	if err != nil {
 		log.Printf("[CLERK_WEBHOOK] Failed converting JSON: %v", err)
-		http.Error(w, "Error converting JSON", http.StatusInternalServerError)
-		return
+		// Continue anyway, as the JSON might be empty for new users
+		userMetadata = ClerkUserPublicMetaData{}
 	}
 
 	//NOTE:
@@ -203,6 +222,21 @@ func createUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, 
 
 func updateUser(w http.ResponseWriter, r *http.Request, userData ClerkUserData, queries *db.Queries) {
 	primaryUserEmail := userData.EmailAddresses[0].EmailAddress
+
+	// First, check if the user exists in our database
+	_, err := queries.GetUser(r.Context(), userData.ID)
+	if err != nil {
+		// User doesn't exist yet - create the user instead of updating
+		log.Printf("[CLERK_WEBHOOK] User %s not found, creating new user instead of updating", userData.ID)
+
+		// Call createUser to handle the creation logic
+		createUser(w, r, userData, nil, queries)
+		return
+	}
+
+	// If user exists, proceed with update
+	log.Printf("[CLERK_WEBHOOK] Updating existing user %s (%s)", userData.ID, primaryUserEmail)
+
 	if err := queries.UpdateUser(r.Context(), db.UpdateUserParams{
 		ClerkID:   userData.ID,
 		FirstName: userData.FirstName,

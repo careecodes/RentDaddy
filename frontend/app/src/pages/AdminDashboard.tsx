@@ -1,4 +1,3 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
 import { useState } from "react";
 import { CalendarOutlined, InboxOutlined, ToolOutlined, WarningOutlined } from "@ant-design/icons";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
@@ -12,10 +11,10 @@ import { Link } from "react-router";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
+import { generateAccessCode } from "../lib/utils";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const serverUrl = import.meta.env.VITE_SERVER_URL;
+const absoluteServerUrl = `${serverUrl}`;
 
 interface Locker {
     id: number;
@@ -70,7 +69,7 @@ const AdminDashboard = () => {
     const queryClient = useQueryClient();
 
     const [selectedUserId, setSelectedUserId] = useState<string>();
-    const [accessCode, setAccessCode] = useState<string>("");
+    const [accessCode, setAccessCode] = useState<string>(generateAccessCode());
 
     // Query for fetching tenants
     const { data: tenants, isLoading: isLoadingTenants } = useQuery<Tenant[]>({
@@ -81,7 +80,7 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/tenants`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/tenants`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -107,10 +106,10 @@ const AdminDashboard = () => {
             if (!token) {
                 throw new Error("No authentication token available");
             }
-            console.log("Fetching work orders...");
-            console.log("API URL:", `${API_URL}/admin/work_orders`);
+            // console.log("Fetching work orders...");
+            // console.log("API URL:", `${absoluteServerUrl}/admin/work_orders`);
 
-            const res = await fetch(`${API_URL}/admin/work_orders`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/work_orders`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -118,19 +117,19 @@ const AdminDashboard = () => {
                 },
             });
 
-            console.log("Response status:", res.status);
+            // console.log("Response status:", res.status);
 
             if (!res.ok) {
                 throw new Error(`Failed to fetch work orders: ${res.status}`);
             }
 
             const data = await res.json();
-            console.log("Response data:", data);
+            // console.log("Response data:", data);
             return data;
         },
     });
 
-    console.log("Query state:", { isLoading: isLoadingWorkOrders, data: workOrders });
+    // console.log("Query state:", { isLoading: isLoadingWorkOrders, data: workOrders });
 
     // Query for fetching complaints
     const { data: complaints, isLoading: isLoadingComplaints } = useQuery({
@@ -140,9 +139,9 @@ const AdminDashboard = () => {
             if (!token) {
                 throw new Error("No authentication token available");
             }
-            console.log("Fetching complaints...");
-            console.log("API URL:", `${API_URL}/admin/complaints`);
-            const res = await fetch(`${API_URL}/admin/complaints`, {
+            // console.log("Fetching complaints...");
+            // console.log("API URL:", `${absoluteServerUrl}/admin/complaints`);
+            const res = await fetch(`${absoluteServerUrl}/admin/complaints`, {
                 method: "GET",
                 headers: { "Content-Type": "application/json", Authorization: `Bearer ${token}` },
             });
@@ -151,12 +150,13 @@ const AdminDashboard = () => {
                 throw new Error(`Failed to fetch complaints: ${res.status}`);
             }
 
-            const data = await res.json();
+            const data = (await res.json()) as Complaint[];
             return data;
         },
     });
 
-    console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
+    // console.log("complaints:", complaints);
+    // console.log("Query state for complaints:", { isLoading: isLoadingComplaints, data: complaints });
 
     // Query for fetching lockers
     const {
@@ -173,7 +173,7 @@ const AdminDashboard = () => {
                     throw new Error("No authentication token available");
                 }
 
-                const res = await fetch(`${API_URL}/admin/lockers`, {
+                const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
                     method: "GET",
                     headers: {
                         "Content-Type": "application/json",
@@ -209,7 +209,7 @@ const AdminDashboard = () => {
                 throw new Error("No authentication token available");
             }
 
-            const res = await fetch(`${API_URL}/admin/lockers/in-use/count`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers/in-use/count`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -224,44 +224,32 @@ const AdminDashboard = () => {
         },
     });
 
-    // Mutation for updating locker
-    const updateLockerMutation = useMutation({
-        mutationFn: async ({ lockerId, updates }: { lockerId: number; updates: { user_id?: string; in_use?: boolean; access_code?: string } }) => {
-            console.log("Original updates:", updates);
-            console.log("lockerId:", lockerId);
-            console.log("API URL:", `${API_URL}/admin/lockers/${lockerId}`);
-
+    const { mutate: addPackage } = useMutation({
+        mutationKey: ["admin-add-package"],
+        mutationFn: async () => {
             const token = await getToken();
             if (!token) {
                 throw new Error("No authentication token available");
             }
 
-            const response = await fetch(`${API_URL}/admin/lockers/${lockerId}`, {
-                method: "PATCH",
+            const res = await fetch(`${absoluteServerUrl}/admin/lockers`, {
+                method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${token}`,
                 },
-                body: JSON.stringify(updates),
+                body: JSON.stringify({ user_clerk_id: selectedUserId, access_code: accessCode }),
             });
-
-            if (!response.ok) {
-                const errorText = await response.text();
-                console.error("Error response:", errorText);
-                throw new Error(`Failed to update locker: ${errorText}`);
+            if (!res.ok) {
+                throw new Error(`Failed creating new locker`);
             }
-
-            const data = await response.json();
-            return data;
         },
         onSuccess: () => {
-            // Invalidate and refetch queries
+            // queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
             queryClient.invalidateQueries({ queryKey: ["lockers"] });
             queryClient.invalidateQueries({ queryKey: ["numberOfLockersInUse"] });
-            console.log("Locker updated successfully");
-        },
-        onError: (error) => {
-            console.error("Error updating locker:", error);
+            setAccessCode(generateAccessCode());
+            setSelectedUserId(undefined);
         },
     });
 
@@ -273,21 +261,21 @@ const AdminDashboard = () => {
             console.log("accessCode:", accessCode);
             console.log("lockers:", lockers);
 
-            if (isLoadingLockers) {
-                console.error("Please wait while lockers are being loaded...");
-                return;
-            }
-
-            if (isErrorLockers) {
-                console.error("Failed to load lockers. Please try again.");
-                return;
-            }
-
-            if (!lockers || lockers.length === 0) {
-                console.error("No lockers available in the system");
-                return;
-            }
-
+            // if (isLoadingLockers) {
+            //     console.error("Please wait while lockers are being loaded...");
+            //     return;
+            // }
+            //
+            // if (isErrorLockers) {
+            //     console.error("Failed to load lockers. Please try again.");
+            //     return;
+            // }
+            //
+            // if (!lockers || lockers.length === 0) {
+            //     console.error("No lockers available in the system");
+            //     return;
+            // }
+            //
             if (!selectedUserId) {
                 console.error("Please select a tenant");
                 return;
@@ -298,27 +286,24 @@ const AdminDashboard = () => {
                 return;
             }
 
-            const availableLocker = lockers.find((locker) => !locker.in_use);
-            if (!availableLocker) {
-                console.error("No available lockers");
-                return;
-            }
+            // const availableLocker = lockers.find((locker) => !locker.in_use);
+            // if (!availableLocker) {
+            //     console.error("No available lockers");
+            //     return;
+            // }
 
-            console.log("Available locker:", availableLocker);
-            console.log("Starting update locker mutation");
+            // console.log("Available locker:", availableLocker);
+            // console.log("Starting update locker mutation");
 
-            await updateLockerMutation.mutateAsync({
-                lockerId: availableLocker.id,
-                updates: {
-                    user_id: selectedUserId,
-                    access_code: accessCode,
-                    in_use: true,
-                },
-            });
-
-            // Reset form values after successful addition
-            setSelectedUserId(undefined);
-            setAccessCode("");
+            addPackage();
+            // await updateLockerMutation.mutateAsync({
+            //     lockerId: availableLocker.id,
+            //     updates: {
+            //         user_id: selectedUserId,
+            //         access_code: accessCode,
+            //         in_use: true,
+            //     },
+            // });
         } catch (error) {
             console.error("Error adding package:", error);
             throw error;
@@ -339,18 +324,18 @@ const AdminDashboard = () => {
         {
             title: "Lease Start",
             dataIndex: "lease_start",
-            render: (lease_start: string) => (lease_start ? new Date(lease_start).toLocaleDateString() : "N/A"),
+            render: (lease_start: string) => (lease_start ? new Date(lease_start).toLocaleDateString() : "April 1, 2025"),
         },
         {
             title: "Lease End",
             dataIndex: "lease_end",
-            render: (lease_end: string) => (lease_end ? new Date(lease_end).toLocaleDateString() : "N/A"),
+            render: (lease_end: string) => (lease_end ? new Date(lease_end).toLocaleDateString() : "March 31, 2026"),
         },
-        {
-            title: "Unit",
-            dataIndex: "unit_number",
-            render: (unit: number) => unit || "N/A",
-        },
+        // {
+        //     title: "Unit",
+        //     dataIndex: "unit_number",
+        //     render: (unit: number) => unit || "N/A",
+        // },
         {
             title: "Status",
             dataIndex: "status",
@@ -446,12 +431,15 @@ const AdminDashboard = () => {
 
     const WORK_ORDERS_COUNT = workOrders?.length ?? 0;
     const COMPLAINTS_COUNT = complaints?.length ?? 0;
+    console.log("Work orders count:", workOrdersWithKeys.length);
+    console.log("Complaints count:", COMPLAINTS_COUNT);
 
     return (
         <div className="container">
             <PageTitleComponent title="Admin Dashboard" />
             <AlertComponent
                 title="Welcome to the Admin Dashboard"
+                message=""
                 description="This is the Admin Dashboard. Here's a demo alert component."
                 type="success"
             />
@@ -475,7 +463,7 @@ const AdminDashboard = () => {
                 />
                 <CardComponent
                     title="Complaints"
-                    value={isLoadingComplaints ? <Spin size="small" /> : COMPLAINTS_COUNT}
+                    value={COMPLAINTS_COUNT ?? 0}
                     description="Pending tenant issues"
                     hoverable={true}
                     icon={<WarningOutlined style={{ fontSize: "24px", color: "#faad14", marginBottom: "16px" }} />}
@@ -552,7 +540,7 @@ const AdminDashboard = () => {
                         columns={columnsComplaints}
                         dataSource={combinedItems.filter((item) => item.type === "complaint").slice(0, 5)}
                         loading={isLoadingComplaints}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         pagination={false}
                     />
                 </div>
@@ -567,7 +555,7 @@ const AdminDashboard = () => {
                         columns={columnsWorkOrders}
                         dataSource={combinedItems.filter((item) => item.type === "work_order").slice(0, 5)}
                         loading={isLoadingWorkOrders}
-                        onChange={() => {}}
+                        onChange={() => { }}
                         pagination={false}
                     />
                 </div>
@@ -583,7 +571,7 @@ const AdminDashboard = () => {
                 <TableComponent
                     columns={columnsLeases}
                     dataSource={tenantsWithKeys.slice(0, 5)}
-                    onChange={() => {}}
+                    onChange={() => { }}
                     loading={isLoadingTenants}
                     pagination={false}
                 />

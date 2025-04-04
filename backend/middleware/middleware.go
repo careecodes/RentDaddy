@@ -63,9 +63,9 @@ func IsAdmin(next http.Handler) http.Handler {
 			http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("[CLERK_DEBUG] Parsed role from metadata: %v", userMetaData.Role)
-		log.Printf("[CLERK_DEBUG] Expected admin role: %v", db.RoleAdmin)
-		log.Printf("[CLERK_DEBUG] Role comparison result: %v", userMetaData.Role == db.RoleAdmin)
+		//log.Printf("[CLERK_DEBUG] Parsed role from metadata: %v", userMetaData.Role)
+		//log.Printf("[CLERK_DEBUG] Expected admin role: %v", db.RoleAdmin)
+		//log.Printf("[CLERK_DEBUG] Role comparison result: %v", userMetaData.Role == db.RoleAdmin)
 
 		if userMetaData.Role != db.RoleAdmin {
 			log.Printf("[CLERK_MIDDLEWARE] Unauthorized")

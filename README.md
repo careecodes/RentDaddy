@@ -98,6 +98,37 @@ README](./backend/internal/smtp/SMTP_README.md)
 
 > **Note:** Replace the placeholder values with your actual configuration.
 
+### Administrator Setup
+
+The system requires at least one administrator account to function properly. The application will automatically handle admin setup in the following way:
+
+1. When a user signs in through Clerk, the frontend will check if any admin exists in the database
+2. If no admin user exists, the first user to sign in will be automatically designated as an admin
+3. This process happens automatically during application initialization
+
+For local development:
+
+1. Ensure Clerk authentication is properly configured with your API keys
+2. Make sure the backend is running and connected to the database
+3. Sign in with your Clerk account - the first user to sign in will become the admin automatically
+4. This admin user will have full access to all system features, including Documenso configuration
+
+**Environment Variables:**
+- `ADMIN_FIRST_NAME` and `ADMIN_LAST_NAME`: Optional - if set, they'll be used to match specific users as admins
+- `CLERK_WEBHOOK`: Required - the Clerk webhook signing secret for authenticating webhook requests
+
+**Troubleshooting:**
+- If you need to manually set up an admin user, you can use the `/setup/admin` endpoint:
+  ```bash
+  curl -X POST http://localhost:8080/setup/admin \
+    -H "Content-Type: application/json" \
+    -d '{"clerk_id": "YOUR_CLERK_USER_ID"}'
+  ```
+- To check if an admin exists in the system, use the `/check-admin` endpoint:
+  ```bash
+  curl http://localhost:8080/check-admin
+  ```
+
 ## Usage
 
 ### Running the Application

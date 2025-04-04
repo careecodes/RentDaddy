@@ -1,10 +1,9 @@
 -- name: CreateLocker :exec
 INSERT INTO lockers (
     access_code,
-    user_id,
-    in_use
+    user_id
 ) VALUES (
-    $1, $2, $3
+    $1, $2
 );
 
 -- name: CreateManyLockers :execrows
@@ -32,8 +31,7 @@ WHERE id = $1;
 -- name: GetLockers :many
 SELECT *
 FROM lockers
-ORDER BY id DESC
-LIMIT (SELECT COUNT(*) FROM lockers);
+ORDER BY id DESC;
 
 -- name: GetLocker :one
 SELECT *
@@ -51,3 +49,13 @@ LIMIT 1;
 SELECT COUNT(*)
 FROM lockers
 WHERE in_use = true;
+
+-- name: GetAvailableLocker :one 
+SELECT *
+FROM lockers
+WHERE in_use = false;
+
+-- name: UpdateLockerInUse :exec 
+UPDATE lockers
+SET user_id = $2, access_code = $3, in_use = true
+WHERE id = $1;

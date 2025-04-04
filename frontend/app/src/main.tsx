@@ -21,7 +21,9 @@ import { ConfigProvider } from "antd";
 
 // Clerk
 import { ClerkProvider, SignIn } from "@clerk/react-router";
-import TestGoBackend from "./components/TestGoBackend.tsx";
+
+// API Provider
+import { ApiProvider } from "./utils/apiContext";
 
 // Pages
 import App from "./App.tsx";
@@ -36,14 +38,42 @@ import AdminApartmentSetupAndDetailsManagement from "./pages/AdminApartmentSetup
 import TenantComplaints from "./pages/TenantComplaints.tsx";
 import TenantWorkOrders from "./pages/TenantWorkOrders.tsx";
 import AdminViewEditSmartLockers from "./pages/AdminViewEditSmartLockers.tsx";
+// Add type declaration for window global variables
+declare global {
+    interface Window {
+        VITE_CLERK_PUBLISHABLE_KEY?: string;
+        VITE_BACKEND_URL?: string;
+    }
+}
 
-const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY;
+// Get environment variables with fallbacks
+console.log("Environment variables:", {
+    CLERK_PUBLISHABLE_KEY: import.meta.env.VITE_CLERK_PUBLISHABLE_KEY,
+    BACKEND_URL: import.meta.env.VITE_BACKEND_URL,
+});
+
+const CLERK_PUBLISHABLE_KEY = import.meta.env.VITE_CLERK_PUBLISHABLE_KEY ||
+    window.VITE_CLERK_PUBLISHABLE_KEY ||
+    "pk_live_Y2xlcmsuY3VyaW91c2Rldi5uZXQk";
+
 
 if (!CLERK_PUBLISHABLE_KEY) {
-    throw new Error("Missing Publishable Clerk Key (ENV VARIABLE)");
+    console.error("Warning: Missing Publishable Clerk Key. Using default value.");
 }
 
 const queryClient = new QueryClient();
+
+// Use environment variable or fallback
+const backendUrl = import.meta.env.VITE_BACKEND_URL ||
+    window.VITE_BACKEND_URL ||
+    "https://api.curiousdev.net";
+
+// Log configuration for debugging
+console.log("Environment:", {
+    mode: import.meta.env.MODE,
+    backendUrl,
+    clerkKey: CLERK_PUBLISHABLE_KEY ? "Set (hidden for security)" : "Not set"
+});
 
 createRoot(document.getElementById("root")!).render(
     <StrictMode>
@@ -56,7 +86,6 @@ createRoot(document.getElementById("root")!).render(
                     colorLink: "#00674f",
                     colorFillSecondary: "#7789f4",
                     colorFillTertiary: "#d86364",
-                    fontFamily: `"Poppins"`,
                 },
                 components: {
                     Card: {
@@ -73,138 +102,136 @@ createRoot(document.getElementById("root")!).render(
             }}>
             <QueryClientProvider client={queryClient}>
                 <BrowserRouter>
-                    {/* TODO: Set up fallback redirect urls based on user role, or use a redirect url that is set in the Clerk Dashboard */}
-                    {/* The issue is I can't use user.publicMetadata.role in the ClerkProvider because the user object is not available until after the ClerkProvider is mounted lol, and you can't use React hooks if they're not in a React component, so you could make a custom component that is used in the ClerkProvider to set the fallback redirect url based on the user's role */}
-                    {/* I think redirect would be best for this, but open to ideas */}
-                    {/*  */}
-                    {/*  */}
-                    {/* More TODOs: */}
-                    {/* We also need to make sure that we somehow assign a role upon creation in the Clerk user object, or our own DB User object */}
                     <ClerkProvider
                         publishableKey={CLERK_PUBLISHABLE_KEY}
                         signUpFallbackRedirectUrl="/"
-                        signInFallbackRedirectUrl="/">
-                        {/* Routes: Container for all Route definitions */}
-                        <Routes>
-                            {/* Example and Explanation of Routes */}
-                            {/*
-            Routes are used to define the paths and components that will be rendered when a user navigates to a specific URL.
-            They are placed inside the BrowserRouter component.
-            Each Route component has a path prop that specifies the URL path, and an element prop that specifies the component to render.
-
-            For example, the Route with path="/" will render the App component when the user navigates to the root URL (e.g., http://localhost:5173/).
-
-            // Docs for Routes: https://reactrouter.com/start/library/routing
-
-            // Docs for Navigation: https://reactrouter.com/start/library/navigating
-          */}
-
-                            {/* Main Route (Landing Page) */}
-                            {/* Pre-authentication Layout Group */}
-                            <Route element={<PreAuthedLayout />}>
-                                {/* Landing Page */}
-                                <Route
-                                    index
-                                    element={<App />}
-                                />
-
-                                {/* Reusable Components Route */}
-                                <Route
-                                    path="reusable-components"
-                                    element={<ReusableComponents />}
-                                />
-
-                                {/* Authentication Routes */}
-                                <Route path="auth">
+                        signInFallbackRedirectUrl="/"
+                        appearance={{
+                            layout: {
+                                socialButtonsVariant: "iconButton",
+                                showOptionalFields: false,
+                                shimmer: true,
+                            },
+                            variables: {
+                                colorPrimary: "#00674f",
+                                colorText: "#333",
+                                colorBackground: "#fff",
+                                borderRadius: "0.5rem"
+                            },
+                            elements: {
+                                formButtonPrimary: "bg-primary hover:bg-primary focus:shadow-outline",
+                                card: "rounded-lg shadow-md",
+                                providerIcon: {
+                                    filter: "invert(0%)",
+                                }
+                            }
+                        }}>
+                        <ApiProvider>
+                            <Routes>
+                                <Route element={<PreAuthedLayout />}>
+                                    <Route path="/healthz" element={<div>ok</div>} />
+                                    {/* Landing Page */}
                                     <Route
-                                        path="sign-in/*"
-                                        element={<SignIn />}
+                                        index
+                                        element={<App />}
                                     />
-                                </Route>
 
-                                <Route
-                                    path="/auth/sign-in/"
-                                    element={
-                                        <div className="d-flex justify-content-center align-items-center h-100 py-5">
-                                            <SignIn />
-                                        </div>
-                                    }></Route>
-
-                                {/* Testing Routes */}
-                                <Route path="test">
+                                    {/* Reusable Components Route */}
                                     <Route
-                                        path="test-clerk-go-backend"
-                                        element={<TestGoBackend />}
+                                        path="reusable-components"
+                                        element={<ReusableComponents />}
                                     />
-                                </Route>
-                            </Route>
-                            {/* End of Pre-authentication Layout Group */}
 
-                            {/* Protected Routes (Admin & Tenant) */}
-                            <Route element={<ProtectedRoutes />}>
-                                {/* Authenticated Layout Group */}
-                                <Route element={<AuthenticatedLayout />}>
-                                    {/* Admin Route Group */}
-                                    <Route path="admin">
+                                    {/* Authentication Routes */}
+                                    <Route path="auth">
                                         <Route
-                                            index
-                                            element={<AdminDashboard />}
-                                        />
-                                        <Route
-                                            path="init-apartment-complex"
-                                            element={<AdminApartmentSetupAndDetailsManagement />}
-                                        />
-                                        <Route
-                                            path="manage-tenants"
-                                            element={<AddTenant />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-leases"
-                                            element={<AdminViewEditLeases />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-work-orders-and-complaints"
-                                            element={<AdminWorkOrder />}
-                                        />
-                                        <Route
-                                            path="admin-view-and-edit-smart-lockers"
-                                            element={<AdminViewEditSmartLockers />}
+                                            path="sign-in/*"
+                                            element={
+                                                <div className="d-flex justify-content-center align-items-center h-100 py-5">
+                                                    <SignIn
+                                                        appearance={{
+                                                            elements: {
+                                                                rootBox: "mx-auto",
+                                                                card: "shadow-sm rounded-lg border border-gray-200",
+                                                                header: "text-center",
+                                                                footer: "text-center",
+                                                            }
+                                                        }}
+                                                    />
+                                                </div>
+                                            }
                                         />
                                     </Route>
 
-                                    {/* Tenant Route Group */}
-                                    <Route path="tenant">
-                                        <Route
-                                            index
-                                            element={<TenantDashBoard />}
-                                        />
-                                        <Route
-                                            path="guest-parking"
-                                            element={<h1>Guest Parking</h1>}
-                                        />
-                                        <Route
-                                            path="tenant-view-and-edit-leases"
-                                            element={<h1>Digital Documents</h1>}
-                                        />
-                                        <Route
-                                            path="tenant-complaints"
-                                            element={<TenantComplaints />}
-                                        />
-                                        <Route
-                                            path="tenant-work-orders"
-                                            element={<TenantWorkOrders />}
-                                        />
+                                </Route>
+                                {/* End of Pre-authentication Layout Group */}
+
+                                {/* Protected Routes (Admin & Tenant) */}
+                                <Route element={<ProtectedRoutes />}>
+                                    {/* Authenticated Layout Group */}
+                                    <Route element={<AuthenticatedLayout />}>
+                                        {/* Admin Route Group */}
+                                        <Route path="admin">
+                                            <Route
+                                                index
+                                                element={<AdminDashboard />}
+                                            />
+                                            <Route
+                                                path="init-apartment-complex"
+                                                element={<AdminApartmentSetupAndDetailsManagement />}
+                                            />
+                                            <Route
+                                                path="manage-tenants"
+                                                element={<AddTenant />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-leases"
+                                                element={<AdminViewEditLeases />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-work-orders-and-complaints"
+                                                element={<AdminWorkOrder />}
+                                            />
+                                            <Route
+                                                path="admin-view-and-edit-smart-lockers"
+                                                element={<AdminViewEditSmartLockers />}
+                                            />
+                                        </Route>
+
+                                        {/* Tenant Route Group */}
+                                        <Route path="tenant">
+                                            <Route
+                                                index
+                                                element={<TenantDashBoard />}
+                                            />
+                                            <Route
+                                                path="guest-parking"
+                                                element={<h1>Guest Parking</h1>}
+                                            />
+                                            <Route
+                                                path="tenant-view-and-edit-leases"
+                                                element={<h1>Digital Documents</h1>}
+                                            />
+                                            <Route
+                                                path="tenant-complaints"
+                                                element={<TenantComplaints />}
+                                            />
+                                            <Route
+                                                path="tenant-work-orders"
+                                                element={<TenantWorkOrders />}
+                                            />
+                                        </Route>
                                     </Route>
                                 </Route>
-                            </Route>
-                            {/* End of Protected Routes (Admin & Tenant) */}
+                                {/* End of Protected Routes (Admin & Tenant) */}
 
-                            {/* 404 Route - Always place at the end to catch unmatched routes */}
-                            <Route
-                                path="*"
-                                element={<ErrorNotFound />}
-                            />
-                        </Routes>
+                                {/* 404 Route - Always place at the end to catch unmatched routes */}
+                                <Route
+                                    path="*"
+                                    element={<ErrorNotFound />}
+                                />
+                            </Routes>
+                        </ApiProvider>
                     </ClerkProvider>
                 </BrowserRouter>
             </QueryClientProvider>

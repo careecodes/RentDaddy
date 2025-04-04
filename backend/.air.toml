@@ -9,18 +9,20 @@ cmd = "./tmp/server"
 # Watching for file changes
 [watcher]
 include = ["**/*.go"]
-exclude = ["./tmp/*", "_test.go", "vendor/*"]
+exclude = ["./tmp/*", "_test.go", "vendor/*", "**/generated/**"]
 
 # Build settings
 [build]
 bin = "./tmp/server"                       # Binary file
 cmd = "go build -o ./tmp/server server.go"
-delay = 1000                               # Delay in milliseconds before restarting
+delay = 500                                # Reduced delay to 500ms for faster reloading
 kill_signal = "SIGTERM"
+send_interrupt = true                      # Send interrupt before kill
+clean_on_exit = true                       # Clean temporary files on exit
 
 # Logging settings
 [log]
-level = "debug"
+level = "info"                             # Reduced log level to info to cut down on verbose output
 
 # Misc settings
 [color]
@@ -28,5 +30,5 @@ error = "red"
 warning = "yellow"
 info = "blue"
 
-# [screen]
-# clear_on_rebuild = false
+[screen]
+clear_on_rebuild = true                    # Clear the screen on rebuild for cleaner output

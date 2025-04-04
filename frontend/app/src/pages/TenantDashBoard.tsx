@@ -1,8 +1,3 @@
-import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
-import { Tag, Modal, Button } from "antd";
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router";
-import { TenantLeaseStatusAndURL } from "../types/types";
 import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
 import { Modal, Button, Divider, Form, Input, Select } from "antd";
 import { useState, useEffect } from "react";
@@ -13,22 +8,17 @@ import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQuery } from "@tanstack/react-query";
-
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
-
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
+
+const isDevelopment = import.meta.env.MODE === 'development';
+const absoluteServerUrl = isDevelopment
+    ? import.meta.env.VITE_SERVER_URL
+    : '/api';
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
-    const { user } = useUser();
-    const userId = user?.publicMetadata["db_id"];
     const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
@@ -47,7 +37,10 @@ export const TenantDashBoard = () => {
         if (!res.ok) {
             throw new Error("[TENANT_DASHBOARD] Error parking_permits request failed");
         }
-        return (await res.json()) as Parking[];
+
+        const permits = (await res.json()) as Parking[];
+        console.log("Parking permits:", permits);
+        return permits;
     }
 
     async function getComplaints() {
@@ -116,34 +109,31 @@ export const TenantDashBoard = () => {
         ],
     });
 
-    // Simulate fetching lease status using TanStack Query
+    // Fetch lease status using TanStack Query
     const {
-        data: leaseStatus,
+        data: leaseData,
         isLoading,
         isError,
     } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            // Simulate a delay to mimic network request and give dummy data
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            const leaseData = {
-                // userId: userId,
-                userId: "notme",
-                lease_status: "pending_approval",
-            };
-            // const response = await fetch(`/api/leases?tenantId=${userId}`);
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch lease status");
-            // }
-            // const data = await response.json();
-
-            // Return dummy data if the userId matches
-            if (userId === leaseData.userId) {
-                console.log(leaseData.lease_status);
-                return leaseData.lease_status;
-            } else {
-                return "active";
+            if (!userId) {
+                console.log("`userId` variable is not populated");
+                return null;
             }
+            const response = await fetch(`${absoluteServerUrl}/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                return null;
+            }
+
+            // If empty, return null so tenant dashboard can still load
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                return null;
+            }
+
+            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
+            return leaseData;
         },
         enabled: !!userId,
     });
@@ -172,18 +162,18 @@ export const TenantDashBoard = () => {
         return <div>Loading...</div>;
     }
 
+    if (isError) {
+        return <div>Error fetching lease information. Please try again later.</div>;
+    }
     return (
         <div className="container">
-            {/* <h1 className="my-4">Tenant Dashboard</h1> */}
             <PageTitleComponent title="Tenant Dashboard" />
-            {/* <div className="alert-container"> */}
             <AlertComponent
                 title=""
                 message="Welcome to the Tenant Dashboard"
                 description="Sign Yo Lease. Pay Daddy Rent"
                 type="warning"
             />
-            {/* </div> */}
 
             {/* Dashboard Statistics Cards */}
             <h2 className="my-3 p-3 text-center">Quick Actions</h2>
@@ -194,15 +184,6 @@ export const TenantDashBoard = () => {
                     description="Something not working right or disturbing you? Let us know."
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
-                    button={
-                        <Link to="/tenant/tenant-work-orders-and-complaints">
-                            <ButtonComponent
-                                title="View All"
-                                type="primary"
-                                onClick={() => { }}
-                            />
-                        </Link>
-                    }
                     button={<TenantCreateComplaintsModal />}
                 />
                 <CardComponent
@@ -219,15 +200,6 @@ export const TenantDashBoard = () => {
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={
-                        <ModalComponent
-                            type="Guest Parking"
-                            buttonTitle="Add Guest"
-                            content="Add guest to be able to park in the complex"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
                     button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
@@ -253,15 +225,6 @@ export const TenantDashBoard = () => {
                     title="Work Orders"
                     description={"View your work orders here."}
                     hoverable={true}
-                    button={
-                        <Link to="/tenant/tenant-work-orders-and-complaints">
-                            <ButtonComponent
-                                title="View all workorders"
-                                type="primary"
-                                onClick={() => { }}
-                            />
-                        </Link>
-                    }
                     value={workOrders.data?.length}
                     button={<TenantViewWorkOrdersModal data={workOrders.data} />}
                 />
@@ -269,15 +232,6 @@ export const TenantDashBoard = () => {
                     title="Complaints"
                     description={"View your complaints here."}
                     hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all complaints"
-                            content="Complaint should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
                     value={complaints.data?.length}
                     button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
@@ -306,7 +260,7 @@ export const TenantDashBoard = () => {
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
                     <p>
-                        Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.
+                        Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
                     </p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
@@ -320,12 +274,12 @@ interface ParkingPermitModalProps {
     userParkingPermitsUsed: number;
 }
 
-function TenantParkingPeritModal(props: ParkingPermitModalProps) {
+function TenantParkingPermitModal(props: ParkingPermitModalProps) {
     const queryClient = useQueryClient();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const { userId, getToken } = useAuth();
     const [parkingPermitForm] = Form.useForm<ParkingEntry>();
-    console.log(`FORM VALUES: ${JSON.stringify(parkingPermitForm.getFieldsValue())}`);
+
     const { mutate: createParkingPermit, isPending: isParkingPending } = useMutation({
         mutationKey: [`${userId}-create-parking`],
         mutationFn: async () => {
@@ -334,14 +288,22 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
 
-            // console.log(`FORM VALUES: ${JSON.stringify(parkingPermitForm.getFieldsValue())}`);
+            // Transform form values to match the ParkingEntry interface
+            const formValues = parkingPermitForm.getFieldsValue();
+            const parkingData: ParkingEntry = {
+                created_by: userId ? parseInt(userId) : 0,
+                car_color: formValues["car_color"] || "",
+                car_make: formValues["car_make"] || "",
+                license_plate: formValues["license_plate"] || ""
+            };
+
             const res = await fetch(`${absoluteServerUrl}/tenant/parking`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${authToken}`,
                 },
-                body: JSON.stringify(parkingPermitForm.getFieldsValue()),
+                body: JSON.stringify(parkingData),
             });
 
             if (!res.ok) {
@@ -360,14 +322,11 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
     const showModal = () => {
         setInternalModalOpen(true);
     };
+
     const handleCancel = () => {
-        if (internalModalOpen) {
-            setInternalModalOpen(false);
-        }
-        if (internalModalOpen === undefined) {
-            setInternalModalOpen(false);
-        }
+        setInternalModalOpen(false);
     };
+
     return (
         <>
             <ButtonComponent
@@ -376,52 +335,62 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
                 onClick={showModal}
                 disabled={props.userParkingPermitsUsed >= 2 ? true : false}
             />
-            <Modal
-                className="p-3 flex-wrap-row"
-                title={<h3>Guest Parking Permit</h3>}
-                open={internalModalOpen}
-                onOk={() => {
+            <ModalComponent
+                buttonTitle="Add Guest Parking"
+                buttonType="primary"
+                modalTitle="Guest Parking Permit"
+                type="Guest Parking"
+                content={
+                    <Form form={parkingPermitForm}>
+                        {/* Add a loading indicator when the form is submitting */}
+                        {isParkingPending && (
+                            <div className="text-center mb-3">
+                                <div className="spinner-border text-primary" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <p>Creating parking permit...</p>
+                            </div>
+                        )}
+                        <p className="fs-6">Guest Name</p>
+                        <Form.Item
+                            name="name"
+                            rules={[{ required: true, message: "Please enter a guest name", type: "string" }]}>
+                            <Input placeholder="John Doe" />
+                        </Form.Item>
+                        <p className="fs-6">Car Color</p>
+                        <Form.Item
+                            name="car-color"
+                            rules={[{ required: true, message: "Enter guest's car color", type: "string" }]}>
+                            <Input placeholder="Blue" />
+                        </Form.Item>
+                        <p className="fs-6">Car Model</p>
+                        <Form.Item
+                            name="car-model"
+                            rules={[{ required: true, message: "Enter guest's car model", type: "string" }]}>
+                            <Input placeholder="Car Make" type="text" />
+                        </Form.Item>
+                        <p className="fs-6">License Plate</p>
+                        <Form.Item
+                            name="license-plate-number"
+                            rules={[{ required: true, message: "Enter guest's license plate", type: "string" }]}>
+                            <Input placeholder="3ha3-3213" />
+                        </Form.Item>
+                    </Form>
+                }
+                handleOkay={async () => {
                     createParkingPermit();
+                    return Promise.resolve();
                 }}
-                okText={"Create"}
+                setUserId={() => { }}
+                setAccessCode={() => { }}
+                selectedUserId=""
+                accessCode=""
+                isModalOpen={internalModalOpen}
                 onCancel={handleCancel}
-                okButtonProps={{ disabled: isParkingPending ? true : false }}
-                cancelButtonProps={{ disabled: isParkingPending ? true : false }}>
-                <Divider />
-                <Form form={parkingPermitForm}>
-                    <p className="fs-6">Guest Name</p>
-                    <Form.Item
-                        name="name"
-                        rules={[{ required: true, message: "Please enter a guest name", type: "string" }]}>
-                        <Input placeholder="John Doe" />
-                    </Form.Item>
-                    <p className="fs-6">Car Color</p>
-                    <Form.Item
-                        name="car-color"
-                        rules={[{ required: true, message: "Enter guest's car color", type: "string" }]}>
-                        <Input placeholder="Blue" />
-                    </Form.Item>
-                    <p className="fs-6">Car Model</p>
-                    <Form.Item
-                        name="car-model"
-                        rules={[{ required: true, message: "Enter guest's car model", type: "string" }]}>
-                        <Input
-                            placeholder="Car Make"
-                            type="text"
-                        />
-                    </Form.Item>
-                    <p className="fs-6">License Plate</p>
-                    <Form.Item
-                        name="license-plate-number"
-                        rules={[{ required: true, message: "Enter guest's license plate", type: "string" }]}>
-                        <Input placeholder="3ha3-3213" />
-                    </Form.Item>
-                </Form>
-            </Modal>
+            />
         </>
     );
 }
-
 interface WorkOrderModalProps {
     data: WorkOrderData[] | undefined;
 }
@@ -442,13 +411,13 @@ function TenantViewWorkOrdersModal(props: WorkOrderModalProps) {
     return (
         <>
             <ButtonComponent
-                title="View Complaints"
+                title="View Work Orders"
                 type="primary"
                 onClick={showModal}
             />
             <Modal
                 className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
+                title={<h3>Work Orders</h3>}
                 open={internalModalOpen}
                 onOk={() => { }}
                 onCancel={handleCancel}
@@ -505,44 +474,51 @@ function TenantViewComplaintsModal(props: ComplaintModalProps) {
                 type="primary"
                 onClick={showModal}
             />
-            <Modal
-                className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
-                open={internalModalOpen}
+            <ModalComponent
+                buttonTitle="View Complaints"
+                buttonType="primary"
+                modalTitle="Complaints"
+                type="default"
+                content={
+                    <div className="modal-scroll-container">
+                        {props.data ? (
+                            <>
+                                {props.data.map((order, idx) => (
+                                    <div
+                                        key={idx}
+                                        className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
+                                        <p>{order.title}</p>
+                                        <p>
+                                            Category: <span className="text-success">{order.category}</span>
+                                        </p>
+                                        <p>
+                                            Status: <span className="text-success">{order.status}</span>
+                                        </p>
+                                    </div>
+                                ))}
+                            </>
+                        ) : (
+                            <p>No complaints found.</p>
+                        )}
+                    </div>
+                }
+                handleOkay={async () => Promise.resolve()}
+                setUserId={() => { }}
+                setAccessCode={() => { }}
+                selectedUserId=""
+                accessCode=""
+                isModalOpen={internalModalOpen}
                 onCancel={handleCancel}
-                okButtonProps={{ hidden: true, disabled: true }}
-                cancelButtonProps={{ hidden: true, disabled: true }}>
-                <Divider />
-                <div style={{ overflowY: "auto", height: "200px" }}>
-                    {props.data ? (
-                        <>
-                            {props.data.map((order, idx) => (
-                                <div
-                                    key={idx}
-                                    className="flex gap-2 mb-2 mt-2 border-b-2 pb-2 border-gray-300">
-                                    <p>{order.title}</p>
-                                    <p>
-                                        Category: <span style={{ color: "green" }}>{order.category}</span>
-                                    </p>
-                                    <p>
-                                        Status: <span style={{ color: "green" }}>{order.status}</span>
-                                    </p>
-                                </div>
-                            ))}
-                        </>
-                    ) : (
-                        <p>No complaints....</p>
-                    )}
-                </div>
-            </Modal>
+            />
         </>
     );
 }
+
 function TenantCreateComplaintsModal() {
     const queryClient = useQueryClient();
     const { getToken, userId } = useAuth();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
-    const [complaintForm] = Form.useForm<ComplaintsData>();
+    const [complaintForm] = Form.useForm<ComplaintEntry>();
     const showModal = () => {
         setInternalModalOpen(true);
     };
@@ -563,14 +539,22 @@ function TenantCreateComplaintsModal() {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
 
-            // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
+            // Transform form values to match the ComplaintEntry interface
+            const formValues = complaintForm.getFieldsValue();
+            const complaintData: ComplaintEntry = {
+                title: formValues.title,
+                description: formValues.description,
+                category: formValues.category,
+                unit_number: 0 // This should be obtained from user profile or the form
+            };
+
             const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
                     Authorization: `Bearer ${authToken}`,
                 },
-                body: JSON.stringify(complaintForm.getFieldsValue()),
+                body: JSON.stringify(complaintData),
             });
 
             if (!res.ok) {
@@ -592,50 +576,61 @@ function TenantCreateComplaintsModal() {
                 title="Create Complaint"
                 onClick={showModal}
             />
-            <Modal
-                className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
-                open={internalModalOpen}
-                onOk={() => {
+            <ModalComponent
+                buttonTitle="Create Complaint"
+                buttonType="primary"
+                modalTitle="Create Complaint"
+                type="default"
+                content={
+                    <>
+                        <p>Enter information about a complaint that you're having here.</p>
+                        <Divider />
+                        {/* Add loading indicator when the complaint is being submitted */}
+                        {isPendingComplaint && (
+                            <div className="text-center mb-3">
+                                <div className="spinner-border text-primary" role="status">
+                                    <span className="visually-hidden">Loading...</span>
+                                </div>
+                                <p>Submitting complaint...</p>
+                            </div>
+                        )}
+                        <Form form={complaintForm}>
+                            <p className="fs-7">Title</p>
+                            <Form.Item
+                                name="title"
+                                rules={[{ required: true, type: "string", min: 3, max: 50 }]}>
+                                <Input placeholder="Enter a title" type="text" />
+                            </Form.Item>
+                            <p className="fs-7">Description</p>
+                            <Form.Item
+                                name="description"
+                                rules={[{ required: true, type: "string", min: 5, max: 500 }]}>
+                                <Input.TextArea placeholder="Enter a brief description for complaint" rows={4} />
+                            </Form.Item>
+                            <p className="fs-7">Category</p>
+                            <Form.Item
+                                name="category"
+                                rules={[{ required: true, type: "string" }]}>
+                                <Select placeholder={"Select a category"}>
+                                    {["maintenance", "noise", "security", "parking", "neighbor", "trash", "internet", "lease", "natural_disaster", "other"].map((c) => (
+                                        <Select.Option key={c}>{c}</Select.Option>
+                                    ))}
+                                </Select>
+                            </Form.Item>
+                        </Form>
+                    </>
+                }
+                handleOkay={async () => {
                     createComplaint();
+                    return Promise.resolve();
                 }}
-                okText={"Create"}
+                setUserId={() => { }}
+                setAccessCode={() => { }}
+                selectedUserId=""
+                accessCode=""
+                isModalOpen={internalModalOpen}
                 onCancel={handleCancel}
-                okButtonProps={{ disabled: isPendingComplaint ? true : false }}
-                cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
-                <p>Enter information about a complaint that you're having here.</p>
-                <Divider />
-                <Form form={complaintForm}>
-                    <p className="fs-7">Title</p>
-                    <Form.Item
-                        name="title"
-                        rules={[{ required: true, type: "string", min: 3, max: 50 }]}>
-                        <Input
-                            placeholder="Enter a title"
-                            type="text"
-                        />
-                    </Form.Item>
-                    <p className="fs-7">Description</p>
-                    <Form.Item
-                        name="description"
-                        rules={[{ required: true, type: "string", min: 5, max: 500 }]}>
-                        <Input.TextArea
-                            placeholder="Enter a breif description for complaint"
-                            rows={4}
-                        />
-                    </Form.Item>
-                    <p className="fs-7">Category</p>
-                    <Form.Item
-                        name="category"
-                        rules={[{ required: true, type: "string" }]}>
-                        <Select placeholder={"Select a category"}>
-                            {["maintenance", "noise", "security", "parking", "neighbor", "trash", "internet", "lease", "natural_disaster", "other"].map((c) => (
-                                <Select.Option key={c}>{c}</Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                </Form>
-            </Modal>
+            />
         </>
     );
 }
@@ -666,7 +661,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
             if (!authToken) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
-            const res = await fetch(`${absoluteServerUrl}/tenants/lockers/unlock`, {
+            const res = await fetch(`${absoluteServerUrl}/tenant/lockers/unlock`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -700,33 +695,25 @@ function TenantOpenLockerModal(props: LockerModalProps) {
                 onClick={showModal}
                 disabled={props.numberOfPackages === 0 ? true : false}
             />
-            <Modal
-                className="p-3 flex-wrap-row"
-                title={<h3>Locker Notification</h3>}
-                open={internalModalOpen}
+            <ModalComponent
+                buttonTitle="Open Locker"
+                buttonType="primary"
+                modalTitle="Locker Notification"
+                type="Unlock Locker"
+                content={
+                    <span className="d-flex align-items-center text-success">
+                        <KeyIcon className="mb-3 me-1" size={24} color="currentColor" />
+                        <p className="fs-5">Locker is open!</p>
+                    </span>
+                }
+                handleOkay={async () => Promise.resolve()}
+                setUserId={() => { }}
+                setAccessCode={() => { }}
+                selectedUserId=""
+                accessCode=""
+                isModalOpen={internalModalOpen}
                 onCancel={handleCancel}
-                okButtonProps={{ hidden: true, disabled: true }}
-                cancelButtonProps={{ hidden: true, disabled: true }}>
-                <Divider />
-                <span className="d-flex align-items-center text-success">
-                    <svg
-                        xmlns="http://www.w3.org/2000/svg"
-                        width="24"
-                        height="24"
-                        viewBox="0 0 24 24"
-                        fill="none"
-                        stroke="currentColor"
-                        stroke-width="2"
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        className="lucide lucide-key-square-icon lucide-key-square mb-3 me-1">
-                        <path d="M12.4 2.7a2.5 2.5 0 0 1 3.4 0l5.5 5.5a2.5 2.5 0 0 1 0 3.4l-3.7 3.7a2.5 2.5 0 0 1-3.4 0L8.7 9.8a2.5 2.5 0 0 1 0-3.4z" />
-                        <path d="m14 7 3 3" />
-                        <path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814" />
-                    </svg>
-                    <p className="fs-5">Locker is open!</p>
-                </span>
-            </Modal>
+            />
         </>
     );
 }

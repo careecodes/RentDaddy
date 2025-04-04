@@ -2,15 +2,15 @@ package utils
 
 import (
 	"context"
-	_ "database/sql"
 	"errors"
 	"fmt"
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/go-faker/faker/v4"
-	_ "github.com/jackc/pgx/v5/pgtype"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"log"
 	"math/rand"
+
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/go-faker/faker/v4"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 func RandomWorkCategory() db.WorkCategory {
@@ -47,81 +47,53 @@ func RandomStatus() db.Status {
 }
 
 func createWorkOrders(queries *db.Queries, user db.User, ctx context.Context) error {
-	orders, err := queries.CountWorkOrdersByUser(ctx, user.ID)
-	if err != nil {
-		return errors.New("[SEEDER] error getting work orders: " + err.Error())
-	}
-	if orders > 0 {
-		log.Println("[SEEDER] work orders already exist")
-		return nil
-	}
 
-	for i := 0; i < 10; i++ {
-		orderNum := user.ID + int64(rand.Intn(1000))
-		_, err := queries.CreateWorkOrder(context.Background(), db.CreateWorkOrderParams{
+	for i := 0; i < 12; i++ {
+		order, err := queries.CreateWorkOrder(context.Background(), db.CreateWorkOrderParams{
 			CreatedBy:   user.ID,
-			OrderNumber: orderNum,
 			Category:    RandomWorkCategory(),
 			Title:       faker.Sentence(),
 			Description: faker.Paragraph(),
-			Status:      RandomStatus(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %d %v", orderNum, err.Error()))
+			return errors.New(fmt.Sprintf("[SEEDER] error creating work order: %v", err.Error()))
 		}
+		log.Println("[SEEDER] work order created", order.ID)
 	}
 
 	log.Println("[SEEDER] work orders seeded successfully")
-
 	return nil
 }
 
 func createComplaints(queries *db.Queries, user db.User, ctx context.Context) error {
-	for i := 0; i < 10; i++ {
-		complaintNum := user.ID + int64(rand.Intn(1000))
-		_, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
-			CreatedBy:       user.ID,
-			ComplaintNumber: complaintNum,
-			Category:        RandomComplaintCategory(),
-			Title:           faker.Sentence(),
-			Description:     faker.Paragraph(),
-			Status:          RandomStatus(),
+	for i := 0; i < 7; i++ {
+		complaint, err := queries.CreateComplaint(ctx, db.CreateComplaintParams{
+			CreatedBy:   user.ID,
+			Category:    RandomComplaintCategory(),
+			Title:       faker.Sentence(),
+			Description: faker.Paragraph(),
 		})
 		if err != nil {
-			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %d %v", complaintNum, err.Error()))
+			return errors.New(fmt.Sprintf("[SEEDER] error creating complaint: %v", err.Error()))
 		}
+		log.Println("[SEEDER] complaint created successfully", complaint.ID)
+		log.Println("[SEEDER] complaint created successfully", complaint.ID)
 	}
 
 	log.Println("[SEEDER] complaints seeded successfully")
 	return nil
 }
 
-func assignApartment(pool *pgxpool.Pool, queries *db.Queries, user db.User, ctx context.Context) error {
-	randomApartment, err := pool.Query(ctx, "SELECT id, unit_number, price, size, management_id, lease_id FROM apartments WHERE availability = true ORDER BY RANDOM() LIMIT 1")
-	if err != nil {
-		return errors.New("[SEEDER] error getting random apartment: " + err.Error())
-	}
-
-	var apartment db.Apartment
-	for randomApartment.Next() {
-		if err := randomApartment.Scan(
-			&apartment.ID,
-			&apartment.UnitNumber,
-			&apartment.Price,
-			&apartment.Size,
-			&apartment.ManagementID,
-		); err != nil {
-			return errors.New("[SEEDER] error scanning apartment: " + err.Error())
-		}
-
-		err := queries.UpdateApartment(ctx, db.UpdateApartmentParams{
-			ID:           apartment.ID,
-			Price:        apartment.Price,
-			ManagementID: apartment.ManagementID,
-			Availability: false,
-		})
-		if err != nil {
-			return errors.New("[SEEDER] error updating apartment availability: " + err.Error())
+func createLockers(queries *db.Queries, tenants []db.ListUsersByRoleRow, ctx context.Context) error {
+	for tenant := range tenants {
+		// create 2 lockers for each tenant
+		for i := 0; i < 2; i++ {
+			if err := queries.CreateLocker(ctx, db.CreateLockerParams{
+				UserID:     pgtype.Int8{Int64: tenants[tenant].ID, Valid: true},
+				AccessCode: pgtype.Text{String: string(tenants[tenant].ID + int64(i)), Valid: true},
+			}); err != nil {
+				return err
+			}
 		}
 	}
 
@@ -140,7 +112,10 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 		log.Println("[SEEDER] tenant users found")
 	}
 
-	// err = createLockers(queries, users, ctx)
+	// Create lockers
+	if err = createLockers(queries, users, ctx); err != nil {
+		return errors.New("[SEEDER] error creating lockers: " + err.Error())
+	}
 
 	// get random users from the database
 	row, err := pool.Query(ctx, "SELECT id, clerk_id, first_name, last_name, email, phone,role, created_at FROM users ORDER BY RANDOM() LIMIT 3")
@@ -166,26 +141,14 @@ func SeedDB(queries *db.Queries, pool *pgxpool.Pool, adminID int32) error {
 			return errors.New("[SEEDER] error seeding user: " + err.Error())
 		}
 
-		wOCount, err := queries.ListWorkOrdersByUser(ctx, u.ID)
+		err := createWorkOrders(queries, u, ctx)
 		if err != nil {
-			log.Println("[SEEDER] error counting work orders: " + err.Error())
-		}
-		if len(wOCount) < 10 {
-			err := createWorkOrders(queries, u, ctx)
-			if err != nil {
-				return errors.New("[SEEDER] error creating work orders: " + err.Error())
-			}
+			return errors.New("[SEEDER] error creating work orders: " + err.Error())
 		}
 
-		cCount, err := queries.ListWorkOrdersByUser(ctx, u.ID)
+		err = createComplaints(queries, u, ctx)
 		if err != nil {
-			log.Println("[SEEDER] error counting complaints: " + err.Error())
-		}
-		if len(cCount) < 10 {
-			err = createComplaints(queries, u, ctx)
-			if err != nil {
-				return errors.New("[SEEDER] error creating complaints: " + err.Error())
-			}
+			return errors.New("[SEEDER] error creating complaints: " + err.Error())
 		}
 
 	}

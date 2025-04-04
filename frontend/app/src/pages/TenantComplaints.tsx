@@ -7,8 +7,10 @@ import { ComplaintStatus, ComplaintEntry, ComplaintsData, GetApartment } from ".
 import Table, { ColumnsType } from "antd/es/table";
 import dayjs from "dayjs";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+const isDevelopment = import.meta.env.MODE === 'development';
+const absoluteServerUrl = isDevelopment
+    ? import.meta.env.VITE_SERVER_URL
+    : '/api';
 
 const TenantComplaintsAndWorkOrders = () => {
     const { getToken } = useAuth();

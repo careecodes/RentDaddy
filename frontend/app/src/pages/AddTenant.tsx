@@ -43,7 +43,7 @@ const AddTenant = () => {
         },
     });
 
-    console.log(`data: ${JSON.stringify(tenants)}\n\n`);
+    // console.log(`data: ${JSON.stringify(tenants)}\n\n`);
 
     // Mock data for tenant table
     const columns: ColumnsType<TenantsWithLeaseStatus> = [

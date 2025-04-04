@@ -4,14 +4,15 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/careecodes/RentDaddy/internal/utils"
 	"github.com/careecodes/RentDaddy/middleware"
 	"github.com/go-faker/faker/v4"
 	"github.com/jackc/pgx/v5/pgtype"
-	"log"
-	"net/http"
-	"strconv"
 )
 
 type Building struct {
@@ -109,10 +110,11 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 					Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
 					ManagementID: adminUser.ID,
 					BuildingID:   buildingResponse.ID,
+					Availability: true,
 				})
 				if err != nil {
 					log.Printf("[Construct-Create-Apartment] error creating apartment: %v", err)
-					return errors.New(fmt.Sprintf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error()))
+					return fmt.Errorf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error())
 				}
 				aCount++
 			}

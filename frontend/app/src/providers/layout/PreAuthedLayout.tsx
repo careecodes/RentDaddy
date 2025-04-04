@@ -1,13 +1,14 @@
 import React from "react";
 import { Layout, Menu, theme } from "antd";
 import { Link, Outlet } from "react-router";
-import { SignOutButton, useUser } from "@clerk/react-router";
+import { useClerk, useUser } from "@clerk/react-router";
 
 const { Header, Content, Footer } = Layout;
 
 const PreAuthedLayout: React.FC = () => {
     // Get Clerk User to get the user's role
     const { user } = useUser();
+    const { signOut } = useClerk();
 
     const {
         token: { colorBgContainer, borderRadiusLG },
@@ -21,14 +22,14 @@ const PreAuthedLayout: React.FC = () => {
             key: "1",
             label: user ? (
                 <Link
-                    className="text-white"
-                    to={user.publicMetadata.role === "admin" ? "/admin" : "/tenant"}>
+                    to={user.publicMetadata.role === "admin" ? "/admin" : "/tenant"}
+                    className="text-white link-offset-2 link-underline-opacity-0-hover">
                     Dashboard
                 </Link>
             ) : (
                 <Link
-                    className="text-white"
-                    to="/">
+                    to="/"
+                    className="text-white link-offset-2 link-underline-opacity-0-hover">
                     Home
                 </Link>
             ),
@@ -36,11 +37,19 @@ const PreAuthedLayout: React.FC = () => {
         {
             key: "2",
             label: user ? (
-                <SignOutButton>
-                    <div className="text-white">Logout</div>
-                </SignOutButton>
+                <a
+                    onClick={() => {
+                        signOut({ redirectUrl: "/" });
+                    }}
+                    className="text-white link-offset-2 link-underline-opacity-0-hover">
+                    Logout
+                </a>
             ) : (
-                <Link to="/auth/sign-in">Login</Link>
+                <Link
+                    className="text-white link-offset-2 link-underline-opacity-0 link-underline-opacity-75-hover"
+                    to="/auth/sign-in">
+                    Login
+                </Link>
             ),
         },
     ];
@@ -55,7 +64,7 @@ const PreAuthedLayout: React.FC = () => {
                             <img
                                 src="/logo.png"
                                 alt="logo"
-                                style={{ width: "56px", height: "56px" }}
+                                style={{ width: "50px", height: "50px" }}
                                 className="rounded"
                             />
                         </div>

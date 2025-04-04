@@ -1,0 +1,59 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Define build arguments
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_BACKEND_URL
+ARG VITE_DOCUMENSO_PUBLIC_URL
+ARG VITE_ENV=production
+
+# Set environment variables from build args
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_DOCUMENSO_PUBLIC_URL=$VITE_DOCUMENSO_PUBLIC_URL
+ENV VITE_ENV=$VITE_ENV
+ENV NODE_ENV=production
+
+# Pre-install only what's needed for dependency resolution
+COPY package.json package-lock.json ./
+# We need to include dev dependencies for the build process
+RUN NODE_ENV=development npm ci
+
+# Copy all source files after installing dependencies (better Docker caching)
+COPY . .
+
+# Build with environment variables
+# For production builds, we'll use the full build command
+RUN npm run build
+
+# Serve stage
+FROM nginx:alpine AS production
+
+# Define build arguments again for the production stage
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_BACKEND_URL
+ARG VITE_DOCUMENSO_PUBLIC_URL
+ARG VITE_ENV=production
+
+# Set environment variables from build args
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_DOCUMENSO_PUBLIC_URL=$VITE_DOCUMENSO_PUBLIC_URL
+ENV VITE_ENV=$VITE_ENV
+
+# Add bash and other utilities
+RUN apk add --no-cache bash grep findutils
+
+# Copy custom nginx config and entrypoint
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy the built frontend
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Make sure entrypoint starts nginx
+ENTRYPOINT ["/docker-entrypoint.sh"]

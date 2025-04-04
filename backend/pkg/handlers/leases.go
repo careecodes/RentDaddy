@@ -1,28 +1,22 @@
 package handlers
 
-// PLEASE USE THIS TO GET LANDLORD EMAIL, ALSO CHECK FOR LANDLORD NAME AND ID extractEmailFromContext
 import (
 	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
-	"path/filepath"
-
 	"fmt"
-
 	"io"
 	"log"
 	"math/big"
 	"net/http"
 	"net/url"
 	"os"
-
+	"path/filepath"
 	"strconv"
 	"strings"
-
 	"time"
 
-	"github.com/clerk/clerk-sdk-go/v2"
 	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/jung-kurt/gofpdf"
@@ -133,13 +127,60 @@ func derefOrZero(ptr *int64) int64 {
 func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 	baseURL := os.Getenv("DOCUMENSO_API_URL")
 	apiKey := os.Getenv("DOCUMENSO_API_KEY")
+	webhookSecret := os.Getenv("DOCUMENSO_WEBHOOK_SECRET")
+
+	// Try to load Documenso configuration from database if not in environment
+	if apiKey == "" || webhookSecret == "" {
+		log.Println("[LEASE_HANDLER] Documenso API key or webhook secret not found in environment, attempting to load from database")
+
+		ctx := context.Background()
+
+		// Try to get API key from database
+		if apiKey == "" {
+			apiKeyConfig, err := queries.GetConfigByKey(ctx, "documenso_api_key")
+			if err == nil && apiKeyConfig.Value != "" {
+				apiKey = apiKeyConfig.Value
+				os.Setenv("DOCUMENSO_API_KEY", apiKey)
+				log.Println("[LEASE_HANDLER] Loaded Documenso API key from database")
+			}
+		}
+
+		// Try to get webhook secret from database
+		if webhookSecret == "" {
+			webhookConfig, err := queries.GetConfigByKey(ctx, "documenso_webhook_secret")
+			if err == nil && webhookConfig.Value != "" {
+				webhookSecret = webhookConfig.Value
+				os.Setenv("DOCUMENSO_WEBHOOK_SECRET", webhookSecret)
+				log.Println("[LEASE_HANDLER] Loaded Documenso webhook secret from database")
+			}
+		}
+	}
+
 	log.Printf("Documenso API URL: %s", baseURL)
-	log.Printf("Documenso API Key: %s", apiKey)
+
+	// Log first few characters of API key for security reasons
+	if len(apiKey) > 4 {
+		log.Printf("Documenso API Key: %s...", apiKey[:4])
+	} else {
+		log.Printf("Documenso API Key: <not set or invalid>")
+	}
+
+	// Log first few characters of webhook secret for security reasons
+	if len(webhookSecret) > 4 {
+		log.Printf("Documenso Webhook Secret: %s...", webhookSecret[:4])
+	} else {
+		log.Printf("Documenso Webhook Secret: <not set or invalid>")
+	}
 
 	// Default fallback values
 	currentLandlordID := int64(100) // Default to the original hardcoded value
 	currentLandlordName := "First Landlord"
-	currentLandlordEmail := "wrldconnect1@gmail.com"
+
+	// Use SMTP_FROM as the landlord email if available
+	currentLandlordEmail := os.Getenv("SMTP_FROM")
+	if currentLandlordEmail == "" {
+		currentLandlordEmail = "ezra@gitfor.ge" // Standard fallback value
+	}
 
 	if tempDir == "" {
 		tempDir = "/app/temp" // Default fallback
@@ -154,6 +195,7 @@ func NewLeaseHandler(pool *pgxpool.Pool, queries *db.Queries) *LeaseHandler {
 		landlordEmail:    currentLandlordEmail,
 	}
 }
+
 func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
 	log.Printf("[LEASE_AMEND] Incoming payload: %+v", req)
@@ -211,9 +253,30 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// Validate that lease is amendable
-	if string(existingLease.Status) != string(db.LeaseStatusActive) && string(existingLease.Status) != "draft" {
-		log.Printf("[LEASE_AMEND] Lease ID %d is not amendable. Status: %s", existingLease.ID, existingLease.Status)
-		http.Error(w, "Only active or draft leases can be amended", http.StatusBadRequest)
+	// Get the computed status that accounts for "expires_soon"
+	computedStatus := h.GetLeaseStatus(db.Lease{
+		ID:             existingLease.ID,
+		Status:         existingLease.Status,
+		LeaseEndDate:   existingLease.LeaseEndDate,
+		LeaseStartDate: existingLease.LeaseStartDate,
+	})
+
+	// Add detailed logging about status checks
+	log.Printf("[LEASE_AMEND_DEBUG] Lease ID: %d", existingLease.ID)
+	log.Printf("[LEASE_AMEND_DEBUG] Database Status: %s", existingLease.Status)
+	log.Printf("[LEASE_AMEND_DEBUG] Computed Status: %s", computedStatus)
+	log.Printf("[LEASE_AMEND_DEBUG] LeaseEndDate: %+v", existingLease.LeaseEndDate)
+	log.Printf("[LEASE_AMEND_DEBUG] Is db.LeaseStatusActive? %v", computedStatus == string(db.LeaseStatusActive))
+	log.Printf("[LEASE_AMEND_DEBUG] Is expires_soon? %v", computedStatus == "expires_soon")
+	log.Printf("[LEASE_AMEND_DEBUG] Is draft? %v", string(existingLease.Status) == "draft")
+
+	// Allow amendments for active, expires_soon, or draft leases
+	if computedStatus != string(db.LeaseStatusActive) &&
+		computedStatus != "expires_soon" &&
+		string(existingLease.Status) != "draft" {
+		log.Printf("[LEASE_AMEND] Lease ID %d is not amendable. Status: %s, Computed Status: %s",
+			existingLease.ID, existingLease.Status, computedStatus)
+		http.Error(w, "Only active, soon-to-expire, or draft leases can be amended", http.StatusBadRequest)
 		return
 	}
 	landlordID, _, _, err := h.GetLandlordInfo(r)
@@ -263,9 +326,19 @@ func (h *LeaseHandler) AmendLease(w http.ResponseWriter, r *http.Request) {
 			log.Printf("[LEASE_AMEND] Failed to cancel original lease ID %d: %v", existingLease.ID, err)
 		} else {
 			log.Printf("[LEASE_AMEND] Canceled original lease ID %d after amendment", existingLease.ID)
+
+			// After successfully canceling the original lease, get tenant info and send notification email
+			tenant, err := h.queries.GetUserByID(ctx, existingLease.TenantID)
+			if err != nil {
+				log.Printf("[LEASE_AMEND] Failed to get tenant info for email notification: %v", err)
+			} else {
+				// Send email notification about lease amendment
+				go h.SendLeaseAmendmentEmail(tenant.Email, tenant.FirstName+" "+tenant.LastName, existingLease.ID)
+			}
 		}
 	}
 }
+
 func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 	leaseIDStr := chi.URLParam(r, "leaseID")
 	leaseID, err := strconv.Atoi(leaseIDStr)
@@ -280,6 +353,13 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		http.Error(w, "Unauthorized", http.StatusUnauthorized)
 		return
+	}
+
+	// Get lease info before termination for email notification
+	lease, err := h.queries.GetLeaseByID(ctx, int64(leaseID))
+	if err != nil {
+		log.Printf("[LEASE_TERMINATE] Failed to get lease details for ID %d: %v", leaseID, err)
+		// Continue with termination anyway
 	}
 
 	terminatedLease, err := h.queries.TerminateLease(ctx, db.TerminateLeaseParams{
@@ -298,13 +378,24 @@ func (h *LeaseHandler) TerminateLease(w http.ResponseWriter, r *http.Request) {
 		ManagementID: terminatedLease.LandlordID,
 		Availability: true,
 	})
-
 	if err != nil {
-		log.Printf("[WEBHOOK] Failed to update apartment availability: %v", err)
+		log.Printf("[LEASE_TERMINATE] Failed to update apartment availability: %v", err)
 		return
 	}
 
-	log.Printf("[WEBHOOK] Updated apartment ID %d to unavailable", terminatedLease.ApartmentID)
+	log.Printf("[LEASE_TERMINATE] Updated apartment ID %d to unavailable", terminatedLease.ApartmentID)
+
+	// Send email notification about lease termination if we have the lease details
+	if lease.ID != 0 {
+		tenant, err := h.queries.GetUserByID(ctx, lease.TenantID)
+		if err != nil {
+			log.Printf("[LEASE_TERMINATE] Failed to get tenant info for email notification: %v", err)
+		} else {
+			// Send email notification about lease termination
+			go h.SendLeaseTerminationEmail(tenant.Email, tenant.FirstName+" "+tenant.LastName, lease.ID)
+		}
+	}
+
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusOK)
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
@@ -363,6 +454,7 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 	}
 
 	// Check for duplicate leases
+	log.Println("[LEASE_UPSERT] Checking for duplicate leases")
 	existing, err := h.queries.GetDuplicateLease(r.Context(), db.GetDuplicateLeaseParams{
 		TenantID:    req.TenantID,
 		ApartmentID: req.ApartmentID,
@@ -371,13 +463,13 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 
 	// If a duplicate is found, provide a more detailed error
 	if err == nil && existing.ID != 0 {
+		log.Printf("[LEASE_UPSERT] Duplicate lease ID %d already exists", existing.ID)
 		if req.ReplaceExisting {
 			// Terminate the existing lease instead of "archiving" it
 			_, err = h.queries.TerminateLease(r.Context(), db.TerminateLeaseParams{
 				UpdatedBy: req.CreatedBy,
 				ID:        existing.ID,
 			})
-
 			if err != nil {
 				log.Printf("[LEASE_UPSERT] Failed to terminate existing lease: %v", err)
 				http.Error(w, "Failed to replace existing lease", http.StatusInternalServerError)
@@ -391,32 +483,53 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		}
 	}
 
+	// Get the tenant's actual email from the database to ensure consistency
+	tenant, err := h.queries.GetUserByID(r.Context(), req.TenantID)
+	if err != nil {
+		log.Printf("[LEASE_UPSERT] Error fetching tenant info from database: %v", err)
+		http.Error(w, "Failed to fetch tenant information", http.StatusInternalServerError)
+		return
+	}
+
+	// Use the tenant's name and email from the database for consistency
+	tenantName := fmt.Sprintf("%s %s", tenant.FirstName, tenant.LastName)
+	tenantEmail := tenant.Email
+
+	// Log for verification
+	log.Printf("[LEASE_UPSERT] Using tenant email from database: %s (Tenant ID: %d)",
+		tenantEmail, req.TenantID)
+
+	// If the frontend sent a different email, log it for debugging but don't use it
+	if req.TenantEmail != "" && req.TenantEmail != tenantEmail {
+		log.Printf("[LEASE_UPSERT] ⚠️ WARNING: Frontend provided email %s differs from database email %s",
+			req.TenantEmail, tenantEmail)
+	}
+
 	// Generate the lease PDF using the landlord info from database
 	pdfData, err := h.GenerateComprehensiveLeaseAgreement(
 		req.DocumentTitle,
 		landlordName,
-		req.TenantName,
+		tenantName, // Use tenant name from database
 		req.PropertyAddress,
 		req.RentAmount,
 		startDate,
 		endDate,
 	)
-
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Error generating lease PDF: %v", err)
 		http.Error(w, "Failed to generate lease PDF", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("[LEASE_UPSERT] Generated PDF for %s (%s)", req.TenantName, req.PropertyAddress)
+	log.Printf("[LEASE_UPSERT] Generated PDF for %s (%s)", tenantName, req.PropertyAddress)
 
 	// Upload to Documenso and populate fields
 	log.Println("[LEASE_UPSERT] Uploading lease PDF to Documenso")
 	docID, _, landlordSigningURL, tenantSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		LeaseWithSignersRequest{
-			TenantName:      req.TenantName,
-			TenantEmail:     req.TenantEmail,
+			TenantName:      tenantName,
+			TenantEmail:     tenantEmail, // Use email from database
 			PropertyAddress: req.PropertyAddress,
 			RentAmount:      req.RentAmount,
 			StartDate:       startDate.Format("2006-01-02"),
@@ -426,7 +539,6 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 		landlordName,
 		landlordEmail,
 	)
-
 	if err != nil {
 		log.Printf("[LEASE_UPSERT] Documenso upload error: %v", err)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -493,7 +605,38 @@ func (h *LeaseHandler) handleLeaseUpsertWithContext(w http.ResponseWriter, r *ht
 
 func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 	log.Printf("Retrieving leases...")
-	leases, err := h.queries.ListLeases(r.Context())
+
+	// First check if Documenso is configured
+	ctx := r.Context()
+	apiKeyConfig, err := h.queries.GetConfigByKey(ctx, "documenso_api_key")
+	webhookConfig, err2 := h.queries.GetConfigByKey(ctx, "documenso_webhook_secret")
+
+	// Check if both API key and webhook secret are configured
+	apiKeyConfigured := (err == nil && apiKeyConfig.Value != "")
+	webhookConfigured := (err2 == nil && webhookConfig.Value != "")
+
+	if !apiKeyConfigured || !webhookConfigured {
+		// Documenso not configured, return an error with instructions
+		log.Printf("[LEASES] Documenso not configured (API key: %v, Webhook: %v), rejecting lease page access",
+			apiKeyConfigured, webhookConfigured)
+
+		errorResponse := map[string]interface{}{
+			"error":              "documenso_not_configured",
+			"message":            "Please configure Documenso API key and webhook secret before accessing leases",
+			"api_key_configured": apiKeyConfigured,
+			"webhook_configured": webhookConfigured,
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusPreconditionFailed) // 412 Precondition Failed
+		if err := json.NewEncoder(w).Encode(errorResponse); err != nil {
+			log.Printf("Error encoding error response: %v", err)
+		}
+		return
+	}
+
+	// If we get here, Documenso is configured, proceed as normal
+	leases, err := h.queries.ListLeases(ctx)
 	if err != nil {
 		log.Printf("Error retrieving leases: %v", err)
 		http.Error(w, "Failed to fetch leases", http.StatusInternalServerError)
@@ -510,7 +653,6 @@ func (h *LeaseHandler) GetLeases(w http.ResponseWriter, r *http.Request) {
 	for _, lease := range leases {
 		// Fetch tenant name
 		tenant, err := h.queries.GetUserByID(r.Context(), lease.TenantID)
-
 		if err != nil {
 			log.Printf("Warning: Could not fetch tenant name for ID %d", lease.TenantID)
 		}
@@ -614,7 +756,6 @@ func (h *LeaseHandler) UpdateAllLeaseStatuses(w http.ResponseWriter, r *http.Req
 }
 
 func (h *LeaseHandler) GetTenantsWithoutLease(w http.ResponseWriter, r *http.Request) {
-
 	// Get tenants without lease from database
 	tenants, err := h.queries.GetTenantsWithNoLease(r.Context())
 	if err != nil {
@@ -815,25 +956,25 @@ func SavePDFToDisk(pdfData []byte, title, tenantName string) error {
 
 	// Create /app/temp directory to save pdfs
 
-	if err := os.MkdirAll(envDir, 0755); err != nil {
+	if err := os.MkdirAll(envDir, 0o755); err != nil {
 		log.Printf("Could not create directory %s: %v", envDir, err)
 	}
 
 	filepath := filepath.Join(envDir, filename)
-	err := os.WriteFile(filepath, pdfData, 0666)
+	err := os.WriteFile(filepath, pdfData, 0o666)
 	if err != nil {
 		log.Printf("Could not save PDF to %s: %v", filepath, err)
 	}
 
 	log.Printf("✅ PDF successfully saved to: %s", filepath)
 	return nil // Success
-
 }
 
 func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWithSignersRequest, landlordName, landlordEmail string) (docID string,
 	tenantRecipientID int,
 	tenantSigningURL string, landlordSigningURL string, leasePdfS3 string,
-	err error) {
+	err error,
+) {
 	log.Printf("Uploading lease %v to Documenso...\n", req.DocumentTitle)
 
 	if err != nil {
@@ -853,7 +994,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 		},
 	}
 
-	log.Printf("Signers: %+v", signers)
+	log.Printf("[Upload/Setup] Signers: %+v", signers)
 
 	if landlordName == "" {
 		log.Println("Warning: Landlord name is empty")
@@ -868,10 +1009,8 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 
 	log.Printf("Uploading lease %v to Documenso...\n", documentTitle)
 	docID, recipientInfoMap, s3bucket, err := h.documenso_client.UploadDocumentWithSigners(pdfData, documentTitle, signers)
-
 	if err != nil {
 		return "", 0, "", "", "", fmt.Errorf("upload to Documenso failed: %w", err)
-
 	}
 	// To avoid overhead disabling saving PDF to disk  - please keep this code for future debugging purposes.
 	// // Save PDF to disk in background
@@ -963,6 +1102,7 @@ func (h *LeaseHandler) handleDocumensoUploadAndSetup(pdfData []byte, req LeaseWi
 
 	return docID, tenantID, recipientInfoMap[req.TenantEmail].SigningURL, recipientInfoMap[landlordEmail].SigningURL, s3bucket, nil
 }
+
 func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 	var req LeaseUpsertRequest
 
@@ -986,7 +1126,7 @@ func (h *LeaseHandler) RenewLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	//req.PreviousLeaseID in db as LeaseID great. If not, you gotta return.
+	// req.PreviousLeaseID in db as LeaseID great. If not, you gotta return.
 	if lease, err := h.queries.GetLeaseByID(ctx, *req.PreviousLeaseID); err != nil {
 		http.Error(w, "No previous lease for tenant", http.StatusBadRequest)
 		return
@@ -1092,7 +1232,7 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 		return
 	}
 
-	//5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
+	// 5-8. inside handleDocumensoUploadAndSetup: Prepare, upload, set lease fields in documenso and save PDF to disk.
 	docID, _, tenantSigningURL, landlordSigningURL, s3bucket, err := h.handleDocumensoUploadAndSetup(
 		pdfData,
 		req,
@@ -1137,8 +1277,10 @@ func (h *LeaseHandler) CreateFullLeaseAgreementRenewal(w http.ResponseWriter, r 
 			String: tenantSigningURL,
 			Valid:  tenantSigningURL != "",
 		},
-		LandlordSigningUrl: pgtype.Text{String: landlordSigningURL,
-			Valid: landlordSigningURL != ""},
+		LandlordSigningUrl: pgtype.Text{
+			String: landlordSigningURL,
+			Valid:  landlordSigningURL != "",
+		},
 	}
 
 	leaseID, err := h.queries.RenewLease(r.Context(), db.RenewLeaseParams{
@@ -1267,7 +1409,7 @@ func (h *LeaseHandler) sendExpiringLeasesNotification(expiringLeases []map[strin
 	// Get admin email from environment or use default
 	adminEmail := os.Getenv("CRON_EMAIL")
 	if adminEmail == "" {
-		adminEmail = "rentdaddyadmin@gitfor.ge" // Fallback to global landlord email
+		adminEmail = "ezra@gitfor.ge" // Fallback to global landlord email
 	}
 
 	// Build email subject and body
@@ -1393,8 +1535,190 @@ func (h *LeaseHandler) PdfS3GetDocumentURL(w http.ResponseWriter, r *http.Reques
 		return
 	}
 }
-func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 
+// UpdateDocumensoConfig handles updating the Documenso configuration
+func (h *LeaseHandler) UpdateDocumensoConfig(w http.ResponseWriter, r *http.Request) {
+	log.Println("[DOCUMENSO_CONFIG] Updating Documenso configuration")
+
+	// Read the request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the JSON body
+	var config struct {
+		ApiKey        string `json:"apiKey"`
+		WebhookSecret string `json:"webhookSecret"`
+	}
+	if err := json.Unmarshal(body, &config); err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Error parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the Documenso config
+	if config.ApiKey == "" || config.WebhookSecret == "" {
+		log.Println("[DOCUMENSO_CONFIG] API key or webhook secret is empty")
+		http.Error(w, "API key and webhook secret are required", http.StatusBadRequest)
+		return
+	}
+
+	// Save the configuration to environment variables
+	os.Setenv("DOCUMENSO_API_KEY", config.ApiKey)
+	os.Setenv("DOCUMENSO_WEBHOOK_SECRET", config.WebhookSecret)
+
+	// Log with limited key visibility for security
+	log.Printf("[DOCUMENSO_CONFIG] Updated API key to %s... and webhook secret to %s...",
+		config.ApiKey[:4], config.WebhookSecret[:4])
+
+	// Save configuration to database for persistence across restarts
+	ctx := r.Context()
+
+	// TEMPORARY WORKAROUND: Use a default admin ID to bypass the check in clean database environments
+	var landlordID int64 = 1
+	var landlordEmail string = "admin@example.com"
+
+	// Try to get the admin user ID from the request context, but continue even if it fails
+	actualLandlordID, _, actualEmail, err := h.GetLandlordInfo(r)
+	if err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Warning: Could not get admin info: %v", err)
+		log.Printf("[DOCUMENSO_CONFIG] Using default admin ID temporarily for configuration")
+	} else {
+		// If we successfully got the admin info, use it
+		landlordID = actualLandlordID
+		landlordEmail = actualEmail
+	}
+
+	log.Printf("[DOCUMENSO_CONFIG] Admin user ID %d (%s) is updating Documenso configuration",
+		landlordID, landlordEmail)
+
+	// Update API key in database with admin user ID
+	_, err = h.queries.UpsertConfig(ctx, db.UpsertConfigParams{
+		Key:         "documenso_api_key",
+		Value:       config.ApiKey,
+		Description: pgtype.Text{String: fmt.Sprintf("API key for Documenso integration (updated by admin %d)", landlordID), Valid: true},
+		UserID:      pgtype.Int8{Int64: landlordID, Valid: true},
+	})
+	if err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Warning: Failed to save API key to database: %v", err)
+	} else {
+		log.Printf("[DOCUMENSO_CONFIG] API key saved to database successfully")
+	}
+
+	// Update webhook secret in database with admin user ID
+	_, err = h.queries.UpsertConfig(ctx, db.UpsertConfigParams{
+		Key:         "documenso_webhook_secret",
+		Value:       config.WebhookSecret,
+		Description: pgtype.Text{String: fmt.Sprintf("Webhook secret for Documenso integration (updated by admin %d)", landlordID), Valid: true},
+		UserID:      pgtype.Int8{Int64: landlordID, Valid: true},
+	})
+	if err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Warning: Failed to save webhook secret to database: %v", err)
+	} else {
+		log.Printf("[DOCUMENSO_CONFIG] Webhook secret saved to database successfully")
+	}
+
+	// Also update .env files for local development if they exist
+	h.updateEnvFile(config.ApiKey, config.WebhookSecret)
+
+	// Update the Documenso client with the new API key
+	baseURL := os.Getenv("DOCUMENSO_API_URL")
+	if baseURL == "" {
+		baseURL = "https://api.documenso.com/api/v1"
+	}
+	h.documenso_client = documenso.NewDocumensoClient(baseURL, config.ApiKey)
+
+	// Send a success response
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]string{"status": "success", "message": "Documenso configuration updated successfully"}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
+}
+
+// NOTE: Removed file-based persistence in favor of database storage
+
+// updateEnvFile updates the .env file with Documenso configuration
+// This is a best-effort operation and errors are just logged, not returned
+func (h *LeaseHandler) updateEnvFile(apiKey, webhookSecret string) {
+	// Get the current working directory for proper paths
+	cwd, err := os.Getwd()
+	if err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Failed to get current working directory: %v", err)
+		cwd = "/app" // Default to /app if we can't get the current directory
+	}
+
+	log.Printf("[DOCUMENSO_CONFIG] Current directory: %s", cwd)
+
+	// List of possible env files to update with proper backend paths
+	envFiles := []string{
+		filepath.Join(cwd, ".env"),
+		filepath.Join(cwd, ".env.development.local"),
+		filepath.Join(cwd, ".env.local"),
+		filepath.Join(cwd, ".env.development"),
+	}
+
+	log.Printf("[DOCUMENSO_CONFIG] Searching for env files: %v", envFiles)
+
+	for _, envFile := range envFiles {
+		// Check if env file exists
+		if _, err := os.Stat(envFile); os.IsNotExist(err) {
+			log.Printf("[DOCUMENSO_CONFIG] File %s does not exist, skipping", envFile)
+			continue // Skip to next file
+		}
+
+		log.Printf("[DOCUMENSO_CONFIG] Found env file: %s", envFile)
+
+		// Read the current env file
+		content, err := os.ReadFile(envFile)
+		if err != nil {
+			log.Printf("[DOCUMENSO_CONFIG] Failed to read %s file: %v", envFile, err)
+			continue // Skip to next file
+		}
+
+		lines := strings.Split(string(content), "\n")
+
+		// Track which variables we've found
+		apiKeyFound := false
+		webhookSecretFound := false
+
+		// Update existing values if found
+		for i, line := range lines {
+			if strings.HasPrefix(line, "DOCUMENSO_API_KEY=") {
+				lines[i] = "DOCUMENSO_API_KEY=" + apiKey
+				apiKeyFound = true
+			} else if strings.HasPrefix(line, "DOCUMENSO_WEBHOOK_SECRET=") {
+				lines[i] = "DOCUMENSO_WEBHOOK_SECRET=" + webhookSecret
+				webhookSecretFound = true
+			}
+		}
+
+		// Add new values if not found
+		if !apiKeyFound {
+			lines = append(lines, "DOCUMENSO_API_KEY="+apiKey)
+		}
+		if !webhookSecretFound {
+			lines = append(lines, "DOCUMENSO_WEBHOOK_SECRET="+webhookSecret)
+		}
+
+		// Write the updated content back to the env file
+		err = os.WriteFile(envFile, []byte(strings.Join(lines, "\n")), 0600)
+		if err != nil {
+			log.Printf("[DOCUMENSO_CONFIG] Failed to write updated %s file: %v", envFile, err)
+			continue
+		}
+
+		log.Printf("[DOCUMENSO_CONFIG] Successfully updated %s file", envFile)
+	}
+}
+
+func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Request) {
 	// Read the request body
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -1440,6 +1764,285 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	log.Printf("[WEBHOOK] Received Documenso webhook event: %s", eventType)
 
+	// Check for job_type field which would indicate an enriched job from our worker
+	jobType, isJob := webhookData["job_type"].(string)
+
+	// Handle email job types from our worker
+	if isJob {
+		log.Printf("[WEBHOOK] Processing job type: %s", jobType)
+
+		// Process job in a goroutine to allow immediate acknowledgement back to worker
+		go func() {
+			// Extract data from job payload
+			data, ok := webhookData["data"].(map[string]interface{})
+			if !ok {
+				log.Printf("[WEBHOOK] Error: Invalid data format in job %s", jobType)
+				return
+			}
+
+			// Get document ID and other data from payload
+			var documentID string
+			var recipientID string
+			var recipientEmail string
+
+			// Try to extract document ID from various formats
+			if payload, ok := data["payload"].(map[string]interface{}); ok {
+				// Extract from payload.documentId (float64)
+				if docID, ok := payload["documentId"].(float64); ok {
+					documentID = fmt.Sprintf("%.0f", docID)
+				} else if docID, ok := payload["id"].(float64); ok {
+					documentID = fmt.Sprintf("%.0f", docID)
+				}
+
+				// Extract from payload.recipientId (float64)
+				if recID, ok := payload["recipientId"].(float64); ok {
+					recipientID = fmt.Sprintf("%.0f", recID)
+				}
+
+				// Extract from payload.email (string)
+				if email, ok := payload["email"].(string); ok {
+					recipientEmail = email
+				}
+			}
+
+			// Try to extract directly from data if not found in payload
+			if documentID == "" {
+				if docID, ok := data["documentId"].(float64); ok {
+					documentID = fmt.Sprintf("%.0f", docID)
+				}
+			}
+
+			if recipientEmail == "" {
+				if email, ok := data["email"].(string); ok {
+					recipientEmail = email
+				}
+			}
+
+			log.Printf("[WEBHOOK] Extracted documentID: %s, recipientID: %s, email: %s",
+				documentID, recipientID, recipientEmail)
+
+			// Get admin email
+			adminEmail := os.Getenv("ADMIN_EMAIL")
+			if adminEmail == "" {
+				adminEmail = "admin@example.com" // Fallback
+			}
+
+			// Handle different job types
+			switch {
+			case strings.Contains(jobType, "send.recipient.signed.email"):
+				// Document recipient signed email
+				if documentID != "" {
+					// Look up lease by Documenso document ID
+					ctx := context.Background()
+					lease, err := h.queries.GetLeaseByExternalID(ctx, documentID)
+
+					if err != nil {
+						log.Printf("[WEBHOOK] Error finding lease for document ID %s: %v", documentID, err)
+						return
+					}
+
+					// Send email notification about document signing
+					subject := "Documenso Document Signed"
+					body := strings.Builder{}
+					body.WriteString(fmt.Sprintf("A recipient has signed document ID %s for lease ID %d.\n\n", documentID, lease.ID))
+					body.WriteString("Lease Details:\n")
+
+					apartment, err := h.queries.GetApartment(ctx, lease.ApartmentID)
+					if err != nil {
+						log.Printf("[WEBHOOK] Failed to fetch apartment info for lease ID %d: %v", lease.ID, err)
+						body.WriteString("Apartment: Unknown\n")
+					} else {
+						body.WriteString(fmt.Sprintf("Apartment: %d\n", apartment.UnitNumber.Int64))
+					}
+					tenant, err := h.queries.GetUserByID(ctx, lease.TenantID)
+					if err != nil {
+						log.Printf("[WEBHOOK] Failed to fetch tenant info for lease ID %d: %v", lease.ID, err)
+						body.WriteString("Tenant: Unknown\n")
+					} else {
+						body.WriteString(fmt.Sprintf("Tenant: %s %s\n", tenant.FirstName, tenant.LastName))
+					}
+					body.WriteString(fmt.Sprintf("Status: %s\n", lease.Status))
+
+					err = smtp.SendEmail(adminEmail, subject, body.String())
+					if err != nil {
+						log.Printf("[WEBHOOK] Error sending signed email: %v", err)
+					} else {
+						log.Printf("[WEBHOOK] Successfully sent signed email for document %s", documentID)
+					}
+				}
+
+			case strings.Contains(jobType, "document.completed"):
+				// Document completed event
+				if documentID != "" {
+					// Look up lease by Documenso document ID
+					ctx := context.Background()
+					lease, err := h.queries.GetLeaseByExternalID(ctx, documentID)
+
+					if err != nil {
+						log.Printf("[WEBHOOK] Error finding lease for document ID %s: %v", documentID, err)
+						return
+					}
+
+					// Send email notification that document is now complete
+					subject := "Documenso Document Completed"
+					body := strings.Builder{}
+					body.WriteString(fmt.Sprintf("Document ID %s for lease ID %d has been completed with all required signatures.\n\n", documentID, lease.ID))
+					body.WriteString("Lease Details:\n")
+					apartment, err := h.queries.GetApartment(ctx, lease.ApartmentID)
+					if err != nil {
+						log.Printf("[WEBHOOK] Failed to fetch apartment info for lease ID %d: %v", lease.ID, err)
+						body.WriteString("Address: Unknown\n")
+					} else {
+						body.WriteString(fmt.Sprintf("Address: %s\n", strconv.FormatInt(apartment.UnitNumber.Int64, 10))) // Convert pgtype.Int8 to string
+					}
+					tenant, err := h.queries.GetUserByID(ctx, lease.TenantID)
+					if err != nil {
+						log.Printf("[WEBHOOK] Failed to fetch tenant info for lease ID %d: %v", lease.ID, err)
+						body.WriteString("Tenant: Unknown\n")
+					} else {
+						body.WriteString(fmt.Sprintf("Tenant: %s %s\n", tenant.FirstName, tenant.LastName))
+					}
+					body.WriteString(fmt.Sprintf("Status: %s\n", lease.Status))
+
+					err = smtp.SendEmail(adminEmail, subject, body.String())
+					if err != nil {
+						log.Printf("[WEBHOOK] Error sending completed email: %v", err)
+					} else {
+						log.Printf("[WEBHOOK] Successfully sent completed email for document %s", documentID)
+					}
+
+					// Update lease status to active if it was 'SENT'
+					if lease.Status == "SENT" {
+						updateParams := db.UpdateLeaseStatusParams{
+							ID:     lease.ID,
+							Status: "ACTIVE",
+						}
+
+						if _, err := h.queries.UpdateLeaseStatus(ctx, updateParams); err != nil {
+							log.Printf("[WEBHOOK] Error updating lease status to ACTIVE: %v", err)
+						} else {
+							log.Printf("[WEBHOOK] Updated lease ID %d status to ACTIVE", lease.ID)
+						}
+					}
+				}
+
+			case strings.Contains(jobType, "document.signed"):
+				// Document signed event (may not be completely signed by all parties yet)
+				if documentID != "" {
+					// Just log that a signature was received as we'll handle the completed state separately
+					log.Printf("[WEBHOOK] Document ID %s received a signature", documentID)
+				}
+
+			case strings.Contains(jobType, "send.signup.confirmation.email"):
+				// Documenso account verification email
+				if recipientEmail != "" {
+					log.Printf("[WEBHOOK] Received Documenso account verification request for %s", recipientEmail)
+
+					// Extract verification token if present in the data
+					var token string
+					var expiresAt time.Time // Placeholder for potential future use
+					_ = expiresAt           // Suppress unused variable error
+
+					// Try to extract token from data - checking various possible formats
+					if tokens, ok := data["verificationTokens"].([]interface{}); ok && len(tokens) > 0 {
+						if tokenObj, ok := tokens[0].(map[string]interface{}); ok {
+							if tokenStr, ok := tokenObj["token"].(string); ok {
+								token = tokenStr
+							}
+							if expiresAtStr, ok := tokenObj["expires"].(string); ok {
+								if parsedTime, err := time.Parse(time.RFC3339, expiresAtStr); err == nil {
+									expiresAt = parsedTime
+									log.Printf("Parsed expiration time: %v", expiresAt)
+								}
+							}
+						}
+					}
+
+					// Construct verification link using standard pattern
+					// Use the Documenso URL from env or default to docs.curiousdev.net
+					docsURL := os.Getenv("DOCUMENSO_PUBLIC_URL")
+					if docsURL == "" {
+						docsURL = "https://docs.curiousdev.net"
+					}
+
+					// If no token was found, check if we have a user ID to look it up
+					if token == "" {
+						log.Printf("[WEBHOOK] No verification token found in webhook data - constructing email without token")
+					}
+
+					// Construct confirmation link
+					confirmationLink := fmt.Sprintf("%s/verify-email/%s", docsURL, token)
+
+					// Get sender info
+					senderName := os.Getenv("DOCUMENSO_FROM_NAME")
+					if senderName == "" {
+						senderName = "Documenso"
+						log.Printf("Sender name set to: %s", senderName)
+					}
+
+					senderEmail := os.Getenv("DOCUMENSO_FROM_EMAIL")
+					if senderEmail == "" {
+						senderEmail = "noreply@curiousdev.net"
+						log.Printf("[WEBHOOK] Using default sender email: %s", senderEmail)
+					}
+
+					// Construct the verification email in Documenso's format
+					subject := "Please confirm your email"
+
+					// Construct HTML email body similar to Documenso's format
+					htmlBody := strings.Builder{}
+					htmlBody.WriteString("<!DOCTYPE html><html><head><meta name=\"viewport\" content=\"width=device-width, initial-scale=1.0\"></head><body style=\"font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333;\">")
+					htmlBody.WriteString("<div style=\"max-width: 600px; margin: 0 auto; background-color: #fff;\">")
+					htmlBody.WriteString("<div style=\"padding: 20px; text-align: center;\"><img src=\"" + docsURL + "/logo.png\" alt=\"Documenso Logo\" style=\"max-width: 150px;\"></div>")
+					htmlBody.WriteString("<div style=\"padding: 20px; background-color: #F9FAFB; border-radius: 8px;\">")
+					htmlBody.WriteString("<h1 style=\"color: #111; font-size: 24px; margin-bottom: 20px;\">Verify your email address</h1>")
+					htmlBody.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5;\">Thanks for signing up for Documenso! Please confirm your email address by clicking the button below.</p>")
+					htmlBody.WriteString("<div style=\"text-align: center; margin: 30px 0;\">")
+					htmlBody.WriteString("<a href=\"" + confirmationLink + "\" style=\"background-color: #4F46E5; color: #fff; text-decoration: none; padding: 12px 24px; border-radius: 4px; font-weight: bold; display: inline-block;\">Confirm Email Address</a>")
+					htmlBody.WriteString("</div>")
+					htmlBody.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5;\">Or copy and paste this URL into your browser:</p>")
+					htmlBody.WriteString("<p style=\"margin-bottom: 20px; line-height: 1.5; word-break: break-all; color: #4F46E5;\"><a href=\"" + confirmationLink + "\">" + confirmationLink + "</a></p>")
+					htmlBody.WriteString("<p style=\"margin-bottom: 10px; line-height: 1.5;\">If you didn't sign up for Documenso, you can ignore this email.</p>")
+					htmlBody.WriteString("</div>")
+					htmlBody.WriteString("<div style=\"padding: 20px; text-align: center; color: #6B7280; font-size: 14px;\">")
+					htmlBody.WriteString("<p>Documenso, Inc.<br>The open-source DocuSign alternative</p>")
+					htmlBody.WriteString("</div></div></body></html>")
+
+					// Create plain text version
+					textBody := strings.Builder{}
+					textBody.WriteString("Verify your email address\n\n")
+					textBody.WriteString("Thanks for signing up for Documenso! Please confirm your email address by clicking the link below:\n\n")
+					textBody.WriteString(confirmationLink + "\n\n")
+					textBody.WriteString("If you didn't sign up for Documenso, you can ignore this email.\n\n")
+					textBody.WriteString("Documenso, Inc.\nThe open-source DocuSign alternative")
+
+					// Set email type for logging
+					emailType := "multipart"
+
+					// Send the email using our SMTP with HTML formatting
+					err := smtp.SendEmailHTML(recipientEmail, subject, textBody.String(), htmlBody.String())
+					if err != nil {
+						log.Printf("[WEBHOOK] Error sending verification email to %s: %v", recipientEmail, err)
+					} else {
+						log.Printf("[WEBHOOK] Successfully sent %s verification email to %s (token: %s)", emailType, recipientEmail, token)
+					}
+				}
+
+			default:
+				// Log but acknowledge unknown job types
+				log.Printf("[WEBHOOK] Received unknown job type: %s", jobType)
+			}
+		}()
+
+		// Acknowledge receipt of the job immediately
+		w.WriteHeader(http.StatusOK)
+		if _, err := w.Write([]byte(`{"status":"job_processing"}`)); err != nil {
+			log.Printf("Error writing job response: %v", err)
+		}
+		return
+	}
+
+	// Handle traditional webhook events (non-jobs)
 	// We only care about DOCUMENT_COMPLETED events
 	if eventType != "DOCUMENT_COMPLETED" {
 		log.Printf("[WEBHOOK] Ignoring non-completion event: %s", eventType)
@@ -1476,20 +2079,22 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 
 	// Process the webhook asynchronously
 	// go func() {
-	ctx := r.Context()
-
-	// Get landlord ID from middleware-injected context
-	landlordID, _, _, err := h.GetLandlordInfo(r)
-	if err != nil {
-		http.Error(w, "Unauthorized", http.StatusUnauthorized)
-		return
-	}
-	// 1. Get the lease associated with this document ID
+	ctx := context.Background()
 	lease, err := h.queries.GetLeaseByExternalDocID(ctx, documentID)
 	if err != nil {
 		log.Printf("[WEBHOOK] No lease found for doc ID %s: %v", documentID, err)
 		return
 	}
+
+	// Try to find matching landlord by lease.LandlordID
+	landlord, err := h.queries.GetUserByID(ctx, lease.LandlordID)
+	if err != nil {
+		log.Printf("[WEBHOOK] Failed to fetch landlord from lease ID %d: %v", lease.ID, err)
+		return
+	}
+	landlordID := landlord.ID
+
+	// 1. Get the lease associated with this document ID
 
 	log.Printf("[WEBHOOK] Document %s signed, marking lease %d as active", documentID, lease.ID)
 
@@ -1499,7 +2104,6 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 		Status:    db.LeaseStatusActive,
 		UpdatedBy: int64(landlordID),
 	})
-
 	if err != nil {
 		log.Printf("[WEBHOOK] Failed to update lease status: %v", err)
 		return
@@ -1524,7 +2128,6 @@ func (h *LeaseHandler) DocumensoWebhookHandler(w http.ResponseWriter, r *http.Re
 			ManagementID: apartment.ManagementID,
 			Availability: false,
 		})
-
 		if err != nil {
 			log.Printf("[WEBHOOK] Failed to update apartment availability: %v", err)
 			return
@@ -1600,13 +2203,168 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// 4. Get both signing URLs from Documenso
-	tenantSigningURL, landlordSigningURL, err := h.documenso_client.GetSigningURLs(lease.ExternalDocID, tenant.Email, landlordEmail)
-	if err != nil {
-		http.Error(w, "Failed to fetch signing URLs", http.StatusInternalServerError)
-		log.Printf("[LEASE_SEND] GetSigningURLs failed: %v", err)
+	// Log lease and tenant details for debugging
+	log.Printf("[LEASE_SEND] Lease details - ID: %d, DocID: %s, TenantID: %d",
+		lease.ID, lease.ExternalDocID, lease.TenantID)
+	log.Printf("[LEASE_SEND] Tenant details - ID: %d, Email: %s", tenant.ID, tenant.Email)
+	log.Printf("[LEASE_SEND] Landlord Email: %s", landlordEmail)
+
+	// Check if we already have signing URLs stored for this lease
+	if lease.TenantSigningUrl.Valid && lease.TenantSigningUrl.String != "" &&
+		lease.LandlordSigningUrl.Valid && lease.LandlordSigningUrl.String != "" {
+		log.Printf("[LEASE_SEND] Using existing signing URLs from database")
+		tenantSigningURL := lease.TenantSigningUrl.String
+		landlordSigningURL := lease.LandlordSigningUrl.String
+
+		// Skip the API call and proceed with the URLs we already have
+		log.Printf("[LEASE_SEND] Skipped Documenso API call, using existing URLs: tenant=%s, landlord=%s",
+			tenantSigningURL, landlordSigningURL)
+
+		// Get landlord ID from context
+		landlordID, _, _, err := h.GetLandlordInfo(r)
+		if err != nil {
+			http.Error(w, "Failed to get landlord information", http.StatusUnauthorized)
+			log.Printf("[LEASE_SEND] GetLandlordInfo failed: %v", err)
+			return
+		}
+
+		// Update lease status to pending_approval with proper updated_by field
+		_, err = h.queries.UpdateLeaseStatus(ctx, db.UpdateLeaseStatusParams{
+			ID:        leaseID,
+			Status:    db.LeaseStatusPendingApproval,
+			UpdatedBy: landlordID,
+		})
+		if err != nil {
+			http.Error(w, "Failed to update lease status", http.StatusInternalServerError)
+			log.Printf("[LEASE_SEND] UpdateLeaseStatus failed: %v", err)
+			return
+		}
+
+		// Return success response with existing URLs
+		response := map[string]interface{}{
+			"lease_id":             lease.ID,
+			"status":               db.LeaseStatusPendingApproval,
+			"tenant_signing_url":   tenantSigningURL,
+			"landlord_signing_url": landlordSigningURL,
+			"message":              "Lease sent for signing using existing URLs",
+		}
+
+		w.Header().Set("Content-Type", "application/json")
+		w.WriteHeader(http.StatusOK)
+		if err := json.NewEncoder(w).Encode(response); err != nil {
+			log.Printf("[LEASE_SEND] Failed to encode response: %v", err)
+		}
 		return
 	}
+
+	// 4. Send the document through Documenso's send API and get signing URLs
+	log.Printf("[LEASE_SEND] Sending document %s through Documenso API", lease.ExternalDocID)
+
+	// ALWAYS refresh the API key from the database before sending the document
+	// This ensures we have the latest credentials even if they were updated elsewhere
+	apiKeyConfig, err := h.queries.GetConfigByKey(ctx, "documenso_api_key")
+	if err != nil {
+		log.Printf("[LEASE_SEND] Failed to fetch API key from database: %v", err)
+		http.Error(w, "Failed to retrieve API credentials", http.StatusInternalServerError)
+		return
+	}
+
+	if apiKeyConfig.Value == "" {
+		log.Printf("[LEASE_SEND] API key in database is empty")
+		http.Error(w, "Documenso API key not configured", http.StatusInternalServerError)
+		return
+	}
+
+	// Always use the database API key for consistency
+	if len(apiKeyConfig.Value) > 4 {
+		log.Printf("[LEASE_SEND] Using API key from database: %s... (length: %d)",
+			apiKeyConfig.Value[:4], len(apiKeyConfig.Value))
+	} else {
+		log.Printf("[LEASE_SEND] WARNING: API key from database is suspiciously short: %d chars",
+			len(apiKeyConfig.Value))
+	}
+
+	// Get webhook secret too (will be needed for future verification)
+	webhookConfig, err := h.queries.GetConfigByKey(ctx, "documenso_webhook_secret")
+	if err != nil {
+		log.Printf("[LEASE_SEND] Failed to fetch webhook secret: %v", err)
+		// Non-fatal, continue anyway
+	} else if webhookConfig.Value != "" && len(webhookConfig.Value) > 4 {
+		log.Printf("[LEASE_SEND] Found webhook secret in database: %s... (length: %d)",
+			webhookConfig.Value[:4], len(webhookConfig.Value))
+	}
+
+	// Always create a fresh client with the database credentials
+	baseURL := os.Getenv("DOCUMENSO_API_URL")
+	if baseURL == "" {
+		baseURL = "http://documenso:3000"
+		log.Printf("[LEASE_SEND] No API URL in environment, using default: %s", baseURL)
+	}
+
+	log.Printf("[LEASE_SEND] Creating new Documenso client with URL: %s", baseURL)
+	h.documenso_client = documenso.NewDocumensoClient(baseURL, apiKeyConfig.Value)
+
+	// Update environment variable too for consistency
+	os.Setenv("DOCUMENSO_API_KEY", apiKeyConfig.Value)
+
+	signingURLs, err := h.documenso_client.SendDocument(lease.ExternalDocID)
+	if err != nil {
+		// Create a more detailed error message to return to client
+		errMsg := fmt.Sprintf("Failed to send document for signing. Error: %v", err)
+		http.Error(w, errMsg, http.StatusInternalServerError)
+		log.Printf("[LEASE_SEND] SendDocument failed: %v", err)
+
+		// Additional debugging: verify the document actually exists
+		exists, verifyErr := h.documenso_client.VerifyDocumentExists(lease.ExternalDocID)
+		if verifyErr != nil {
+			log.Printf("[LEASE_SEND] Error verifying document %s exists: %v",
+				lease.ExternalDocID, verifyErr)
+		} else if !exists {
+			log.Printf("[LEASE_SEND] Document %s doesn't exist in Documenso!",
+				lease.ExternalDocID)
+		} else {
+			log.Printf("[LEASE_SEND] Document %s exists in Documenso, but send operation failed",
+				lease.ExternalDocID)
+		}
+		return
+	}
+
+	// Find tenant and landlord signing URLs in the response
+	tenantEmail := strings.ToLower(tenant.Email)
+	landlordEmailLower := strings.ToLower(landlordEmail)
+
+	tenantSigningURL, tenantFound := signingURLs[tenantEmail]
+	landlordSigningURL, landlordFound := signingURLs[landlordEmailLower]
+
+	if !tenantFound || !landlordFound {
+		// Log all returned emails for debugging
+		log.Printf("[LEASE_SEND] Document was sent, but couldn't find all signers in response")
+		log.Printf("[LEASE_SEND] Tenant email: %s (found: %v)", tenantEmail, tenantFound)
+		log.Printf("[LEASE_SEND] Landlord email: %s (found: %v)", landlordEmailLower, landlordFound)
+		log.Printf("[LEASE_SEND] Returned signers: %v", signingURLs)
+
+		// Try extracting URLs with different case sensitivity
+		for email, url := range signingURLs {
+			if strings.EqualFold(email, tenantEmail) && !tenantFound {
+				tenantSigningURL = url
+				tenantFound = true
+				log.Printf("[LEASE_SEND] Found tenant URL using case-insensitive match: %s", email)
+			}
+			if strings.EqualFold(email, landlordEmailLower) && !landlordFound {
+				landlordSigningURL = url
+				landlordFound = true
+				log.Printf("[LEASE_SEND] Found landlord URL using case-insensitive match: %s", email)
+			}
+		}
+
+		// If we still don't have both URLs, return error
+		if !tenantFound || !landlordFound {
+			http.Error(w, "Document sent but couldn't find signing URLs for all parties", http.StatusInternalServerError)
+			return
+		}
+	}
+
+	log.Printf("[LEASE_SEND] Successfully sent document and retrieved signing URLs for lease %d", lease.ID)
 
 	// 5. Persist both URLs in the database
 	err = h.queries.UpdateSigningURLs(ctx, db.UpdateSigningURLsParams{
@@ -1637,6 +2395,9 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Send email notification directly using our SMTP service
+	go h.SendDocumentSigningEmail(tenant.Email, tenant.FirstName+" "+tenant.LastName, "Lease Ready for Signing", tenantSigningURL)
+
 	// 7. Respond with success
 	resp := map[string]interface{}{
 		"lease_id":        leaseID,
@@ -1651,6 +2412,7 @@ func (h *LeaseHandler) SendLease(w http.ResponseWriter, r *http.Request) {
 		log.Printf("[LEASE_SEND] Failed to encode response: %v", err)
 	}
 }
+
 func (h *LeaseHandler) GetSignedLeaseURL(w http.ResponseWriter, r *http.Request) {
 	leaseIDStr := chi.URLParam(r, "leaseID")
 	if leaseIDStr == "" {
@@ -1744,6 +2506,20 @@ func (h *LeaseHandler) GetTenantLeaseStatusAndURLByUserID(w http.ResponseWriter,
 		return
 	}
 
+	// Check if we should send an email notification (optional query parameter)
+	sendEmail := r.URL.Query().Get("send_email")
+	if sendEmail == "true" && lease.TenantSigningUrl.Valid && lease.TenantSigningUrl.String != "" {
+		// Get tenant details
+		tenant, err := h.queries.GetUserByID(r.Context(), userId)
+		if err == nil {
+			// Send notification asynchronously
+			go h.SendDocumentSigningEmail(tenant.Email, tenant.FirstName+" "+tenant.LastName, "Reminder: Your Lease is Ready for Signing", lease.TenantSigningUrl.String)
+			log.Printf("[EMAIL_REMINDER] Sent signing reminder to tenant %s %s (%s)", tenant.FirstName, tenant.LastName, tenant.Email)
+		} else {
+			log.Printf("[EMAIL_REMINDER] Failed to get tenant details for reminder: %v", err)
+		}
+	}
+
 	if err := json.NewEncoder(w).Encode(map[string]string{
 		"url":    lease.TenantSigningUrl.String,
 		"status": string(lease.Status),
@@ -1752,22 +2528,6 @@ func (h *LeaseHandler) GetTenantLeaseStatusAndURLByUserID(w http.ResponseWriter,
 		log.Printf("Error encoding response: %v", err)
 		return
 	}
-
-}
-
-func (*LeaseHandler) extractEmailFromContext(contextEmailEntry []*clerk.EmailAddress, PrimaryEmailAddressId string) string {
-	//DEBUG THIS/LOG THIS
-	var primaryUserEmail string
-	for _, entry := range contextEmailEntry {
-		if entry.ID == PrimaryEmailAddressId {
-			primaryUserEmail = entry.EmailAddress
-			break
-		}
-	}
-	if primaryUserEmail == "" {
-		primaryUserEmail = contextEmailEntry[0].EmailAddress
-	}
-	return primaryUserEmail
 }
 
 // IsDocumensoAvailable checks if the Documenso service is available
@@ -1874,4 +2634,145 @@ func (h *LeaseHandler) GetLandlordInfo(r *http.Request) (int64, string, string, 
 
 	landlordName := fmt.Sprintf("%s %s", adminUser.FirstName, adminUser.LastName)
 	return adminUser.ID, landlordName, adminUser.Email, nil
+}
+
+// SendDocumentSigningEmail sends an email notification to the tenant about a document ready for signing
+func (h *LeaseHandler) SendDocumentSigningEmail(recipientEmail, recipientName, subject, signingURL string) {
+	log.Printf("[EMAIL_NOTIFICATION] Sending document signing email to %s", recipientEmail)
+
+	// Format a nice HTML email with the signing link
+	emailBody := fmt.Sprintf(`
+	<html>
+	<head>
+		<style>
+			body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+			.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+			.header { text-align: center; margin-bottom: 20px; }
+			.button { display: inline-block; background-color: #4CAF50; color: white; padding: 10px 20px; 
+					 text-decoration: none; border-radius: 5px; margin: 20px 0; }
+			.footer { margin-top: 30px; font-size: 12px; color: #777; }
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<h2>Document Ready for Signing</h2>
+			</div>
+			<p>Hello %s,</p>
+			<p>You have a document that requires your signature. Please click the button below to review and sign the document:</p>
+			<p style="text-align: center;">
+				<a href="%s" class="button" style="color: white;">Sign Document</a>
+			</p>
+			<p>If the button doesn't work, you can copy and paste this URL into your browser:</p>
+			<p>%s</p>
+			<p>This document will expire if not signed within 30 days.</p>
+			<div class="footer">
+				<p>This is an automated message. Please do not reply to this email.</p>
+			</div>
+		</div>
+	</body>
+	</html>
+	`, recipientName, signingURL, signingURL)
+
+	// Send the email
+	err := smtp.SendEmail(recipientEmail, subject, emailBody)
+	if err != nil {
+		log.Printf("[EMAIL_NOTIFICATION] Failed to send document signing email to %s: %v",
+			recipientEmail, err)
+	} else {
+		log.Printf("[EMAIL_NOTIFICATION] Successfully sent document signing email to %s",
+			recipientEmail)
+	}
+}
+
+// SendLeaseAmendmentEmail sends an email notification to the tenant about a lease amendment
+func (h *LeaseHandler) SendLeaseAmendmentEmail(recipientEmail, recipientName string, leaseID int64) {
+	log.Printf("[EMAIL_NOTIFICATION] Sending lease amendment notification to %s", recipientEmail)
+
+	subject := "Important: Your Lease Has Been Amended"
+
+	// Format a nice HTML email with amendment notification
+	emailBody := fmt.Sprintf(`
+	<html>
+	<head>
+		<style>
+			body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+			.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+			.header { text-align: center; margin-bottom: 20px; }
+			.important { color: #d9534f; font-weight: bold; }
+			.footer { margin-top: 30px; font-size: 12px; color: #777; }
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<h2>Lease Amendment Notification</h2>
+			</div>
+			<p>Hello %s,</p>
+			<p>We're writing to inform you that your lease (ID: %d) has been amended. The previous lease has been canceled, and a new draft lease has been created.</p>
+			<p class="important">Important: A new lease document will be sent to you for review and signature soon.</p>
+			<p>Please check your dashboard for more details about the amended lease. If you have any questions, please contact your property manager.</p>
+			<div class="footer">
+				<p>This is an automated message. Please do not reply to this email.</p>
+			</div>
+		</div>
+	</body>
+	</html>
+	`, recipientName, leaseID)
+
+	// Send the email
+	err := smtp.SendEmail(recipientEmail, subject, emailBody)
+	if err != nil {
+		log.Printf("[EMAIL_NOTIFICATION] Failed to send lease amendment email to %s: %v",
+			recipientEmail, err)
+	} else {
+		log.Printf("[EMAIL_NOTIFICATION] Successfully sent lease amendment email to %s",
+			recipientEmail)
+	}
+}
+
+// SendLeaseTerminationEmail sends an email notification to the tenant about a lease termination
+func (h *LeaseHandler) SendLeaseTerminationEmail(recipientEmail, recipientName string, leaseID int64) {
+	log.Printf("[EMAIL_NOTIFICATION] Sending lease termination notification to %s", recipientEmail)
+
+	subject := "Important: Your Lease Has Been Terminated"
+
+	// Format a nice HTML email with termination notification
+	emailBody := fmt.Sprintf(`
+	<html>
+	<head>
+		<style>
+			body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+			.container { max-width: 600px; margin: 0 auto; padding: 20px; }
+			.header { text-align: center; margin-bottom: 20px; }
+			.important { color: #d9534f; font-weight: bold; }
+			.footer { margin-top: 30px; font-size: 12px; color: #777; }
+		</style>
+	</head>
+	<body>
+		<div class="container">
+			<div class="header">
+				<h2>Lease Termination Notice</h2>
+			</div>
+			<p>Hello %s,</p>
+			<p>This email is to notify you that your lease (ID: %d) has been <span class="important">terminated</span>.</p>
+			<p>If you have questions about this termination or need to discuss next steps, please contact your property manager as soon as possible.</p>
+			<p>Please ensure you review any move-out procedures and information about the return of your security deposit.</p>
+			<div class="footer">
+				<p>This is an automated message. Please do not reply to this email.</p>
+			</div>
+		</div>
+	</body>
+	</html>
+	`, recipientName, leaseID)
+
+	// Send the email
+	err := smtp.SendEmail(recipientEmail, subject, emailBody)
+	if err != nil {
+		log.Printf("[EMAIL_NOTIFICATION] Failed to send lease termination email to %s: %v",
+			recipientEmail, err)
+	} else {
+		log.Printf("[EMAIL_NOTIFICATION] Successfully sent lease termination email to %s",
+			recipientEmail)
+	}
 }

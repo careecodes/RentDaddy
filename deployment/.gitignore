@@ -1,0 +1,23 @@
+.local
+# Terraform state, plans, and backups
+*.tfstate
+*.tfstate.*
+*.tfplan
+*.tfshow
+*.tfout
+
+# Terraform variable and config files
+*.tfvars
+*.tfvars.json
+
+# Terraform module, lock, and provider directories
+.terraform/
+.terraform.lock.hcl
+
+# Ignore Terraform-generated JSON templates and outputs
+**/*.json
+!*.json                # Uncomment this if you want to keep some JSON files
+deployment/**/*.json   # But ignore Terraform-specific ones
+
+# If you want to ignore all text/debug outputs from Terraform
+deployment/**/*.txt

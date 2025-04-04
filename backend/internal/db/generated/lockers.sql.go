@@ -14,21 +14,19 @@ import (
 const createLocker = `-- name: CreateLocker :exec
 INSERT INTO lockers (
     access_code,
-    user_id,
-    in_use
+    user_id
 ) VALUES (
-    $1, $2, $3
+    $1, $2
 )
 `
 
 type CreateLockerParams struct {
 	AccessCode pgtype.Text `json:"access_code"`
 	UserID     pgtype.Int8 `json:"user_id"`
-	InUse      bool        `json:"in_use"`
 }
 
 func (q *Queries) CreateLocker(ctx context.Context, arg CreateLockerParams) error {
-	_, err := q.db.Exec(ctx, createLocker, arg.AccessCode, arg.UserID, arg.InUse)
+	_, err := q.db.Exec(ctx, createLocker, arg.AccessCode, arg.UserID)
 	return err
 }
 
@@ -51,6 +49,24 @@ func (q *Queries) CreateManyLockers(ctx context.Context, count int32) (int64, er
 		return 0, err
 	}
 	return result.RowsAffected(), nil
+}
+
+const getAvailableLocker = `-- name: GetAvailableLocker :one
+SELECT id, access_code, in_use, user_id
+FROM lockers
+WHERE in_use = false
+`
+
+func (q *Queries) GetAvailableLocker(ctx context.Context) (Locker, error) {
+	row := q.db.QueryRow(ctx, getAvailableLocker)
+	var i Locker
+	err := row.Scan(
+		&i.ID,
+		&i.AccessCode,
+		&i.InUse,
+		&i.UserID,
+	)
+	return i, err
 }
 
 const getLocker = `-- name: GetLocker :one
@@ -95,7 +111,6 @@ const getLockers = `-- name: GetLockers :many
 SELECT id, access_code, in_use, user_id
 FROM lockers
 ORDER BY id DESC
-LIMIT (SELECT COUNT(*) FROM lockers)
 `
 
 func (q *Queries) GetLockers(ctx context.Context) ([]Locker, error) {
@@ -149,6 +164,23 @@ type UpdateAccessCodeParams struct {
 
 func (q *Queries) UpdateAccessCode(ctx context.Context, arg UpdateAccessCodeParams) error {
 	_, err := q.db.Exec(ctx, updateAccessCode, arg.ID, arg.AccessCode)
+	return err
+}
+
+const updateLockerInUse = `-- name: UpdateLockerInUse :exec
+UPDATE lockers
+SET user_id = $2, access_code = $3, in_use = true
+WHERE id = $1
+`
+
+type UpdateLockerInUseParams struct {
+	ID         int64       `json:"id"`
+	UserID     pgtype.Int8 `json:"user_id"`
+	AccessCode pgtype.Text `json:"access_code"`
+}
+
+func (q *Queries) UpdateLockerInUse(ctx context.Context, arg UpdateLockerInUseParams) error {
+	_, err := q.db.Exec(ctx, updateLockerInUse, arg.ID, arg.UserID, arg.AccessCode)
 	return err
 }
 

@@ -7,11 +7,54 @@ vars:
   PG_URL: postgresql://{{.POSTGRES_USER}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
   DATABASE_URL: .PG_URL
 tasks:
-  seed-users:
-    desc: "Seed users into the database and syncs with Clerk"
+  # 🧑‍💻 Local Docker Compose: Default naming
+  seed:users:
+    desc: "Run user seeder inside local rentdaddy-backend container (Docker Compose)"
     cmds:
-      - go run scripts/seed_users.go
-      # - docker compose exec backend go run scripts/seed_users.go
+      - >
+        docker exec rentdaddy-backend sh -c "cd /app && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go"
+    silent: false
+
+  seed:data:
+    desc: "Run complaints/work_orders seeder inside local rentdaddy-backend container (Docker Compose)"
+    cmds:
+      - >
+        docker exec rentdaddy-backend sh -c "cd /app && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go"
+    silent: false
+
+  # 🚀 Production-compatible: Explicit naming
+  seed:users:prod:
+    desc: "Run user seeder directly (ECS or inside backend container shell)"
+    cmds:
+      - >
+        cd backend && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/seedusers/main.go scripts/cmd/seedusers/seed_users.go
+    silent: false
+
+  seed:data:prod:
+    desc: "Run complaints/work_orders seeder directly (ECS or inside backend container shell)"
+    cmds:
+      - >
+        cd backend && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go
     silent: false
 
   build:
@@ -32,15 +75,7 @@ tasks:
   migrate:up:
     desc: "Apply migrations to the database"
     cmds:
-      # The commented block prints credentials to the logs/command-line
-      # - |
-      #   PGPASSWORD="{{.POSTGRES_PASSWORD}}" psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'" > /dev/null 2>&1 "
-      #   WITH settings AS (
-      #   SELECT '{{.POSTGRES_USER}}' AS current_user,
-      #      '{{.POSTGRES_PASSWORD}}' AS current_password,
-      #      '{{.POSTGRES_DB}}' AS current_db) SELECT * FROM settings;" > /dev/null 2>&1
-      - psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'"
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up # > /dev/null 2>&1
+      - PGPASSWORD="{{.POSTGRES_PASSWORD}}" migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
       - echo "Migrations applied!"
 
   migrate:down:
@@ -90,7 +125,7 @@ tasks:
         exit 1
         fi
         echo "Running all tests in container: $CONTAINER_NAME..."
-        psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+        psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
   cron:expire-leases:
     desc: "Run lease expiration job manually in backend container"
     cmds:
@@ -98,7 +133,7 @@ tasks:
   cron:test-expired-leases:
     desc: "Seed db with leases to expire"
     cmds:
-      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
+      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
 
   cron:test-status-update:
     desc: "Test the lease status update endpoint"
@@ -124,3 +159,15 @@ tasks:
     desc: "Test the lease expiration notification system"
     cmds:
       - bash ./scripts/test-lease-notify.sh
+
+  sqlc:generate:
+    desc: "Regenerate Go code from SQL queries"
+    cmds:
+      - cd backend && sqlc generate
+    silent: false
+
+  db:sync:
+    desc: "Run sqlc generate + apply migrations"
+    cmds:
+      - task: sqlc:generate
+      - task: migrate:up

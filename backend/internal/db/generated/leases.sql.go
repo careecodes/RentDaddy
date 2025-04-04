@@ -369,8 +369,9 @@ func (q *Queries) GetLeaseByExternalDocID(ctx context.Context, externalDocID str
 	return i, err
 }
 
-const getLeaseByID = `-- name: GetLeaseByID :one
-SELECT lease_number,
+const getLeaseByExternalID = `-- name: GetLeaseByExternalID :one
+SELECT id,
+    lease_number,
     external_doc_id,
     lease_pdf_s3,
     tenant_id,
@@ -382,31 +383,37 @@ SELECT lease_number,
     status,
     created_by,
     updated_by,
-    previous_lease_id
+    previous_lease_id,
+    tenant_signing_url,
+    landlord_signing_url
 FROM leases
-WHERE id = $1
+WHERE external_doc_id = $1
 `
 
-type GetLeaseByIDRow struct {
-	LeaseNumber     int64          `json:"lease_number"`
-	ExternalDocID   string         `json:"external_doc_id"`
-	LeasePdfS3      pgtype.Text    `json:"lease_pdf_s3"`
-	TenantID        int64          `json:"tenant_id"`
-	LandlordID      int64          `json:"landlord_id"`
-	ApartmentID     int64          `json:"apartment_id"`
-	LeaseStartDate  pgtype.Date    `json:"lease_start_date"`
-	LeaseEndDate    pgtype.Date    `json:"lease_end_date"`
-	RentAmount      pgtype.Numeric `json:"rent_amount"`
-	Status          LeaseStatus    `json:"status"`
-	CreatedBy       int64          `json:"created_by"`
-	UpdatedBy       int64          `json:"updated_by"`
-	PreviousLeaseID pgtype.Int8    `json:"previous_lease_id"`
+type GetLeaseByExternalIDRow struct {
+	ID                 int64          `json:"id"`
+	LeaseNumber        int64          `json:"lease_number"`
+	ExternalDocID      string         `json:"external_doc_id"`
+	LeasePdfS3         pgtype.Text    `json:"lease_pdf_s3"`
+	TenantID           int64          `json:"tenant_id"`
+	LandlordID         int64          `json:"landlord_id"`
+	ApartmentID        int64          `json:"apartment_id"`
+	LeaseStartDate     pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate       pgtype.Date    `json:"lease_end_date"`
+	RentAmount         pgtype.Numeric `json:"rent_amount"`
+	Status             LeaseStatus    `json:"status"`
+	CreatedBy          int64          `json:"created_by"`
+	UpdatedBy          int64          `json:"updated_by"`
+	PreviousLeaseID    pgtype.Int8    `json:"previous_lease_id"`
+	TenantSigningUrl   pgtype.Text    `json:"tenant_signing_url"`
+	LandlordSigningUrl pgtype.Text    `json:"landlord_signing_url"`
 }
 
-func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, error) {
-	row := q.db.QueryRow(ctx, getLeaseByID, id)
-	var i GetLeaseByIDRow
+func (q *Queries) GetLeaseByExternalID(ctx context.Context, externalDocID string) (GetLeaseByExternalIDRow, error) {
+	row := q.db.QueryRow(ctx, getLeaseByExternalID, externalDocID)
+	var i GetLeaseByExternalIDRow
 	err := row.Scan(
+		&i.ID,
 		&i.LeaseNumber,
 		&i.ExternalDocID,
 		&i.LeasePdfS3,
@@ -420,6 +427,72 @@ func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, 
 		&i.CreatedBy,
 		&i.UpdatedBy,
 		&i.PreviousLeaseID,
+		&i.TenantSigningUrl,
+		&i.LandlordSigningUrl,
+	)
+	return i, err
+}
+
+const getLeaseByID = `-- name: GetLeaseByID :one
+SELECT id,
+    lease_number,
+    external_doc_id,
+    lease_pdf_s3,
+    tenant_id,
+    landlord_id,
+    apartment_id,
+    lease_start_date,
+    lease_end_date,
+    rent_amount,
+    status,
+    created_by,
+    updated_by,
+    previous_lease_id,
+    tenant_signing_url,
+    landlord_signing_url
+FROM leases
+WHERE id = $1
+`
+
+type GetLeaseByIDRow struct {
+	ID                 int64          `json:"id"`
+	LeaseNumber        int64          `json:"lease_number"`
+	ExternalDocID      string         `json:"external_doc_id"`
+	LeasePdfS3         pgtype.Text    `json:"lease_pdf_s3"`
+	TenantID           int64          `json:"tenant_id"`
+	LandlordID         int64          `json:"landlord_id"`
+	ApartmentID        int64          `json:"apartment_id"`
+	LeaseStartDate     pgtype.Date    `json:"lease_start_date"`
+	LeaseEndDate       pgtype.Date    `json:"lease_end_date"`
+	RentAmount         pgtype.Numeric `json:"rent_amount"`
+	Status             LeaseStatus    `json:"status"`
+	CreatedBy          int64          `json:"created_by"`
+	UpdatedBy          int64          `json:"updated_by"`
+	PreviousLeaseID    pgtype.Int8    `json:"previous_lease_id"`
+	TenantSigningUrl   pgtype.Text    `json:"tenant_signing_url"`
+	LandlordSigningUrl pgtype.Text    `json:"landlord_signing_url"`
+}
+
+func (q *Queries) GetLeaseByID(ctx context.Context, id int64) (GetLeaseByIDRow, error) {
+	row := q.db.QueryRow(ctx, getLeaseByID, id)
+	var i GetLeaseByIDRow
+	err := row.Scan(
+		&i.ID,
+		&i.LeaseNumber,
+		&i.ExternalDocID,
+		&i.LeasePdfS3,
+		&i.TenantID,
+		&i.LandlordID,
+		&i.ApartmentID,
+		&i.LeaseStartDate,
+		&i.LeaseEndDate,
+		&i.RentAmount,
+		&i.Status,
+		&i.CreatedBy,
+		&i.UpdatedBy,
+		&i.PreviousLeaseID,
+		&i.TenantSigningUrl,
+		&i.LandlordSigningUrl,
 	)
 	return i, err
 }
@@ -872,7 +945,7 @@ SET
     availability = false,
     lease_id = (SELECT id FROM updated_lease),
     updated_at = now()
-WHERE id = (SELECT apartment_id FROM updated_lease WHERE apartment_id IS NOT NULL)
+WHERE id = (SELECT apartment_id FROM updated_lease)
 RETURNING 
     (SELECT json_build_object(
         'lease_id', ul.id,
