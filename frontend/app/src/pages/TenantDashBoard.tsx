@@ -1,34 +1,24 @@
-import Icon, { ToolOutlined, WarningOutlined, InboxOutlined, CalendarOutlined, UserOutlined, CarOutlined } from "@ant-design/icons";
-import { Tag, Modal, Button } from "antd";
-import React, { useState, useEffect } from "react";
-import { Link } from "react-router";
-import { TenantLeaseStatusAndURL } from "../types/types";
-import { ToolOutlined, WarningOutlined, InboxOutlined, CarOutlined } from "@ant-design/icons";
-import { Modal, Button, Divider, Form, Input, Select } from "antd";
+import { WarningOutlined, InboxOutlined, CarOutlined, PaperClipOutlined } from "@ant-design/icons";
+import { Modal, Button, Divider, Form, Input } from "antd";
 import { useState, useEffect } from "react";
-import ModalComponent from "../components/ModalComponent";
+import LeaseCardComponent from "../components/LeaseCardComponent";
 import AlertComponent from "../components/reusableComponents/AlertComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
 import { CardComponent } from "../components/reusableComponents/CardComponent";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import MyChatBot from "../components/ChatBot";
 import { useAuth } from "@clerk/react-router";
-import { useQuery } from "@tanstack/react-query";
-
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080';
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
 
 import { useMutation, useQueries, useQuery, useQueryClient } from "@tanstack/react-query";
-import { ComplaintsData, Parking, ParkingEntry, WorkOrderData } from "../types/types";
 
-const serverUrl = import.meta.env.VITE_SERVER_URL;
-const absoluteServerUrl = `${serverUrl}`;
+import { ComplaintsData, Parking, ParkingEntry, TenantLeaseStatusAndURL, WorkOrderData } from "../types/types";
+import { toast } from "sonner";
+import { SERVER_API_URL } from "../utils/apiConfig";
+
+const absoluteServerUrl = SERVER_API_URL;
 
 export const TenantDashBoard = () => {
     const [isSigningModalVisible, setSigningModalVisible] = useState(false);
-    const { user } = useUser();
-    const userId = user?.publicMetadata["db_id"];
     const { getToken, userId } = useAuth();
 
     async function getParkingPermit() {
@@ -47,7 +37,10 @@ export const TenantDashBoard = () => {
         if (!res.ok) {
             throw new Error("[TENANT_DASHBOARD] Error parking_permits request failed");
         }
-        return (await res.json()) as Parking[];
+
+        const permits = (await res.json()) as Parking[];
+        console.log("Parking permits:", permits);
+        return permits;
     }
 
     async function getComplaints() {
@@ -116,34 +109,27 @@ export const TenantDashBoard = () => {
         ],
     });
 
-    // Simulate fetching lease status using TanStack Query
-    const {
-        data: leaseStatus,
-        isLoading,
-        isError,
-    } = useQuery({
+    // Fetch lease status using TanStack Query
+    const { data: leaseData, isLoading } = useQuery({
         queryKey: ["leaseStatus", userId], // Unique key for the query
         queryFn: async () => {
-            // Simulate a delay to mimic network request and give dummy data
-            await new Promise((resolve) => setTimeout(resolve, 500));
-            const leaseData = {
-                // userId: userId,
-                userId: "notme",
-                lease_status: "pending_approval",
-            };
-            // const response = await fetch(`/api/leases?tenantId=${userId}`);
-            // if (!response.ok) {
-            //     throw new Error("Failed to fetch lease status");
-            // }
-            // const data = await response.json();
-
-            // Return dummy data if the userId matches
-            if (userId === leaseData.userId) {
-                console.log(leaseData.lease_status);
-                return leaseData.lease_status;
-            } else {
-                return "active";
+            if (!userId) {
+                console.log("`userId` variable is not populated");
+                return null;
             }
+            const response = await fetch(`${absoluteServerUrl}/leases/${userId}/signing-url`);
+            if (!response.ok) {
+                return null;
+            }
+
+            // If empty, return null so tenant dashboard can still load
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                return null;
+            }
+
+            const leaseData: TenantLeaseStatusAndURL | null = await response.json();
+            return leaseData;
         },
         enabled: !!userId,
     });
@@ -188,23 +174,14 @@ export const TenantDashBoard = () => {
             {/* Dashboard Statistics Cards */}
             <h2 className="my-3 p-3 text-center">Quick Actions</h2>
             <div className="flex-container my-3">
-                <CardComponent
+                {/* <CardComponent
                     title="Complaints"
                     value={complaints.data?.length ?? 0}
                     description="Something not working right or disturbing you? Let us know."
                     hoverable={true}
                     icon={<ToolOutlined className="icon" />}
-                    button={
-                        <Link to="/tenant/tenant-work-orders-and-complaints">
-                            <ButtonComponent
-                                title="View All"
-                                type="primary"
-                                onClick={() => { }}
-                            />
-                        </Link>
-                    }
                     button={<TenantCreateComplaintsModal />}
-                />
+                /> */}
                 <CardComponent
                     title="Package info"
                     value={lockers.data?.length ?? 0}
@@ -219,70 +196,29 @@ export const TenantDashBoard = () => {
                     description="Got a guest coming to visit? Make sure they have spots to park"
                     hoverable={true}
                     icon={<CarOutlined className="icon" />}
-                    button={
-                        <ModalComponent
-                            type="Guest Parking"
-                            buttonTitle="Add Guest"
-                            content="Add guest to be able to park in the complex"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
-                    button={<TenantParkingPeritModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
+                    button={<TenantParkingPermitModal userParkingPermitsUsed={parking.data?.length ?? 0} />}
                 />
             </div>
 
             {/* Quick Access Documents Section */}
             <h2 className="my-3 p-3 text-center">Quick Access Documents Section</h2>
             <div className="flex-container mb-3">
-                <CardComponent
-                    title="Lease"
-                    description="View or Resign your lease"
-                    hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View Lease"
-                            content="Lease should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
-                />
+                <LeaseCardComponent />
                 <CardComponent
                     title="Work Orders"
                     description={"View your work orders here."}
                     hoverable={true}
-                    button={
-                        <Link to="/tenant/tenant-work-orders-and-complaints">
-                            <ButtonComponent
-                                title="View all workorders"
-                                type="primary"
-                                onClick={() => { }}
-                            />
-                        </Link>
-                    }
                     value={workOrders.data?.length}
+                    icon={<PaperClipOutlined className="icon" />}
                     button={<TenantViewWorkOrdersModal data={workOrders.data} />}
                 />
                 <CardComponent
                     title="Complaints"
                     description={"View your complaints here."}
                     hoverable={true}
-                    button={
-                        <ModalComponent
-                            type="default"
-                            buttonTitle="View all complaints"
-                            content="Complaint should go here"
-                            buttonType="primary"
-                            handleOkay={() => { }}
-                        />
-                    }
                     value={complaints.data?.length}
                     button={<TenantViewComplaintsModal data={complaints.data} />}
                 />
-
-                <MyChatBot />
             </div>
 
             {/* Inescapable Modal for lease signing */}
@@ -306,12 +242,13 @@ export const TenantDashBoard = () => {
                     <WarningOutlined style={{ fontSize: "4rem", color: "#faad14", marginBottom: "1rem" }} />
                     <h3 style={{ marginBottom: "1rem" }}>Your Lease Requires Attention</h3>
                     <p>
-                        Your lease status is <strong>{leaseStatus === "pending_approval" ? "Pending Approval" : leaseStatus}</strong>.
+                        Your lease status is <strong>{leaseData?.status === "pending_approval" ? "Pending Approval" : leaseData?.status}</strong>.
                     </p>
                     <p>You must sign your lease to continue using the tenant portal.</p>
                     <p style={{ marginTop: "1rem", fontStyle: "italic" }}>This action is required and cannot be dismissed.</p>
                 </div>
             </Modal>
+            <MyChatBot />
         </div>
     );
 };
@@ -320,7 +257,7 @@ interface ParkingPermitModalProps {
     userParkingPermitsUsed: number;
 }
 
-function TenantParkingPeritModal(props: ParkingPermitModalProps) {
+function TenantParkingPermitModal(props: ParkingPermitModalProps) {
     const queryClient = useQueryClient();
     const [internalModalOpen, setInternalModalOpen] = useState(false);
     const { userId, getToken } = useAuth();
@@ -354,6 +291,11 @@ function TenantParkingPeritModal(props: ParkingPermitModalProps) {
                 queryKey: [`${userId}-parking`],
             });
             handleCancel();
+            return toast.success("Success", { description: "Created new parking permit" });
+        },
+
+        onError: () => {
+            return toast.error("Oops", { description: "Something happned please try again another time." });
         },
     });
 
@@ -442,13 +384,13 @@ function TenantViewWorkOrdersModal(props: WorkOrderModalProps) {
     return (
         <>
             <ButtonComponent
-                title="View Complaints"
+                title="View Work Orders"
                 type="primary"
                 onClick={showModal}
             />
             <Modal
                 className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
+                title={<h3>Work Orders</h3>}
                 open={internalModalOpen}
                 onOk={() => { }}
                 onCancel={handleCancel}
@@ -538,107 +480,111 @@ function TenantViewComplaintsModal(props: ComplaintModalProps) {
         </>
     );
 }
-function TenantCreateComplaintsModal() {
-    const queryClient = useQueryClient();
-    const { getToken, userId } = useAuth();
-    const [internalModalOpen, setInternalModalOpen] = useState(false);
-    const [complaintForm] = Form.useForm<ComplaintsData>();
-    const showModal = () => {
-        setInternalModalOpen(true);
-    };
-    const handleCancel = () => {
-        if (internalModalOpen) {
-            setInternalModalOpen(false);
-        }
-        if (internalModalOpen === undefined) {
-            setInternalModalOpen(false);
-        }
-    };
+// function TenantCreateComplaintsModal() {
+//     const queryClient = useQueryClient();
+//     const { getToken, userId } = useAuth();
+//     const [internalModalOpen, setInternalModalOpen] = useState(false);
+//     const [complaintForm] = Form.useForm<ComplaintsData>();
+//     const showModal = () => {
+//         setInternalModalOpen(true);
+//     };
+//     const handleCancel = () => {
+//         if (internalModalOpen) {
+//             setInternalModalOpen(false);
+//         }
+//         if (internalModalOpen === undefined) {
+//             setInternalModalOpen(false);
+//         }//     };
 
-    const { mutate: createComplaint, isPending: isPendingComplaint } = useMutation({
-        mutationKey: [`${userId}-create-complaint`],
-        mutationFn: async () => {
-            const authToken = await getToken();
-            if (!authToken) {
-                throw new Error("[TENANT_DASHBOARD] Error unauthorized");
-            }
+//     const { mutate: createComplaint, isPending: isPendingComplaint } = useMutation({
+//         mutationKey: [`${userId}-create-complaint`],
+//         mutationFn: async () => {
+//             const authToken = await getToken();
+//             if (!authToken) {
+//                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
+//             }
 
-            // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
-            const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json",
-                    Authorization: `Bearer ${authToken}`,
-                },
-                body: JSON.stringify(complaintForm.getFieldsValue()),
-            });
+//             // console.log(`COMPLAINT FORM: ${JSON.stringify(complaintForm.getFieldsValue())}`);
+//             const res = await fetch(`${absoluteServerUrl}/tenant/complaints`, {
+//                 method: "POST",
+//                 headers: {
+//                     "Content-Type": "application/json",
+//                     Authorization: `Bearer ${authToken}`,
+//                 },
+//                 body: JSON.stringify(complaintForm.getFieldsValue()),
+//             });
 
-            if (!res.ok) {
-                throw new Error("[TENANT_DASHBOARD] Error creating complaint");
-            }
-            return;
-        },
-        onSuccess: () => {
-            queryClient.invalidateQueries({
-                queryKey: [`${userId}-complaints`],
-            });
-            handleCancel();
-        },
-    });
-    return (
-        <>
-            <ButtonComponent
-                type="primary"
-                title="Create Complaint"
-                onClick={showModal}
-            />
-            <Modal
-                className="p-3 flex-wrap-row"
-                title={<h3>Complaints</h3>}
-                open={internalModalOpen}
-                onOk={() => {
-                    createComplaint();
-                }}
-                okText={"Create"}
-                onCancel={handleCancel}
-                okButtonProps={{ disabled: isPendingComplaint ? true : false }}
-                cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
-                <p>Enter information about a complaint that you're having here.</p>
-                <Divider />
-                <Form form={complaintForm}>
-                    <p className="fs-7">Title</p>
-                    <Form.Item
-                        name="title"
-                        rules={[{ required: true, type: "string", min: 3, max: 50 }]}>
-                        <Input
-                            placeholder="Enter a title"
-                            type="text"
-                        />
-                    </Form.Item>
-                    <p className="fs-7">Description</p>
-                    <Form.Item
-                        name="description"
-                        rules={[{ required: true, type: "string", min: 5, max: 500 }]}>
-                        <Input.TextArea
-                            placeholder="Enter a breif description for complaint"
-                            rows={4}
-                        />
-                    </Form.Item>
-                    <p className="fs-7">Category</p>
-                    <Form.Item
-                        name="category"
-                        rules={[{ required: true, type: "string" }]}>
-                        <Select placeholder={"Select a category"}>
-                            {["maintenance", "noise", "security", "parking", "neighbor", "trash", "internet", "lease", "natural_disaster", "other"].map((c) => (
-                                <Select.Option key={c}>{c}</Select.Option>
-                            ))}
-                        </Select>
-                    </Form.Item>
-                </Form>
-            </Modal>
-        </>
-    );
-}
+//             if (!res.ok) {
+//                 throw new Error("[TENANT_DASHBOARD] Error creating complaint");
+//             }
+//             return;
+//         },
+//         onSuccess: () => {
+//             queryClient.invalidateQueries({
+//                 queryKey: [`${userId}-complaints`],
+//             });
+//             handleCancel();
+//             return toast.success("Success", { description: "Created new complaint" });
+//         },
+
+//         onError: () => {
+//             return toast.error("Oops", { description: "Something happned please try again another time." });
+//         },
+//     });
+//     return (
+//         <>
+//             <ButtonComponent
+//                 type="primary"
+//                 title="Create Complaint"
+//                 onClick={showModal}
+//             />
+//             <Modal
+//                 className="p-3 flex-wrap-row"
+//                 title={<h3>Complaints</h3>}
+//                 open={internalModalOpen}
+//                 onOk={() => {
+//                     createComplaint();
+//                 }}
+//                 okText={"Create"}
+//                 onCancel={handleCancel}
+//                 okButtonProps={{ disabled: isPendingComplaint ? true : false }}
+//                 cancelButtonProps={{ disabled: isPendingComplaint ? true : false }}>
+//                 <p>Enter information about a complaint that you're having here.</p>
+//                 <Divider />
+//                 <Form form={complaintForm}>
+//                     <p className="fs-7">Title</p>
+//                     <Form.Item
+//                         name="title"
+//                         rules={[{ required: true, type: "string", min: 3, max: 50 }]}>
+//                         <Input
+//                             placeholder="Enter a title"
+//                             type="text"
+//                         />
+//                     </Form.Item>
+//                     <p className="fs-7">Description</p>
+//                     <Form.Item
+//                         name="description"
+//                         rules={[{ required: true, type: "string", min: 5, max: 500 }]}>
+//                         <Input.TextArea
+//                             placeholder="Enter a breif description for complaint"
+//                             rows={4}
+//                         />
+//                     </Form.Item>
+//                     <p className="fs-7">Category</p>
+//                     <Form.Item
+//                         name="category"
+//                         rules={[{ required: true, type: "string" }]}>
+//                         <Select placeholder={"Select a category"}>
+//                             {["maintenance", "noise", "security", "parking", "neighbor", "trash", "internet", "lease", "natural_disaster", "other"].map((c) => (
+//                                 <Select.Option key={c}>{c}</Select.Option>
+//                             ))}
+//                         </Select>
+//                     </Form.Item>
+//                 </Form>
+//             </Modal>
+//         </>
+//     );
+// }
 
 interface LockerModalProps {
     numberOfPackages: number;
@@ -662,15 +608,15 @@ function TenantOpenLockerModal(props: LockerModalProps) {
     const { mutate: openLocker } = useMutation({
         mutationKey: [`${userId}-locker`],
         mutationFn: async () => {
-            const authToken = await getToken();
-            if (!authToken) {
+            const token = await getToken();
+            if (!token) {
                 throw new Error("[TENANT_DASHBOARD] Error unauthorized");
             }
-            const res = await fetch(`${absoluteServerUrl}/tenants/lockers/unlock`, {
+            const res = await fetch(`${absoluteServerUrl}/tenant/lockers/unlock`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
-                    Authorization: `Bearer ${authToken}`,
+                    Authorization: `Bearer ${token}`,
                 },
             });
 
@@ -696,7 +642,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
         <>
             <ButtonComponent
                 type="primary"
-                title="Open Locker"
+                title="Open Lockers"
                 onClick={showModal}
                 disabled={props.numberOfPackages === 0 ? true : false}
             />
@@ -724,7 +670,7 @@ function TenantOpenLockerModal(props: LockerModalProps) {
                         <path d="m14 7 3 3" />
                         <path d="m9.4 10.6-6.814 6.814A2 2 0 0 0 2 18.828V21a1 1 0 0 0 1 1h3a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h1a1 1 0 0 0 1-1v-1a1 1 0 0 1 1-1h.172a2 2 0 0 0 1.414-.586l.814-.814" />
                     </svg>
-                    <p className="fs-5">Locker is open!</p>
+                    <p className="fs-5">Lockers opened!</p>
                 </span>
             </Modal>
         </>

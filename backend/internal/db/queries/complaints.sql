@@ -18,11 +18,15 @@ LIMIT 1;
 -- name: ListComplaints :many
 SELECT *
 FROM complaints
-ORDER BY created_at DESC
-LIMIT $1 OFFSET $2;
+ORDER BY created_at DESC;
 
 -- name: ListTenantComplaints :many
 SELECT *
+FROM complaints
+WHERE created_by = $1;
+
+-- name: CountComplaintsByUser :one
+SELECT COUNT(*)
 FROM complaints
 WHERE created_by = $1;
 

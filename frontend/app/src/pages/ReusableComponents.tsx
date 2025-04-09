@@ -1,4 +1,4 @@
-import { Avatar, Button, Card, Col, ConfigProvider, Divider, Input, Row } from "antd";
+import { Avatar, Button, Col, Divider, Input, Row } from "antd";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import { LockOutlined, SettingOutlined, UserOutlined } from "@ant-design/icons";
 import TextArea from "antd/es/input/TextArea";
@@ -106,21 +106,33 @@ const ReusableComponents = () => {
                         buttonType="default"
                         buttonTitle="Confirmation Model"
                         content="This is a confirmation model"
-                        handleOkay={() => {}}
+                        handleOkay={async () => Promise.resolve()}
+                        setUserId={(id) => console.log("Set User ID:", id)}
+                        setAccessCode={(code) => console.log("Set Access Code:", code)}
+                        selectedUserId=""
+                        accessCode=""
                     />
                     <ModalComponent
                         type="Smart Locker"
                         buttonType="primary"
                         buttonTitle="Smart Locker"
                         content="This is a smart locker model"
-                        handleOkay={() => {}}
+                        handleOkay={() => Promise.resolve()}
+                        setUserId={(id) => console.log("Set User ID:", id)}
+                        setAccessCode={(code) => console.log("Set Access Code:", code)}
+                        selectedUserId=""
+                        accessCode=""
                     />
                     <ModalComponent
                         type="Guest Parking"
                         buttonType="primary"
                         buttonTitle="Guest Parking"
                         content="To register someone in Guest Parking, please fill out the form below."
-                        handleOkay={() => {}}
+                        handleOkay={() => Promise.resolve()}
+                        setUserId={(id) => console.log("Set User ID:", id)}
+                        setAccessCode={(code) => console.log("Set Access Code:", code)}
+                        selectedUserId=""
+                        accessCode=""
                     />
                 </div>
 
@@ -129,16 +141,19 @@ const ReusableComponents = () => {
                 {/* alerts */}
                 <AlertComponent
                     title={"Success Example"}
+                    message={"This is a success message"}
                     description={"Success Description"}
                     type={"success"}
                 />
                 <AlertComponent
                     title={"Error Example"}
+                    message={"This is an error message"}
                     description={"Error Description"}
                     type={"error"}
                 />
                 <AlertComponent
                     title={"Warning Example"}
+                    message={"This is a warning message"}
                     description={"Warning Description"}
                     type={"warning"}
                 />

@@ -6,6 +6,7 @@ import (
 	"math/big"
 	"math/rand"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgtype"
@@ -14,10 +15,36 @@ import (
 func GetAbsoluteUrl(path string) string {
 	url := os.Getenv("DOMAIN_URL")
 	port := os.Getenv("PORT")
-	if url != "" {
+	env := os.Getenv("ENV")
+	
+	// For production environments (env set to "production"), use the domain as is
+	// This assumes DOMAIN_URL contains full URL including protocol (https://api.curiousdev.net)
+	if env == "production" && url != "" {
+		// If the URL already has a protocol, use it as is
+		if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+			return fmt.Sprintf("%s%s", url, path)
+		}
+		// Otherwise add https:// prefix
 		return fmt.Sprintf("https://%s%s", url, path)
 	}
-	return fmt.Sprintf("http://localhost:%s%s", port, path)
+	
+	// For development environments or when url is empty
+	if url == "" {
+		url = "localhost"
+	}
+	
+	// Check if URL already contains protocol
+	if strings.HasPrefix(url, "http://") || strings.HasPrefix(url, "https://") {
+		return fmt.Sprintf("%s%s", url, path)
+	}
+	
+	// For local development or when port is specified
+	if port != "" {
+		return fmt.Sprintf("http://%s:%s%s", url, port, path)
+	}
+	
+	// Fallback with default port
+	return fmt.Sprintf("http://%s:8080%s", url, path)
 }
 
 func CreatePhoneNumber() string {

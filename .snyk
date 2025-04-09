@@ -1,0 +1,13 @@
+# Snyk (https://snyk.io) policy file
+version: v1.25.0
+
+# ignores vulnerabilities until expiry date; change duration by modifying expiry date
+ignore:
+  'SNYK-GOLANG-GITHUBCOMGOJOSEGOJOSEV3-8754524':
+    - '*':
+        reason: Resource exhaustion vulnerability in go-jose/v3, will update when possible
+        expires: 2025-05-07T00:00:00.000Z
+        created: 2025-04-07T00:00:00.000Z
+
+# patches apply the minimum changes required to fix a vulnerability
+patch: {}

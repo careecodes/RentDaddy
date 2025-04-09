@@ -43,6 +43,28 @@ func NewParkingPermitHandler(pool *pgxpool.Pool, queries *db.Queries) *ParkingPe
 }
 
 // ADMIN START
+func (p ParkingPermitHandler) GetParkingPermitAmount(w http.ResponseWriter, r *http.Request) {
+	permits, err := p.queries.ListParkingPermits(r.Context())
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed querying list of parking permits: %v", err)
+		http.Error(w, "Error querying parking permits", http.StatusInternalServerError)
+		return
+	}
+
+	// parkingPermitAmount := len(permits)
+
+	jsonRes, err := json.Marshal(permits)
+	if err != nil {
+		log.Printf("[PARKING_HANDLER] Failed converting to JSON: %v", err)
+		http.Error(w, "Error converting to JSON", http.StatusInternalServerError)
+		return
+	}
+
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	w.Write([]byte(jsonRes))
+}
+
 func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http.Request) {
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -121,7 +143,6 @@ func (p ParkingPermitHandler) CreateParkingPermit(w http.ResponseWriter, r *http
 			Time: time.Now().UTC().Add(time.Duration(5) * 24 * time.Hour),
 		},
 	})
-
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed creating parking permit: %v", err)
 		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
@@ -223,8 +244,8 @@ func (p ParkingPermitHandler) TenantGetParkingPermit(w http.ResponseWriter, r *h
 		return
 	}
 
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
 		log.Println("[PARKING_HANDLER] Failed no user CTX")
 		http.Error(w, "Error no user CTX", http.StatusNotFound)
 		return
@@ -250,8 +271,8 @@ func (p ParkingPermitHandler) TenantGetParkingPermit(w http.ResponseWriter, r *h
 }
 
 func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *http.Request) {
-	userCtx, err := middleware.GetClerkUser(r)
-	if err != nil {
+	userCtx := middleware.GetUserCtx(r)
+	if userCtx == nil {
 		log.Printf("[USER_HANDLER] No user CTX")
 		http.Error(w, "Error No user CTX", http.StatusUnauthorized)
 		return
@@ -259,12 +280,20 @@ func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *
 
 	log.Printf("Current user ID: %s", userCtx.ID)
 
-	parkingPermits, err := p.queries.ListParkingPermits(r.Context())
+	tenant, err := p.queries.GetUserByClerkId(r.Context(), userCtx.ID)
+	if err != nil {
+		log.Printf("[USER_HANDLER] Failed querying user by clerk ID: %v", err)
+		http.Error(w, "Error querying user by clerk ID", http.StatusInternalServerError)
+		return
+	}
+
+	parkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), pgtype.Int8{Int64: tenant.ID, Valid: true})
 	if err != nil {
 		log.Printf("[USER_HANDLER] Fiailed querying user parking permits: %v", err)
 		http.Error(w, "Error querying user parking permits", http.StatusInternalServerError)
 		return
 	}
+	log.Printf("Parking permits: %v", parkingPermits)
 
 	jsonRes, err := json.Marshal(parkingPermits)
 	if err != nil {
@@ -275,7 +304,7 @@ func (p ParkingPermitHandler) TenantGetParkingPermits(w http.ResponseWriter, r *
 
 	w.WriteHeader(http.StatusOK)
 	w.Header().Set("Content-Type", "application/json")
-	w.Write([]byte(jsonRes))
+	w.Write(jsonRes)
 }
 
 func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r *http.Request) {
@@ -290,20 +319,16 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 	err := json.Unmarshal(userCtx.PublicMetadata, &userMetadata)
 	if err != nil {
 		log.Printf("[PARKING_HANDLER] Failed parsing user Clerk metadata: %v", err)
-		http.Error(w, "Error parsing user clerk metadata", http.StatusBadRequest)
-		return
-	}
-
-	permitNumberStr := chi.URLParam(r, "permit_number")
-	permitNumber, err := strconv.Atoi(permitNumberStr)
-	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed converting permit_number to int: %v", err)
-		http.Error(w, "Error converting permit_number param", http.StatusInternalServerError)
+		http.Error(w, "Error parsing user Clerk metadata", http.StatusBadRequest)
 		return
 	}
 
 	var parkingPermitReq UpdateParkingPermitRequest
-	_ = json.NewDecoder(r.Body).Decode(&parkingPermitReq)
+	if err = json.NewDecoder(r.Body).Decode(&parkingPermitReq); err != nil {
+		log.Printf("[PARKING_HANDLER] Failed parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
 
 	tenantParkingPermits, err := p.queries.GetTenantParkingPermits(r.Context(), pgtype.Int8{Int64: int64(userMetadata.DbId), Valid: true})
 	if err != nil {
@@ -318,9 +343,9 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		for _, permit := range tenantParkingPermits {
 			if permit.ExpiresAt.Valid && permit.ExpiresAt.Time.Before(today) {
 				log.Printf("Parking permit expired deleting: %d", permit.ID)
-				if err := p.queries.ClearParkingPermit(r.Context(), int64(permitNumber)); err != nil {
-					log.Printf("[PARKING_HANDLER] User hit parking permit limit: %d Error: %v", len(tenantParkingPermits), err)
-					http.Error(w, "Error parking permit limit reached", http.StatusForbidden)
+				if err := p.queries.ClearParkingPermit(r.Context(), int64(permit.ID)); err != nil {
+					log.Printf("[PARKING_HANDLER] Failed deleting expired tenant parking permit: %s", err)
+					http.Error(w, "Error creating new parking permit", http.StatusInternalServerError)
 					return
 				}
 			} else {
@@ -343,6 +368,11 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		return
 	}
 
+	if newPermit.ID == 0 {
+		http.Error(w, "Error no available parking permits", http.StatusNotFound)
+		return
+	}
+
 	err = p.queries.UpdateParkingPermit(r.Context(), db.UpdateParkingPermitParams{
 		ID:           newPermit.ID,
 		LicensePlate: pgtype.Text{String: parkingPermitReq.LicensePlate, Valid: true},
@@ -355,8 +385,8 @@ func (p ParkingPermitHandler) TenantCreateParkingPermit(w http.ResponseWriter, r
 		},
 	})
 	if err != nil {
-		log.Printf("[PARKING_HANDLER] Failed up parking permit: %v", err)
-		http.Error(w, "Failed to create parking permit", http.StatusInternalServerError)
+		log.Printf("[PARKING_HANDLER] Failed crating parking permit for tenant: %v", err)
+		http.Error(w, "Error creating parking permit for tenant", http.StatusInternalServerError)
 		return
 	}
 

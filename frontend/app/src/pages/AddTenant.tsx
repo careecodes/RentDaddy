@@ -4,12 +4,16 @@ import TableComponent from "../components/reusableComponents/TableComponent";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/react-router";
 import { Button, Divider, Dropdown, Form, Input, MenuProps, Modal } from "antd";
-import { CheckOutlined, CloseCircleOutlined, MailOutlined, PlusOutlined } from "@ant-design/icons";
+import { CheckOutlined, CloseCircleOutlined, MailOutlined } from "@ant-design/icons";
 import { ComplaintsData, TenantsWithLeaseStatus, User, WorkOrderData } from "../types/types";
+import { SERVER_API_URL } from "../utils/apiConfig";
 import { ColumnsType } from "antd/es/table";
 
-type InviteTenant = {
+// Updated to include all fields needed by both AddTenant and ModalComponent
+export type InviteTenant = {
     email: string;
+    unitNumber?: number;
+    management_id?: string;
 };
 
 interface InviteStatusNotification {
@@ -28,7 +32,7 @@ const AddTenant = () => {
                 throw new Error("[TENANT_TABLE] Error unauthorized");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -43,7 +47,7 @@ const AddTenant = () => {
         },
     });
 
-    console.log(`data: ${JSON.stringify(tenants)}\n\n`);
+    // console.log(`data: ${JSON.stringify(tenants)}\n\n`);
 
     // Mock data for tenant table
     const columns: ColumnsType<TenantsWithLeaseStatus> = [
@@ -121,8 +125,6 @@ const AddTenant = () => {
             fixed: "right",
             render: (record: User) => (
                 <div className="flex flex-column gap-2">
-                    {/* View Tenant Complaints */}
-                    {/* View Tenant Work Orders */}
                     <ActionMenu
                         key={record.id}
                         tenantClerkId={record.clerk_id}
@@ -140,7 +142,7 @@ const AddTenant = () => {
     return (
         <div className="container">
             {/* <h1 className="p-3">View or Add Tenants</h1> */}
-            <PageTitleComponent title="Manage Tenants" />
+            <PageTitleComponent title="Tenants" />
             <div className="mb-3 flex">
                 <InviteUserModal />
             </div>
@@ -149,6 +151,7 @@ const AddTenant = () => {
                 dataSource={tenants}
                 onChange={() => {}}
             />
+            <p className="text-muted mb-4 text-center">View all tenants in the system</p>
         </div>
     );
 };
@@ -212,7 +215,7 @@ function InviteUserModal() {
                 throw new Error("[TENANT_TABLE] Error tenant email invalid");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/invite`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/invite`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -270,7 +273,36 @@ function InviteUserModal() {
             <Button
                 type="primary"
                 onClick={showModal}>
-                <PlusOutlined />
+                <svg
+                    xmlns="http://www.w3.org/2000/svg"
+                    width="18"
+                    height="18"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    stroke-width="2"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    className="lucide lucide-user-plus-icon lucide-user-plus">
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2" />
+                    <circle
+                        cx="9"
+                        cy="7"
+                        r="4"
+                    />
+                    <line
+                        x1="19"
+                        x2="19"
+                        y1="8"
+                        y2="14"
+                    />
+                    <line
+                        x1="22"
+                        x2="16"
+                        y1="11"
+                        y2="11"
+                    />
+                </svg>
                 Invite Tenant
             </Button>
             <Modal
@@ -337,7 +369,7 @@ function TenantWorkOrderModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/work_orders`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/${props.tenantClerkId}/work_orders`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -426,7 +458,7 @@ function TenantComplaintModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}/complaints`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/${props.tenantClerkId}/complaints`, {
                 method: "GET",
                 headers: {
                     "Content-Type": "application/json",
@@ -520,7 +552,7 @@ function TenantDeleteModal(props: TenantModalProps) {
                 throw new Error("[TENANT_TABLE] Invalid tenant Clerk Id");
             }
 
-            const res = await fetch(`http://localhost:8080/admin/tenants/${props.tenantClerkId}`, {
+            const res = await fetch(`${SERVER_API_URL}/admin/tenants/${props.tenantClerkId}`, {
                 method: "DELETE",
                 headers: {
                     "Content-Type": "application/json",

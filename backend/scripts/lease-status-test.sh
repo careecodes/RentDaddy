@@ -27,9 +27,17 @@ echo "Current lease statuses saved to before_update.json"
 
 echo ""
 echo "2. Running lease status update..."
-curl -s -X POST "${API_BASE}/admin/leases/update-statuses" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AUTH_TOKEN}"
+if [ -n "${CRON_SECRET_TOKEN}" ]; then
+  # Use cron endpoint if CRON_SECRET_TOKEN is set
+  curl -s -X GET "${API_BASE}/cron/leases/expire" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${CRON_SECRET_TOKEN}"
+else
+  # Fallback to authenticated admin endpoint
+  curl -s -X GET "${API_BASE}/admin/leases/update-statuses" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${AUTH_TOKEN}"
+fi
 echo ""
 
 echo "3. Getting updated lease statuses..."

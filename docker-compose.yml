@@ -5,26 +5,67 @@ services:
       - "${POSTGRES_PORT:-5432}:5432"
     container_name: rentdaddy-postgres
     restart: always
-    env_file: .env
+    env_file: backend/.env.development.local
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}"]
-       interval: 5s
-       timeout: 5s
-       retries: 5
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}",
+        ]
+      interval: 5s
+      timeout: 5s
+      retries: 5
     networks:
       - app-network
+
+  documenso-postgres:
+    image: postgres:15
+    container_name: documenso-postgres
+    restart: always
+    environment:
+      - POSTGRES_USER=documenso
+      - POSTGRES_PASSWORD=password
+      - POSTGRES_DB=documenso
+      - HOST=0.0.0.0
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U documenso']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - documenso_postgres_data:/var/lib/postgresql/data
+    networks:
+      - app-network
+      
+  documenso:
+    image: documenso/documenso:latest
+    container_name: documenso
+    env_file: ./docker/documenso/.env.development.local
+    depends_on:
+      documenso-postgres:
+        condition: service_healthy
+    ports:
+      - "3000:3000"
+    volumes:
+      - ./docker/documenso/cert.p12:/opt/documenso/cert.p12
+    networks:
+      - app-network
+
+  
   backend:
     build:
       context: ./backend
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "${PORT:-8080}:${PORT:-8080}"
-      - "2345:2345" 
+      - "2345:2345"
     depends_on:
       postgres:
         condition: service_healthy
+      documenso:
+        condition: service_started
     container_name: rentdaddy-backend
     restart: always
     volumes:
@@ -34,33 +75,58 @@ services:
       - ./backend/tmp:/app/tmp
       - ./backend/temp:/app/temp
       - go-mod-cache:/go/pkg/mod
-    env_file: .env
+    env_file: backend/.env.development.local
+    environment:
+      - DOCUMENSO_API_URL=http://documenso:3000
+      - DOCUMENSO_HOST=documenso
+      - DOCUMENSO_PORT=3000
+      - DOCUMENSO_PUBLIC_URL=http://localhost:3000
     networks:
         - app-network
-        - documenso-rentdaddy
-    #command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
     
-
   frontend:
     build:
       context: ./frontend/app
-      dockerfile: Dockerfile
+      dockerfile: Dockerfile.dev
     ports:
       - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
     volumes:
       - ./frontend/app:/app
       - /app/node_modules
+      - /app/node_modules/.vite
+    environment:
+      # Ensure these variables are explicitly set for Vite
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:8080}
+      - VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:8080}
+      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-pk_test_ZXF1YWwtaWd1YW5hLTgwLmNsZXJrLmFjY291bnRzLmRldiQ}
+      - VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL:-http://localhost:3000}
+      - VITE_ENV=${VITE_ENV:-development}
     networks:
       - app-network
     env_file:
-      - .env  # Load .env file
+      - frontend/app/.env.development.local  # Load .env file
+      
+  ngrok:
+    image: ngrok/ngrok:latest
+    container_name: ngrok
+    restart: unless-stopped
+    env_file:
+      - frontend/app/.env.development.local 
+    ports:
+      - "4040:4040"
+    command: "http backend:8080"
+    networks:
+      - app-network
+    depends_on:
+      - backend
+    
 
 networks:
   app-network:
     driver: bridge
-  documenso-rentdaddy:
-    external: true
 
 volumes:
   postgres_data:
+  documenso_postgres_data:
   go-mod-cache:

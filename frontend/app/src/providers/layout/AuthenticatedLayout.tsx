@@ -1,12 +1,11 @@
 import React from "react";
-import { AppstoreOutlined, BarChartOutlined, CloudOutlined, HomeOutlined, SettingOutlined, ShopOutlined, TeamOutlined, UploadOutlined, UserOutlined, VideoCameraOutlined } from "@ant-design/icons";
-import type { MenuProps } from "antd";
-import { Avatar, Divider, Layout, Menu, theme } from "antd";
+import { UserOutlined } from "@ant-design/icons";
+import { Avatar, Divider, Layout } from "antd";
 import { Link, Outlet, useLocation } from "react-router";
 import { SignOutButton, useUser } from "@clerk/react-router";
 import SidebarLinks from "../../components/SidebarLinks";
 
-const { Header, Content, Footer, Sider } = Layout;
+const { Content, Footer, Sider } = Layout;
 
 const siderStyle: React.CSSProperties = {
     height: "100vh",

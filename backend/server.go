@@ -11,7 +11,6 @@ import (
 
 	"github.com/careecodes/RentDaddy/internal/db"
 	"github.com/careecodes/RentDaddy/middleware"
-	mymiddleware "github.com/careecodes/RentDaddy/middleware"
 
 	"github.com/careecodes/RentDaddy/pkg/handlers"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -58,52 +57,69 @@ func main() {
 	r := chi.NewRouter()
 	r.Use(chiMiddleware.Logger)
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins: []string{"*"},
-		// AllowOriginFunc:  func(r *http.Request, origin string) bool { return true },
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token"},
-		ExposedHeaders:   []string{"Link"},
-		AllowCredentials: false,
-		MaxAge:           300, // Maximum value not ignored by any of major browsers
+		// Specify exact origins instead of wildcard
+		AllowedOrigins: []string{"https://app.curiousdev.net", "http://localhost:5173"},
+		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"},
+		// Add more headers if needed by your frontend
+		AllowedHeaders: []string{"Accept", "Authorization", "Content-Type", "X-CSRF-Token", "X-Requested-With"},
+		ExposedHeaders: []string{"Link"},
+		// Set this to true if your frontend needs to send credentials
+		AllowCredentials: true,
+		MaxAge:           300,
 	}))
-	// Added to make this work for testing.
-	r.Use(clerkhttp.WithHeaderAuthorization())
-	r.Use(mymiddleware.ClerkAuthMiddleware)
+	// // Added to make this work for testing.
+	// r.Use(clerkhttp.WithHeaderAuthorization())
+	// r.Use(middleware.ClerkAuthMiddleware)
+	r.Get("/healthz", func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+		w.Write([]byte("ok"))
+	})
+
+	// Routers
+	userHandler := handlers.NewUserHandler(pool, queries)
+	r.Post("/setup/admin", userHandler.SetupAdminUser)
+	r.Get("/check-admin", userHandler.CheckAdminExists) // Keep for unauthenticated access
+	r.Post("/seed-users", userHandler.AdminSeedUsers)
+	r.Get("/seed-users/status", userHandler.GetSeedingStatus)
+	r.Post("/seed-demo-data", userHandler.AdminSeedData)
+
+	// Locker Handler
+	lockerHandler := handlers.NewLockerHandler(pool, queries)
+	leaseHandler := handlers.NewLeaseHandler(pool, queries)
+
+	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
+	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
+	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
+	buildingHandler := handlers.NewBuildingHandler(pool, queries)
+	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
+	complaintHandler := handlers.NewComplaintHandler(pool, queries)
 
 	// Webhooks
 	r.Post("/webhooks/clerk", func(w http.ResponseWriter, r *http.Request) {
 		handlers.ClerkWebhookHandler(w, r, pool, queries)
 	})
+	r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
 
-	// Routers
-	userHandler := handlers.NewUserHandler(pool, queries)
-
-	// Locker Handler
-	lockerHandler := handlers.NewLockerHandler(pool, queries)
-
-	parkingPermitHandler := handlers.NewParkingPermitHandler(pool, queries)
-	workOrderHandler := handlers.NewWorkOrderHandler(pool, queries)
-	apartmentHandler := handlers.NewApartmentHandler(pool, queries)
-	chatbotHandler := handlers.NewChatBotHandler(pool, queries)
-	complaintHandler := handlers.NewComplaintHandler(pool, queries)
-	leaseHandler := handlers.NewLeaseHandler(pool, queries)
-
-	// // Test routes - no auth required
-	// r.Post("/test/complaints", complaintHandler.CreateManyComplaintsForTestingHandler)
-
-	// r.Post("/test/work-orders", workOrderHandler.CreateManyWorkOrdersHandler)
-
-	// r.Post("/test/lockers", lockerHandler.CreateManyLockers)
+	// Cron job endpoints
+	r.Route("/cron", func(r chi.Router) {
+		r.Use(middleware.CronAuthMiddleware) // Apply cron auth middleware
+		r.Get("/leases/expire", leaseHandler.UpdateAllLeaseStatuses)
+		r.Post("/leases/notify-expiring", leaseHandler.NotifyExpiringLeases)
+	})
 
 	// Application Routes
 	r.Group(func(r chi.Router) {
 		// Clerk middleware
 		r.Use(clerkhttp.WithHeaderAuthorization(), middleware.ClerkAuthMiddleware)
 
+		// Add authenticated version of check-admin endpoint
+		r.Get("/auth/check-admin", userHandler.AuthenticatedCheckAdminExists)
+
 		// Admin Endpoints
 		r.Route("/admin", func(r chi.Router) {
-			r.Use(mymiddleware.IsAdmin) // Clerk Admin middleware
+			r.Use(middleware.IsAdmin) // Clerk Admin middleware
 			r.Get("/", userHandler.GetAdminOverview)
+
 			r.Post("/setup", func(w http.ResponseWriter, r *http.Request) {
 				err := handlers.ConstructApartments(queries, w, r)
 				if err != nil {
@@ -111,7 +127,8 @@ func main() {
 					return
 				}
 			})
-
+			// Documenso Configuration
+			r.Post("/config/documenso", leaseHandler.UpdateDocumensoConfig)
 			// Tenants
 			r.Route("/tenants", func(r chi.Router) {
 				r.Get("/", userHandler.GetAllTenants)
@@ -129,6 +146,7 @@ func main() {
 			r.Route("/parking", func(r chi.Router) {
 				r.Get("/", parkingPermitHandler.GetParkingPermits)
 				r.Post("/", parkingPermitHandler.CreateParkingPermit)
+				r.Get("/in-use/count", parkingPermitHandler.GetParkingPermitAmount)
 				r.Route("/{permit_id}", func(r chi.Router) {
 					r.Get("/", parkingPermitHandler.GetParkingPermit)
 					r.Delete("/", parkingPermitHandler.DeleteParkingPermit)
@@ -153,11 +171,18 @@ func main() {
 			// Start of Locker Handlers
 			r.Route("/lockers", func(r chi.Router) {
 				r.Get("/", lockerHandler.GetLockers)
+				r.Post("/", lockerHandler.AddPackage)
 				r.Get("/in-use/count", lockerHandler.GetNumberOfLockersInUse)
-				r.Get("/{id}", lockerHandler.GetLocker)
-				// Used to change the user assigned to a locker or the status of a locker
-				r.Patch("/{id}", lockerHandler.UpdateLocker)
-				// Used to set up the initial lockers for an apartment
+				r.Route("/many", func(r chi.Router) {
+					r.Post("/", lockerHandler.CreateManyLockers)
+					r.Put("/", lockerHandler.BatchUnlockLockers)
+					r.Delete("/", lockerHandler.BatchDeleteLockers)
+				})
+				r.Route("/{id}", func(r chi.Router) {
+					r.Get("/", lockerHandler.GetLocker)
+					r.Patch("/unlock", lockerHandler.UnlockLocker)
+					r.Patch("/code", lockerHandler.UpdateLockerAccessCode)
+				})
 			})
 			// End of Locker Handlers
 
@@ -170,6 +195,13 @@ func main() {
 				r.Delete("/{apartment}", apartmentHandler.DeleteApartmentHandler)
 			})
 			// End of Apartment Handlers
+
+			// Buildings handlers
+			r.Route("/buildings", func(r chi.Router) {
+				r.Route("/{id}", func(r chi.Router) {
+					r.Put("/", buildingHandler.UpdateBuildingHandler)
+				})
+			})
 
 			// Complaint
 			r.Route("/complaints", func(r chi.Router) {
@@ -196,7 +228,7 @@ func main() {
 				r.Get("/apartments-available", leaseHandler.GetApartmentsWithoutLease)
 				r.Get("/update-statuses", leaseHandler.UpdateAllLeaseStatuses)
 				r.Post("/notify-expiring", leaseHandler.NotifyExpiringLeases)
-				r.Post("/webhooks/documenso", leaseHandler.DocumensoWebhookHandler)
+
 				r.Get("/{leaseID}/url", leaseHandler.DocumensoGetDocumentURL)
 			})
 		})
@@ -213,8 +245,8 @@ func main() {
 			r.Post("/complaints", userHandler.TenantCreateComplaint)
 
 			// Locker Endpoints
-			r.Get("/lockers", lockerHandler.GetLockerByUserId)
-			r.Post("/lockers/unlock", lockerHandler.UnlockLocker)
+			r.Get("/lockers", lockerHandler.GetLockersByUserId)
+			r.Post("/lockers/unlock", lockerHandler.TenantUnlockLockers)
 
 			// ParkingPermit Endpoints
 			r.Route("/parking", func(r chi.Router) {
@@ -224,31 +256,11 @@ func main() {
 			})
 			r.Route("/leases", func(r chi.Router) {
 				r.Get("/{user_id}/signing-url", func(w http.ResponseWriter, r *http.Request) {
-					leaseHandler := handlers.NewLeaseHandler(pool, queries)
 					leaseHandler.GetTenantLeaseStatusAndURLByUserID(w, r)
 				})
 			})
 		})
-		// NOTE: Destory session / ctx on sign out
-		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
-			claims, ok := clerk.SessionClaimsFromContext(r.Context())
-			if !ok {
-				log.Printf("[SIGN_OUT] Failed destorying session %v", err)
-				http.Error(w, "Error destorying session", http.StatusInternalServerError)
-				return
-			}
-			_, err := session.Revoke(r.Context(), &session.RevokeParams{
-				ID: claims.ID,
-			})
-			if err != nil {
-				log.Printf("[SIGN_OUT] Failed to revoke session: %v", err)
-				http.Error(w, "Error revoking session", http.StatusInternalServerError)
-				return
-			}
 
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte("Session revoked successfully"))
-		})
 		// NOTE: Destory session / ctx on sign out
 		r.Post("/signout", func(w http.ResponseWriter, r *http.Request) {
 			claims, ok := clerk.SessionClaimsFromContext(r.Context())
@@ -279,6 +291,9 @@ func main() {
 
 	// Server config
 	port := os.Getenv("PORT")
+	if port == "" {
+		port = "8080"
+	}
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: r,

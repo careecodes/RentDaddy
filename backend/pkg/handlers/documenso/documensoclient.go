@@ -7,6 +7,8 @@ import (
 	"io"
 	"log"
 	"net/http"
+	"os"
+	"strconv"
 	"strings"
 	"time"
 )
@@ -21,6 +23,7 @@ type DocumensoClientInterface interface {
 	GetTenantSigningURL(documentID string, tenantEmail string) (string, error)
 	DeleteDocument(documentID string) error
 	DownloadDocument(documentID string) ([]byte, error)
+	SendDocument(documentID string) (map[string]string, error)
 }
 
 // DocumensoClient handles Documenso API interactions
@@ -76,8 +79,8 @@ func (c *DocumensoClient) UploadDocumentWithSigners(
 ) (string, map[string]RecipientInfo, string, error) {
 	// Step 1: Create document with recipients
 	createDocumentURL := fmt.Sprintf("%s/documents", c.BaseURL)
-	log.Println("Creating document with signers:", createDocumentURL)
-	//this should ideally be done after the documenso signing webhook not here
+	log.Println("[Upload] Creating document with signers:", createDocumentURL)
+	// this should ideally be done after the documenso signing webhook not here
 	var s3bucket string
 	// Convert signers to API-recognized format
 	recipients := make([]map[string]interface{}, len(signers))
@@ -364,7 +367,6 @@ func (c *DocumensoClient) GetSigningURL(documentID string) string {
 	signURL := fmt.Sprintf("%s/sign/%s", base, documentID)
 	log.Printf("[LEASE_UPSERT] Lease signing URL: %s", signURL)
 	return signURL
-
 }
 
 // AddSignatureField adds a signature field or date field to a document for a specific recipient with retries
@@ -449,6 +451,7 @@ func (c *DocumensoClient) AddSignatureField(docID string, recipientID int, x, y,
 
 	return fmt.Errorf("failed to create %s field after %d attempts", actualFieldType, maxRetries)
 }
+
 func (c *DocumensoClient) withRetry(maxRetries int, operation func() error) error {
 	var err error
 	for attempt := 0; attempt < maxRetries; attempt++ {
@@ -471,6 +474,8 @@ func (c *DocumensoClient) withRetry(maxRetries int, operation func() error) erro
 
 func (c *DocumensoClient) GetSigningURLs(documentID string, tenantEmail string, landlordEmail string) (string, string, error) {
 	url := fmt.Sprintf("%s/documents/%s", c.BaseURL, documentID)
+	log.Printf("[DOCUMENSO] Getting signing URLs for document ID: %s, tenant: %s, landlord: %s", documentID, tenantEmail, landlordEmail)
+	
 	req, err := http.NewRequest("GET", url, nil)
 	if err != nil {
 		return "", "", fmt.Errorf("failed to create request: %w", err)
@@ -488,33 +493,223 @@ func (c *DocumensoClient) GetSigningURLs(documentID string, tenantEmail string, 
 		return "", "", fmt.Errorf("Documenso returned %d: %s", resp.StatusCode, string(body))
 	}
 
+	// Read the full response body first for debugging
+	responseBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", "", fmt.Errorf("failed to read response body: %w", err)
+	}
+	
+	// Log full response for debugging
+	log.Printf("[DOCUMENSO] Response from Documenso: %s", string(responseBody))
+	
+	// Create a new reader from the response body for parsing
 	var result struct {
 		Recipients []struct {
 			Email      string `json:"email"`
 			SigningURL string `json:"signingUrl"`
 		} `json:"recipients"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
+	if err := json.Unmarshal(responseBody, &result); err != nil {
 		return "", "", fmt.Errorf("failed to parse response: %w", err)
 	}
+	
+	// Log all recipients for debugging
+	log.Printf("[DOCUMENSO] Found %d recipients in document", len(result.Recipients))
+	for i, r := range result.Recipients {
+		log.Printf("[DOCUMENSO] Recipient %d: Email: %s, SigningURL: %s", i+1, r.Email, r.SigningURL)
+	}
+	
 	var tenantSigningURL, landlordSigningURL string
+	
+	// First try direct case-insensitive matching
 	for _, r := range result.Recipients {
 		if strings.EqualFold(r.Email, tenantEmail) {
 			tenantSigningURL = r.SigningURL
+			log.Printf("[DOCUMENSO] Found tenant email match: %s", r.Email)
 		}
-	}
-
-	for _, r := range result.Recipients {
 		if strings.EqualFold(r.Email, landlordEmail) {
 			landlordSigningURL = r.SigningURL
+			log.Printf("[DOCUMENSO] Found landlord email match: %s", r.Email)
 		}
 	}
-	if tenantSigningURL != "" && landlordSigningURL != "" {
-		return tenantSigningURL, landlordSigningURL, nil
-	} else if tenantSigningURL != "" {
-		return "", "", fmt.Errorf("landlord %s not found in document %s", landlordEmail, documentID)
+	
+	// If tenant email not found, try common patterns
+	if tenantSigningURL == "" {
+		// Extract potential tenant name parts for matching
+		tenantNameParts := strings.Split(tenantEmail, "@")
+		if len(tenantNameParts) > 0 {
+			tenantName := tenantNameParts[0]
+			
+			// Log the name we're trying to match
+			log.Printf("[DOCUMENSO] Tenant email not directly found. Looking for similar patterns for: %s", tenantName)
+			
+			// Try to find a match based on name patterns
+			for _, r := range result.Recipients {
+				// Check for similar email patterns
+				if strings.Contains(r.Email, "@example.com") {
+					// Check if the email contains parts of the name
+					recipientName := strings.Split(r.Email, "@")[0]
+					log.Printf("[DOCUMENSO] Comparing with potential recipient: %s", recipientName)
+					
+					// Basic similarity check
+					// For more advanced cases, you might want to implement a more robust
+					// string similarity algorithm
+					if strings.Contains(recipientName, ".") || strings.Contains(recipientName, "_") {
+						// Split by common separators
+						parts := strings.FieldsFunc(recipientName, func(r rune) bool {
+							return r == '.' || r == '_' || r == '-'
+						})
+						
+						// Try to match first/last name patterns
+						if len(parts) >= 2 {
+							// Simple check if there's overlap between tenant name and recipient name
+							matchScore := 0
+							for _, part := range parts {
+								if strings.Contains(tenantName, part) || strings.Contains(part, tenantName) {
+									matchScore++
+								}
+							}
+							
+							if matchScore > 0 {
+								log.Printf("[DOCUMENSO] Found potential tenant match based on name pattern: %s", r.Email)
+								tenantSigningURL = r.SigningURL
+								break
+							}
+						}
+					} else if strings.Contains(tenantName, recipientName) || strings.Contains(recipientName, tenantName) {
+						// Direct substring match
+						log.Printf("[DOCUMENSO] Found potential tenant match based on direct name similarity: %s", r.Email)
+						tenantSigningURL = r.SigningURL
+						break
+					}
+				}
+			}
+			
+			// If we still haven't found a match, try a more aggressive approach
+			if tenantSigningURL == "" {
+				// When all else fails, if there are exactly two recipients and one is the landlord,
+				// assume the other is the tenant
+				if len(result.Recipients) == 2 && landlordSigningURL != "" {
+					// Find the one that's not the landlord
+					for _, r := range result.Recipients {
+						if !strings.EqualFold(r.Email, landlordEmail) {
+							log.Printf("[DOCUMENSO] Using process of elimination: assuming %s is tenant (default match)", r.Email)
+							tenantSigningURL = r.SigningURL
+							break
+						}
+					}
+				}
+			}
+		}
 	}
-	return "", "", fmt.Errorf("tenant %s not found in document %s", tenantEmail, documentID)
+	
+	// If landlord email not found but there are exactly two recipients
+	if landlordSigningURL == "" && len(result.Recipients) == 2 && tenantSigningURL != "" {
+		// Find the one that's not the tenant
+		for _, r := range result.Recipients {
+			if r.SigningURL != tenantSigningURL {
+				log.Printf("[DOCUMENSO] Using process of elimination: assuming %s is landlord", r.Email)
+				landlordSigningURL = r.SigningURL
+				break
+			}
+		}
+	}
+	
+	if tenantSigningURL != "" && landlordSigningURL != "" {
+		log.Printf("[DOCUMENSO] Successfully found signing URLs for both tenant and landlord")
+		return tenantSigningURL, landlordSigningURL, nil
+	}
+	
+	// Detailed error information
+	if tenantSigningURL == "" && landlordSigningURL == "" {
+		return "", "", fmt.Errorf("neither tenant (%s) nor landlord (%s) emails found in document %s recipients", 
+			tenantEmail, landlordEmail, documentID)
+	} else if tenantSigningURL == "" {
+		return "", "", fmt.Errorf("tenant %s not found in document %s (recipients: %v)", 
+			tenantEmail, documentID, recipientEmails(result.Recipients))
+	} else {
+		return "", "", fmt.Errorf("landlord %s not found in document %s (recipients: %v)", 
+			landlordEmail, documentID, recipientEmails(result.Recipients))
+	}
+}
+
+// Helper function to extract just the emails from recipients for error messages
+func recipientEmails(recipients []struct {
+	Email      string `json:"email"`
+	SigningURL string `json:"signingUrl"`
+}) []string {
+	emails := make([]string, len(recipients))
+	for i, r := range recipients {
+		emails[i] = r.Email
+	}
+	return emails
+}
+
+// SendDocument sends an existing document for signing through Documenso
+// Returns a map of email addresses to signing URLs
+func (c *DocumensoClient) SendDocument(documentID string) (map[string]string, error) {
+	log.Printf("[DOCUMENSO] Sending document %s for signing", documentID)
+	
+	// Convert string ID to int if needed
+	var documentIDInt int
+	if id, err := strconv.Atoi(documentID); err == nil {
+		documentIDInt = id
+	} else {
+		return nil, fmt.Errorf("invalid document ID format: %s", documentID)
+	}
+	
+	// Construct the send URL
+	sendURL := fmt.Sprintf("%s/documents/%d/send", c.BaseURL, documentIDInt)
+	log.Printf("[DOCUMENSO] Send URL: %s", sendURL)
+	
+	// Create the request with empty JSON body - no parameters needed for simple sending
+	sendReq, err := http.NewRequest("POST", sendURL, bytes.NewBufferString("{}"))
+	if err != nil {
+		return nil, fmt.Errorf("failed to create send request: %w", err)
+	}
+	sendReq.Header.Set("Authorization", "Bearer "+c.ApiKey)
+	sendReq.Header.Set("Content-Type", "application/json")
+	
+	// Execute the request
+	sendResp, err := c.Client.Do(sendReq)
+	if err != nil {
+		return nil, fmt.Errorf("send request failed: %w", err)
+	}
+	defer sendResp.Body.Close()
+	
+	// Read response body for debugging
+	respBody, _ := io.ReadAll(sendResp.Body)
+	log.Printf("[DOCUMENSO] Send response: %s", string(respBody))
+	
+	// Check for success
+	if sendResp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("document send failed with status: %d, response: %s", 
+			sendResp.StatusCode, string(respBody))
+	}
+	
+	// Parse the response to extract signing URLs
+	var sendResponse struct {
+		DocumentID int `json:"documentId"`
+		Recipients []struct {
+			RecipientId int    `json:"recipientId"`
+			Email       string `json:"email"`
+			Name        string `json:"name"`
+			SigningURL  string `json:"signingUrl"`
+		} `json:"recipients"`
+	}
+	
+	if err := json.Unmarshal(respBody, &sendResponse); err != nil {
+		return nil, fmt.Errorf("failed to parse send response: %w", err)
+	}
+	
+	// Map emails to signing URLs
+	signingURLs := make(map[string]string)
+	for _, r := range sendResponse.Recipients {
+		log.Printf("[DOCUMENSO] Recipient %s has signing URL: %s", r.Email, r.SigningURL)
+		signingURLs[strings.ToLower(r.Email)] = r.SigningURL
+	}
+	
+	return signingURLs, nil
 }
 
 // GetDocumentDownloadURL retrieves the URL to download a document from Documenso
@@ -554,6 +749,69 @@ func (c *DocumensoClient) GetDocumentDownloadURL(documentID string) (string, err
 
 	return response.DownloadURL, nil
 }
+
 func (c *DocumensoClient) debugLog(format string, args ...interface{}) {
 	log.Printf("DOCUMENSO DEBUG: "+format, args...)
+}
+
+// MaskSecret redacts most of the secret for logging, keeping only first few chars
+// Exported for use in other packages
+func MaskSecret(secret string) string {
+	if len(secret) <= 4 {
+		return "****"
+	}
+	return secret[:4] + "..."
+}
+
+// DocumensoConfig holds the configuration for Documenso integration
+type DocumensoConfig struct {
+	ApiKey        string `json:"apiKey"`
+	WebhookSecret string `json:"webhookSecret"`
+}
+
+// UpdateDocumensoConfig handles updating the Documenso configuration
+func UpdateDocumensoConfig(w http.ResponseWriter, r *http.Request) {
+	log.Println("[DOCUMENSO_CONFIG] Updating Documenso configuration")
+
+	// Read the request body
+	body, err := io.ReadAll(r.Body)
+	if err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Error reading request body: %v", err)
+		http.Error(w, "Error reading request body", http.StatusBadRequest)
+		return
+	}
+
+	// Parse the JSON body
+	var config DocumensoConfig
+	if err := json.Unmarshal(body, &config); err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Error parsing JSON: %v", err)
+		http.Error(w, "Error parsing JSON", http.StatusBadRequest)
+		return
+	}
+
+	// Validate the config
+	if config.ApiKey == "" || config.WebhookSecret == "" {
+		log.Println("[DOCUMENSO_CONFIG] API key or webhook secret is empty")
+		http.Error(w, "API key and webhook secret are required", http.StatusBadRequest)
+		return
+	}
+
+	// Save the configuration to environment variables
+	os.Setenv("DOCUMENSO_API_KEY", config.ApiKey)
+	os.Setenv("DOCUMENSO_WEBHOOK_SECRET", config.WebhookSecret)
+
+	log.Printf("[DOCUMENSO_CONFIG] Updated API key to %s and webhook secret to %s",
+		MaskSecret(config.ApiKey), MaskSecret(config.WebhookSecret))
+
+	// Write the config to a .env file or similar if needed
+	// This is optional and depends on your deployment strategy
+
+	// Send a success response
+	w.WriteHeader(http.StatusOK)
+	w.Header().Set("Content-Type", "application/json")
+	response := map[string]string{"status": "success", "message": "Documenso configuration updated successfully"}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[DOCUMENSO_CONFIG] Error encoding response: %v", err)
+		http.Error(w, "Error encoding response", http.StatusInternalServerError)
+	}
 }

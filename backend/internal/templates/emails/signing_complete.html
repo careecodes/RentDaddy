@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <style>
+    body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+    .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .logo { max-width: 150px; }
+    .success-icon { font-size: 48px; color: #4CAF50; text-align: center; margin: 20px 0; }
+    .button { display: inline-block; background-color: #4CAF50; color: white; padding: 12px 24px; 
+              text-decoration: none; border-radius: 4px; font-weight: bold; margin-top: 20px; }
+    .footer { margin-top: 30px; font-size: 12px; color: #777; text-align: center; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="header">
+      <img src="{{.LogoURL}}" alt="RentDaddy Logo" class="logo">
+      <h2>Lease Agreement Completed!</h2>
+    </div>
+    
+    <div class="success-icon">✓</div>
+    
+    <p>Hello {{.RecipientName}},</p>
+    
+    <p>Great news! Your lease agreement <strong>"{{.DocumentTitle}}"</strong> has been signed by all parties and is now complete.</p>
+    
+    <p>You can access the signed document through your RentDaddy account or by clicking the button below.</p>
+    
+    <div style="text-align: center;">
+      <a href="{{.DownloadURL}}" class="button">Download Signed Document</a>
+    </div>
+    
+    <p>If you have any questions about this document, please contact your property manager.</p>
+    
+    <p>Thank you,<br>
+    The RentDaddy Team</p>
+    
+    <div class="footer">
+      <p>© 2025 RentDaddy - Making property management easy</p>
+    </div>
+  </div>
+</body>
+</html>

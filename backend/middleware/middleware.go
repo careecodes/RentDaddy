@@ -2,9 +2,11 @@ package middleware
 
 import (
 	"context"
+	"crypto/subtle"
 	"encoding/json"
 	"log"
 	"net/http"
+	"os"
 
 	db "github.com/careecodes/RentDaddy/internal/db/generated"
 	"github.com/clerk/clerk-sdk-go/v2"
@@ -63,9 +65,9 @@ func IsAdmin(next http.Handler) http.Handler {
 			http.Error(w, "Error converting body to JSON", http.StatusInternalServerError)
 			return
 		}
-		log.Printf("[CLERK_DEBUG] Parsed role from metadata: %v", userMetaData.Role)
-		log.Printf("[CLERK_DEBUG] Expected admin role: %v", db.RoleAdmin)
-		log.Printf("[CLERK_DEBUG] Role comparison result: %v", userMetaData.Role == db.RoleAdmin)
+		//log.Printf("[CLERK_DEBUG] Parsed role from metadata: %v", userMetaData.Role)
+		//log.Printf("[CLERK_DEBUG] Expected admin role: %v", db.RoleAdmin)
+		//log.Printf("[CLERK_DEBUG] Role comparison result: %v", userMetaData.Role == db.RoleAdmin)
 
 		if userMetaData.Role != db.RoleAdmin {
 			log.Printf("[CLERK_MIDDLEWARE] Unauthorized")
@@ -117,4 +119,37 @@ func IsPowerUser(user *clerk.User) bool {
 	}
 
 	return true
+}
+
+// CronAuthMiddleware validates requests to cron job endpoints using a secret token
+func CronAuthMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		// Get the expected token from environment variables
+		expectedToken := os.Getenv("CRON_SECRET_TOKEN")
+		if expectedToken == "" {
+			log.Printf("[CRON_MIDDLEWARE] Error: CRON_SECRET_TOKEN environment variable not set")
+			http.Error(w, "Server configuration error", http.StatusInternalServerError)
+			return
+		}
+
+		// Get the token from the Authorization header
+		authHeader := r.Header.Get("Authorization")
+		if authHeader == "" {
+			log.Printf("[CRON_MIDDLEWARE] Error: Missing Authorization header")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Check if the token matches using constant-time comparison
+		// This helps prevent timing attacks
+		if subtle.ConstantTimeCompare([]byte(authHeader), []byte("Bearer "+expectedToken)) != 1 {
+			log.Printf("[CRON_MIDDLEWARE] Error: Invalid token")
+			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			return
+		}
+
+		// Token is valid, proceed with the request
+		log.Printf("[CRON_MIDDLEWARE] Cron job authentication successful")
+		next.ServeHTTP(w, r)
+	})
 }

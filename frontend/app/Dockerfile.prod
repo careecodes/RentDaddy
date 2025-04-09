@@ -1,0 +1,87 @@
+# Build stage
+FROM node:20-alpine AS builder
+
+WORKDIR /app
+
+# Define build arguments
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_BACKEND_URL
+ARG VITE_DOCUMENSO_PUBLIC_URL
+ARG VITE_ENV=production
+
+# Set environment variables from build args
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_DOCUMENSO_PUBLIC_URL=$VITE_DOCUMENSO_PUBLIC_URL
+ENV VITE_ENV=$VITE_ENV
+ENV NODE_ENV=production
+
+# Pre-install only what's needed for dependency resolution
+COPY package.json package-lock.json ./
+# We need to include dev dependencies for the build process
+RUN NODE_ENV=development npm ci
+
+# Copy all source files after installing dependencies (better Docker caching)
+# But first create our own .env.production.local file to ensure build args are used
+# This step is critical - it ensures our build args take precedence over any file in the repo
+RUN echo "Creating production environment file from build arguments..."
+COPY . .
+
+# Ensure environment variables are correctly set for production
+RUN echo "Building with these environment variables:" && \
+    echo "VITE_BACKEND_URL=${VITE_BACKEND_URL}" && \
+    echo "VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}" && \
+    echo "VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}" && \
+    echo "VITE_ENV=${VITE_ENV}" && \
+    echo "NODE_ENV=${NODE_ENV}"
+
+# Set essential environment variables for the build process
+# But leave VITE_ENV to be determined by the .env files
+ENV VITE_BACKEND_URL=${VITE_BACKEND_URL}
+ENV VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY}
+ENV VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL}
+
+# Force touch the apiConfig file to ensure it's rebuilt with the latest env vars
+RUN touch src/utils/apiConfig.ts
+
+# Run a clean build with explicit NODE_ENV only
+# This will use VITE_ENV from .env file
+RUN NODE_ENV=production npm run build
+
+# Verify build - check for localhost references in built files
+RUN echo "Checking for localhost references in built files..." && \
+    if grep -r "localhost" /app/dist/assets/*.js; then \
+        echo "WARNING: Found localhost references in built files"; \
+    else \
+        echo "No localhost references found - build is clean"; \
+    fi
+
+# Serve stage
+FROM nginx:alpine AS production
+
+# Define build arguments again for the production stage
+ARG VITE_CLERK_PUBLISHABLE_KEY
+ARG VITE_BACKEND_URL
+ARG VITE_DOCUMENSO_PUBLIC_URL
+ARG VITE_ENV=production
+
+# Set environment variables from build args
+ENV VITE_CLERK_PUBLISHABLE_KEY=$VITE_CLERK_PUBLISHABLE_KEY
+ENV VITE_BACKEND_URL=$VITE_BACKEND_URL
+ENV VITE_DOCUMENSO_PUBLIC_URL=$VITE_DOCUMENSO_PUBLIC_URL
+ENV VITE_ENV=$VITE_ENV
+
+# Add bash and other utilities
+RUN apk add --no-cache bash grep findutils
+
+# Copy custom nginx config and entrypoint
+COPY nginx.conf /etc/nginx/conf.d/default.conf
+COPY docker-entrypoint.sh /docker-entrypoint.sh
+
+RUN chmod +x /docker-entrypoint.sh
+
+# Copy the built frontend
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Make sure entrypoint starts nginx
+ENTRYPOINT ["/docker-entrypoint.sh"]

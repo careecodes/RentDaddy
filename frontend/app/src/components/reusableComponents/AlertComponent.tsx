@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Alert } from "antd";
+import { Alert, Typography } from "antd";
 
 interface AlertProps {
     title: string;
@@ -15,12 +15,22 @@ const AlertComponent = (props: AlertProps) => {
         return null;
     }
 
+    // Function to format description with proper line breaks
+    const formatDescription = (text: string) => {
+        // Split text by newline sequences and convert to paragraphs
+        return text.split('\n\n').map((paragraph, i) => (
+            <Typography.Paragraph key={i} style={{ marginBottom: i < text.split('\n\n').length - 1 ? '1em' : 0 }}>
+                {paragraph}
+            </Typography.Paragraph>
+        ));
+    };
+
     return (
         <>
             <Alert
                 className="flex text-left"
                 message={props.title}
-                description={props.description}
+                description={formatDescription(props.description)}
                 type={props.type}
                 showIcon
                 closable
