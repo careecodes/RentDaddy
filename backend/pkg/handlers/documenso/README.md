@@ -121,7 +121,7 @@ volumes:
 If you're self-hosting **both Documenso and your backend** inside Docker and both are on the same Docker network (`documenso-rentdaddy`), then **you do not need ngrok** for Documenso webhooks to reach your backend. You can configure the webhook like so:
 
 ```http
-http://rentdaddy-backend:8080/admin/leases/webhooks/documenso
+http://rentdaddy-backend:8080/webhooks/documenso
 ```
 
 However, if:
@@ -329,22 +329,28 @@ Visit [http://localhost:3000](http://localhost:3000) to sign up and test login a
 
 ---
 
-## 6. Enable Webhooks + API Integration
+## 6. Webhooks + API Integration
+
+The Documenso API token and webhook secret must be manually set up. This is a deliberate design choice for security and reliability, as these are sensitive credentials that should be carefully managed.
+
+Follow these steps to set up the required API tokens and webhooks:
 
 From the Documenso web UI running locally:
 - Go to **User Settings → Webhooks**
 ![alt text](<CleanShot 2025-03-23 at 00.01.01@2x.png>)
-- Generate a `DOCUMENSO_WEBHOOK_SECRET`
-The Webhook URL `http://rentdaddy-backend:8080/admin/leases/webhooks/documenso`
-Triggers: `document.signed`
-You'll need to run: `openssl rand -hex 32` and paste the result in the `Secret` field.
+- Configure a webhook:
+  - URL: `http://rentdaddy-backend:8080/webhooks/documenso` (or your backend URL)
+  - Triggers: `document.signed`
+  - Secret: Generate with `openssl rand -hex 32` or another method
 ![alt text](<CleanShot 2025-03-23 at 00.01.36@2x.png>)
-- 
-- Copy and paste it into your RentDaddy `.env`
+- Copy the webhook secret
 
 Also:
-- Generate a `DOCUMENSO_API_KEY` (under API Tokens)
-- Paste into `.env` of your Go backend:
+- Go to **User Settings → API Tokens**
+- Generate a new API token named "RentDaddy Backend"
+- Copy the API token value immediately (it's shown only once)
+
+Add these values to your backend environment:
 
 ```ini
 # RentDaddy project .env
@@ -355,18 +361,63 @@ DOCUMENSO_API_KEY="<PASTE_FROM_DOCUMENSO>"
 DOCUMENSO_WEBHOOK_SECRET="<PASTE_FROM_DOCUMENSO>"
 ```
 
-Your Go backend can now:
+With either method, your backend can:
 - Send leases via the API
 - Receive webhook events like `document.signed.completed`
 
 ---
 
-## 7. Final Checklist
+## 7. Setting Up API Tokens and Webhooks in AWS Deployment
+
+For AWS deployments, you'll need to manually set up the API token and webhook secret. Here's how to do it securely:
+
+1. **Obtain API Token and Webhook Secret:**
+   - Complete the steps in section 6 to create a token and webhook
+   - Copy the API token (visible only once upon creation)
+   - Copy the webhook secret (by clicking "Show Secret")
+
+2. **Store in AWS Secrets Manager:**
+   ```bash
+   # Store API token
+   aws secretsmanager create-secret \
+     --name documenso/api_token \
+     --secret-string "your-api-token-value"
+   
+   # Store webhook secret
+   aws secretsmanager create-secret \
+     --name documenso/webhook_secret \
+     --secret-string "your-webhook-secret-value"
+   ```
+
+3. **Update ECS Task Definition:**
+   In your ECS task definition, reference these secrets:
+   ```json
+   "secrets": [
+     {
+       "name": "DOCUMENSO_API_KEY",
+       "valueFrom": "arn:aws:secretsmanager:region:account-id:secret:documenso/api_token"
+     },
+     {
+       "name": "DOCUMENSO_WEBHOOK_SECRET",
+       "valueFrom": "arn:aws:secretsmanager:region:account-id:secret:documenso/webhook_secret"
+     }
+   ]
+   ```
+
+4. **For Local Testing:**
+   Add to your `.env` file:
+   ```
+   DOCUMENSO_API_KEY=your-api-token-value
+   DOCUMENSO_WEBHOOK_SECRET=your-webhook-secret-value
+   ```
+
+## 8. Final Checklist
 
 - [ ] `.env` values match actual AWS / Documenso settings
 - [ ] SMTP verified domain is in production (not sandbox)
 - [ ] S3 credentials have full read/write to the bucket
-- [ ] Webhook and API tokens copied from UI
+- [ ] Webhook and API tokens manually created in Documenso UI
+- [ ] API tokens and webhook secrets stored in AWS Secrets Manager
 - [ ] Docker network created: `documenso-rentdaddy`
 - [ ] Self-signed cert (`cert.p12`) generated and mounted
 

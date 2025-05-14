@@ -385,6 +385,16 @@ type Apartment struct {
 	CreatedAt    pgtype.Timestamp `json:"created_at"`
 }
 
+type AppConfig struct {
+	ID          int64            `json:"id"`
+	Key         string           `json:"key"`
+	Value       string           `json:"value"`
+	UserID      pgtype.Int8      `json:"user_id"`
+	Description pgtype.Text      `json:"description"`
+	UpdatedAt   pgtype.Timestamp `json:"updated_at"`
+	CreatedAt   pgtype.Timestamp `json:"created_at"`
+}
+
 type Building struct {
 	ID             int64            `json:"id"`
 	ParkingTotal   pgtype.Int8      `json:"parking_total"`

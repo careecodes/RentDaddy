@@ -19,9 +19,17 @@ fi
 echo "==================== LEASE EXPIRATION NOTIFICATION TEST ===================="
 echo "Checking for leases expiring soon and sending notifications..."
 
-curl -s -X POST "${API_BASE}/admin/leases/notify-expiring" \
-  -H "Content-Type: application/json" \
-  -H "Authorization: Bearer ${AUTH_TOKEN}" | jq '.'
+if [ -n "${CRON_SECRET_TOKEN}" ]; then
+  # Use cron endpoint if CRON_SECRET_TOKEN is set
+  curl -s -X POST "${API_BASE}/cron/leases/notify-expiring" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${CRON_SECRET_TOKEN}" | jq '.'
+else
+  # Fallback to authenticated admin endpoint
+  curl -s -X POST "${API_BASE}/admin/leases/notify-expiring" \
+    -H "Content-Type: application/json" \
+    -H "Authorization: Bearer ${AUTH_TOKEN}" | jq '.'
+fi
 
 echo ""
 echo "==================== LEASE NOTIFICATION TEST COMPLETED ===================="

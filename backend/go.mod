@@ -7,10 +7,11 @@ toolchain go1.24.0
 require github.com/go-chi/chi/v5 v5.2.1 // indirect gotcha
 
 require (
+	github.com/bxcodec/faker/v4 v4.0.0-beta.3
 	github.com/clerk/clerk-sdk-go/v2 v2.2.0
 	github.com/go-chi/cors v1.2.1
 	github.com/go-faker/faker/v4 v4.6.0
-	github.com/jackc/pgx/v5 v5.7.3
+	github.com/jackc/pgx/v5 v5.7.4
 	github.com/joho/godotenv v1.5.1
 	github.com/jung-kurt/gofpdf v1.16.2
 	github.com/svix/svix-webhooks v1.61.3

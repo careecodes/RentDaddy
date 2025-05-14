@@ -21,12 +21,19 @@ frontend/app/.env.local
 frontend/app/.env.development.local
 frontend/app/.env.test.local
 frontend/app/.env.production.local
+# But don't ignore example files
+!frontend/app/.env*.example
 
 # Backend dependencies and build
 backend/vendor
 
 # Wildcard ignore for any .env files
 **/*.env
+**/*.env.production.local
+**/*.env.development.local
+
+# But don't ignore example files
+!**/*.env*.example
 
 # Backend
 # Do we need this here btw for the backend?
@@ -34,6 +41,16 @@ backend/vendor
 # *.sqlite
 # *.sqlite3
 # *.db
+
+
+# Backend environment files
+backend/.env
+backend/.env.local
+backend/.env.development.local
+backend/.env.test.local
+backend/.env.production.local
+# But don't ignore example files
+!backend/.env*.example
 
 # Editor directories and files
 .vscode/*
@@ -52,9 +69,4 @@ log/
 logs/
 logging/
 *.log.*
-
-.local
-terraform*
-terraform.tfstate*
-.terraform.*
-.terraform
+docker/documenso/cert.p12

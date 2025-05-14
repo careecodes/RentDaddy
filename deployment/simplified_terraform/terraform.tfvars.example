@@ -1,0 +1,19 @@
+# Sample Terraform variables file
+# Copy this file to 'terraform.tfvars' and update the values as needed
+
+# Required variables - must be set
+aws_account_id        = "YOUR_AWS_ACCOUNT_ID"  # Replace with your 12-digit AWS account ID
+domain_name           = "example.com"          # Replace with your domain name
+route53_zone_id       = "YOUR_ZONE_ID"         # Your Route53 zone ID for domain management
+backend_secret_arn    = "arn:aws:secretsmanager:us-east-2:YOUR_AWS_ACCOUNT_ID:secret:rentdaddy/production/main-app"
+documenso_secret_arn  = "arn:aws:secretsmanager:us-east-2:YOUR_AWS_ACCOUNT_ID:secret:rentdaddy/production/documenso"
+deploy_version        = "1.0.0"                # Use this to force redeployment when incremented
+
+# Optional variables - defaults will be used if not specified
+aws_region            = "us-east-2"            # Default AWS region
+app_subdomain         = "app"                  # app.example.com
+api_subdomain         = "api"                  # api.example.com
+docs_subdomain        = "docs"                 # docs.example.com
+ec2_key_pair_name     = "rentdaddy_key"        # EC2 key pair for SSH access
+ecs_instance_size     = "t3.xlarge"            # EC2 instance type for ECS instances
+debug_mode            = "false"                # Debug mode for backend container

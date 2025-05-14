@@ -15,21 +15,21 @@ import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@clerk/clerk-react";
 import { FileTextOutlined } from "@ant-design/icons";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL || import.meta.env.DOMAIN_URL || 'http://localhost';
-const PORT = import.meta.env.VITE_PORT || import.meta.env.PORT || '8080'; // Changed to match your server port
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, "");
+const API_URL = import.meta.env.VITE_BACKEND_URL;
+
 
 // Log the API_URL to ensure it's correctly formed
 console.log("API URL:", API_URL);
 
 // Default status filters in case dynamic generation fails
 const DEFAULT_STATUS_FILTERS = [
-    { text: "Active", value: "active" },
-    { text: "Expires Soon", value: "expires_soon" },
-    { text: "Expired", value: "expired" },
     { text: "Draft", value: "draft" },
+    { text: "Pending Approval", value: "pending_approval" },
+    { text: "Active", value: "active" },
+    { text: "Expired", value: "expired" },
     { text: "Terminated", value: "terminated" },
-    { text: "Pending Approval", value: "pending_approval" }
+    { text: "Renewed", value: "renewed" },
+    { text: "Canceled", value: "canceled" }
 ];
 
 export default function AdminViewEditLeases() {
@@ -84,7 +84,7 @@ export default function AdminViewEditLeases() {
                         // Parse the status string
                         const text = String(status)
                             .split('_')
-                            .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                            .map((word: string) => word.charAt(0).toUpperCase() + word.slice(1))
                             .join(' ');
 
                         return { text, value: status };
@@ -115,34 +115,65 @@ export default function AdminViewEditLeases() {
                 throw new Error('API URL is not configured');
             }
 
-            // Get the authentication token
-            const token = await getToken();
-            if (!token) {
-                throw new Error('Authentication token is required');
-            }
+            // Retry up to 3 times with increasing delay
+            for (let attempt = 0; attempt < 3; attempt++) {
+                try {
+                    // Get the authentication token
+                    const token = await getToken();
+                    if (!token) {
+                        console.log(`[Attempt ${attempt + 1}] Waiting for auth token...`);
+                        // Wait before retry (exponential backoff)
+                        if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                        continue;
+                    }
 
-            console.log(`Fetching leases from: ${API_URL}/admin/leases/`);
-            console.log('Using auth token:', token ? 'Token available' : 'No token');
+                    console.log(`[Attempt ${attempt + 1}] Fetching leases from: ${API_URL}/admin/leases/`);
+                    console.log('Using auth token:', token ? 'Token available' : 'No token');
 
-            const response = await fetch(`${API_URL}/admin/leases/`, {
-                headers: {
-                    'Authorization': `Bearer ${token}`,
-                    'Content-Type': 'application/json'
+                    const response = await fetch(`${API_URL}/admin/leases/`, {
+                        headers: {
+                            'Authorization': `Bearer ${token}`,
+                            'Content-Type': 'application/json'
+                        }
+                    });
+
+                    if (!response.ok) {
+                        // Check for Documenso configuration error (412 Precondition Failed)
+                        if (response.status === 412) {
+                            const errorData = await response.json();
+                            if (errorData.error === 'documenso_not_configured') {
+                                // Throw a specific error that we can handle in the UI
+                                throw new Error('DOCUMENSO_NOT_CONFIGURED');
+                            }
+                        }
+
+                        // For auth failures, try again
+                        if (response.status === 401) {
+                            console.log(`[Attempt ${attempt + 1}] Auth failed, retrying...`);
+                            if (attempt < 2) await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
+                            continue;
+                        }
+
+                        throw new Error(`Failed to fetch leases: ${response.statusText}`);
+                    }
+
+                    const data = await response.json();
+                    console.log("Raw API response:", data);
+                    console.log("Sample lease data:", data[0]);
+                    extractStatusFilters(data);
+                    return data || [];
+
+                } catch (err) {
+                    // If this is the last attempt or it's a Documenso configuration error, throw the error
+                    if (attempt === 2 || (err instanceof Error && err.message === 'DOCUMENSO_NOT_CONFIGURED')) {
+                        throw err;
+                    }
+                    console.log(`[Attempt ${attempt + 1}] Failed, retrying... Error: ${err}`);
+                    // Wait before retry (exponential backoff)
+                    await new Promise(r => setTimeout(r, 1000 * (attempt + 1)));
                 }
-            });
-
-            if (!response.ok) {
-                if (response.status === 401) {
-                    throw new Error('Authentication failed. Please sign in again.');
-                }
-                throw new Error(`Failed to fetch leases: ${response.statusText}`);
             }
-
-            const data = await response.json();
-            console.log("Raw API response:", data);
-            console.log("Sample lease data:", data[0]);
-            extractStatusFilters(data);
-            return data || [];
+            throw new Error("Failed to fetch leases after multiple attempts");
         },
         // Only run query if authentication is loaded and user is signed in
         enabled: authLoaded && isSignedIn && !authError,
@@ -203,17 +234,6 @@ export default function AdminViewEditLeases() {
         };
     };
 
-    // Status is calculated on the backend, but we maintain this function for backward compatibility
-    const getLeaseStatus = (record: { leaseEndDate: string; status: string }) => {
-        // If the status is already set to terminated, respect that
-        if (record.status === "active") {
-            const today = dayjs();
-            const leaseEnd = dayjs(record.leaseEndDate);
-            if (leaseEnd.diff(today, "days") <= 60) return "expires_soon";
-        }
-        return record.status;
-    };
-
 
     // Prepare lease data before rendering
     const filteredData: LeaseData[] = Array.isArray(leases) ? leases.map((lease) => {
@@ -228,7 +248,7 @@ export default function AdminViewEditLeases() {
             leaseStartDate: dayjs(lease.leaseStartDate).format("YYYY-MM-DD"),
             leaseEndDate: dayjs(lease.leaseEndDate).format("YYYY-MM-DD"),
             rentAmount: lease.rentAmount ? lease.rentAmount / 100 : 0,
-            status: lease.status === "terminated" ? "terminated" : getLeaseStatus(lease),
+            status: lease.status, // Use the status directly from the backend
             adminDocUrl: lease.admin_doc_url
         };
     }) : [];
@@ -353,7 +373,48 @@ export default function AdminViewEditLeases() {
             message.error("Failed to terminate lease");
         }
     };
+    // TODO: Cancel Lease Mutation (for pending_approval leases)
+    // const cancelLeaseMutation = useMutation({
+    //     mutationFn: async (leaseId: number) => {
+    //         const token = await getToken();
+    //         if (!token) throw new Error("Authentication token required");
 
+    //         // You might need to create a new endpoint for cancel if it doesn't exist yet
+    //         const response = await fetch(
+    //             `${API_URL}/admin/leases/cancel/${leaseId}`,
+    //             {
+    //                 method: 'POST',
+    //                 headers: {
+    //                     'Authorization': `Bearer ${token}`,
+    //                     'Content-Type': 'application/json'
+    //                 }
+    //             }
+    //         );
+
+    //         if (!response.ok) {
+    //             const errorData = await response.text();
+    //             throw new Error(errorData || response.statusText);
+    //         }
+
+    //         return await response.json();
+    //     },
+    //     onSuccess: () => {
+    //         setStatus('success');
+    //         message.success("Lease canceled successfully!");
+    //         queryClient.invalidateQueries({ queryKey: ['tenants', 'leases'] });
+
+    //         setTimeout(() => {
+    //             onClose();
+    //         }, 2000);
+    //     },
+    //     onError: (error: Error) => {
+    //         setStatus('error');
+    //         const errMsg = error.message || "Failed to cancel lease";
+    //         setErrorMessage(`Server error: ${errMsg}`);
+    //         message.error(`Error: ${errMsg}`);
+    //         console.error("Error in cancel operation:", error);
+    //     }
+    // });
     // Define lease table columns
     const leaseColumns: ColumnsType<LeaseData> = [
         {
@@ -394,9 +455,30 @@ export default function AdminViewEditLeases() {
             title: "Status",
             dataIndex: "status",
             key: "status",
-            render: (status) => (
-                <AlertComponent title={status} type={status === "active" ? "success" : "warning"} />
-            ),
+            render: (status) => {
+                // Format the status to display in Title Case (e.g., "pending_approval" -> "Pending Approval")
+                const formattedStatus: string = status
+                    .split('_')
+                    .map((word: string): string => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+
+                // Determine alert type based on status
+                let alertType: "success" | "info" | "warning" | "error" = "warning";
+                if (status === "active") alertType = "success";
+                else if (status === "draft" || status === "pending_approval") alertType = "info";
+                else if (status === "terminated" || status === "expired") alertType = "error";
+
+                return (
+                    <Alert
+                        className="flex text-left"
+                        message={formattedStatus}
+                        type={alertType}
+                        showIcon
+                        style={{ padding: '4px 8px' }}
+                        closable={false}
+                    />
+                );
+            },
             filters: statusFilters,
             onFilter: (value, record) => record.status === value,
         },
@@ -446,6 +528,13 @@ export default function AdminViewEditLeases() {
                             onClick={() => handleTerminate(record.id)}
                         />
                     )}
+                    {/* TODO: {(record.status === "pending_approval") && (
+                        <ButtonComponent
+                            type="danger"
+                            title="Terminate Lease"
+                            onClick={() => handleCancel(record.id)}
+                        />
+                    )} */}
                 </Space>
             ),
         }
@@ -507,12 +596,31 @@ export default function AdminViewEditLeases() {
                 isLoading ? (
                     <Spin size="large" />
                 ) : isError ? (
-                    <Alert
-                        message="Error Loading Leases"
-                        description={(error as Error)?.message || "Failed to fetch leases"}
-                        type="error"
-                        showIcon
-                    />
+                    // Check for Documenso configuration error
+                    (error instanceof Error && error.message === 'DOCUMENSO_NOT_CONFIGURED') ? (
+                        <div className="mb-4">
+                            <AlertComponent
+                                type="warning"
+                                title="Documenso Configuration Required"
+                                message="Please configure your Documenso API key and webhook before accessing leases"
+                                description="Digital lease signing requires Documenso integration. Go to the Admin Setup page to configure your Documenso API key and webhook."
+                            />
+                            <div className="mt-4 text-center">
+                                <ButtonComponent
+                                    type="primary"
+                                    title="Go to Admin Setup"
+                                    onClick={() => window.location.href = '/admin/settings'}
+                                />
+                            </div>
+                        </div>
+                    ) : (
+                        <Alert
+                            message="Error Loading Leases"
+                            description={(error as Error)?.message || "Failed to fetch leases"}
+                            type="error"
+                            showIcon
+                        />
+                    )
                 ) : (
                     <TableComponent<LeaseData>
                         columns={leaseColumns}
@@ -534,3 +642,4 @@ export default function AdminViewEditLeases() {
         </div>
     );
 }
+

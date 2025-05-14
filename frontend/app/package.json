@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
-    "preview": "vite preview"
+    "preview": "vite preview --host 0.0.0.0 --port 5173"
   },
   "dependencies": {
     "@ant-design/icons": "^5.6.1",
@@ -19,17 +19,20 @@
     "antd-style": "^3.7.1",
     "axios": "^1.8.3",
     "bootstrap": "^5.3.3",
+    "dotenv": "^16.4.7",
     "react": "^19.0.0",
     "react-chatbotify": "^2.0.0-beta.32",
     "react-dom": "^19.0.0",
     "react-router": "^7.2.0",
     "react-router-dom": "^7.3.0",
-    "sass": "1.77.6"
+    "sass": "1.77.6",
+    "sonner": "^2.0.3"
   },
   "devDependencies": {
     "@eslint/js": "^9.21.0",
     "@tanstack/router-devtools": "^1.111.11",
     "@tanstack/router-plugin": "^1.111.12",
+    "@types/node": "^22.13.17",
     "@types/react": "^19.0.10",
     "@types/react-dom": "^19.0.4",
     "@vitejs/plugin-react": "^4.3.4",

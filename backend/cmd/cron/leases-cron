@@ -1,3 +1,0 @@
-# Load environment variables and run both endpoints
-0 0 * * * . /app/.env && curl -X POST ${DOMAIN_URL}:${PORT}/admin/leases/expire >> /var/log/cron.log 2>&1
-0 0 * * * . /app/.env && curl -X POST ${DOMAIN_URL}:${PORT}/admin/leases/notify-expiring >> /var/log/cron.log 2>&1

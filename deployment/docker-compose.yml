@@ -1,0 +1,71 @@
+services:
+  postgres:
+    image: postgres:15
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    container_name: rentdaddy-postgres
+    restart: always
+    env_file: backend/.env.development.local
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+       test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-appuser} -d ${POSTGRES_DB:-appdb}"]
+       interval: 5s
+       timeout: 5s
+       retries: 5
+    networks:
+      - app-network
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${PORT:-8080}:${PORT:-8080}"
+      - "2345:2345" 
+    depends_on:
+      postgres:
+        condition: service_healthy
+    container_name: rentdaddy-backend
+    restart: always
+    volumes:
+      - ./backend:/app
+      - /app/tmp
+      - /app/temp
+      - ./backend/tmp:/app/tmp
+      - ./backend/temp:/app/temp
+      - go-mod-cache:/go/pkg/mod
+    env_file: backend/.env.development.local
+    networks:
+        - app-network
+    command: ["/bin/sh", "-c", "chmod +x /app/entrypoint.sh && chown root:root /app/entrypoint.sh && /app/entrypoint.sh"]
+    
+
+  frontend:
+    build:
+      context: ./frontend/app
+      dockerfile: Dockerfile.dev
+    ports:
+      - "${FRONTEND_PORT:-5173}:${FRONTEND_PORT:-5173}"
+    volumes:
+      - ./frontend/app:/app
+      - /app/node_modules
+      - /app/node_modules/.vite
+    environment:
+      # Ensure these variables are explicitly set for Vite
+      - VITE_BACKEND_URL=${VITE_BACKEND_URL:-http://localhost:8080}
+      - VITE_SERVER_URL=${VITE_SERVER_URL:-http://localhost:8080}
+      - VITE_CLERK_PUBLISHABLE_KEY=${VITE_CLERK_PUBLISHABLE_KEY:-pk_test_ZXF1YWwtaWd1YW5hLTgwLmNsZXJrLmFjY291bnRzLmRldiQ}
+      - VITE_DOCUMENSO_PUBLIC_URL=${VITE_DOCUMENSO_PUBLIC_URL:-http://localhost:3000}
+      - VITE_ENV=${VITE_ENV:-development}
+    networks:
+      - app-network
+    env_file:
+      - frontend/app/.env.development.local  # Load .env file
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  go-mod-cache:

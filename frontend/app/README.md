@@ -52,3 +52,47 @@ export default tseslint.config({
   },
 })
 ```
+
+## Using the Logger to Disable Console Messages in Production
+
+To disable console.log messages in production while maintaining them in development, use the `logger` utility:
+
+```tsx
+import { logger } from './src/lib/utils';
+
+// These won't show in production
+logger.log('Component rendered');
+logger.info('User authenticated:', userId);
+logger.debug('Current state:', state);
+
+// These will show in all environments
+logger.warn('Feature is deprecated');
+logger.error('Failed to load data:', error);
+
+// Group related logs (not shown in production)
+logger.group('User Authentication');
+logger.log('Auth step 1');
+logger.log('Auth step 2');
+logger.groupEnd();
+
+// Measure performance (not shown in production)
+logger.time('Operation timing');
+// ... perform operation
+logger.timeEnd('Operation timing');
+```
+
+### Configuration
+
+The logger uses the `VITE_ENV` environment variable to determine whether to log messages. In production (`VITE_ENV=production`), only warnings and errors are shown.
+
+1. For development:
+   ```
+   VITE_ENV=development
+   ```
+
+2. For production:
+   ```
+   VITE_ENV=production
+   ```
+
+The logger will automatically detect the environment and adjust its behavior accordingly.

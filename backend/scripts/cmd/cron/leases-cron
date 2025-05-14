@@ -1,0 +1,3 @@
+# Load environment variables and run both endpoints
+0 0 * * * . /app/.env && curl -X GET ${DOMAIN_URL}:${PORT}/cron/leases/expire -H "Authorization: Bearer ${CRON_SECRET_TOKEN}" >> /var/log/cron.log 2>&1
+0 0 * * * . /app/.env && curl -X POST ${DOMAIN_URL}:${PORT}/cron/leases/notify-expiring -H "Authorization: Bearer ${CRON_SECRET_TOKEN}" >> /var/log/cron.log 2>&1

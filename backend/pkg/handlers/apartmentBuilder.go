@@ -4,14 +4,17 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	db "github.com/careecodes/RentDaddy/internal/db/generated"
-	"github.com/careecodes/RentDaddy/internal/utils"
-	"github.com/careecodes/RentDaddy/middleware"
-	"github.com/go-faker/faker/v4"
-	"github.com/jackc/pgx/v5/pgtype"
 	"log"
 	"net/http"
 	"strconv"
+
+	db "github.com/careecodes/RentDaddy/internal/db/generated"
+	"github.com/careecodes/RentDaddy/internal/utils"
+	"github.com/careecodes/RentDaddy/middleware"
+	"github.com/go-chi/chi/v5"
+	"github.com/go-faker/faker/v4"
+	"github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgxpool"
 )
 
 type Building struct {
@@ -109,10 +112,11 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 					Size:         pgtype.Int2{Int16: int16(sqft[0]), Valid: true},
 					ManagementID: adminUser.ID,
 					BuildingID:   buildingResponse.ID,
+					Availability: true,
 				})
 				if err != nil {
 					log.Printf("[Construct-Create-Apartment] error creating apartment: %v", err)
-					return errors.New(fmt.Sprintf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error()))
+					return fmt.Errorf("[Construct] error creating apartment: %d %v", adminUser.ID, err.Error())
 				}
 				aCount++
 			}
@@ -121,4 +125,94 @@ func ConstructApartments(queries *db.Queries, w http.ResponseWriter, r *http.Req
 
 	log.Printf("[Construct] apartments seeded successfully: %d apartments created", aCount)
 	return nil
+}
+
+// BuildingHandler handles building-related operations
+type BuildingHandler struct {
+	pool    *pgxpool.Pool
+	queries *db.Queries
+}
+
+// NewBuildingHandler creates a new BuildingHandler instance
+func NewBuildingHandler(pool *pgxpool.Pool, queries *db.Queries) *BuildingHandler {
+	return &BuildingHandler{
+		pool:    pool,
+		queries: queries,
+	}
+}
+
+// UpdateBuildingRequest is used to parse the request body for building updates
+type UpdateBuildingRequest struct {
+	BuildingNumber int `json:"buildingNumber"`
+	FloorNumbers   int `json:"floorNumbers"`
+	NumberOfRooms  int `json:"numberOfRooms"`
+	ParkingTotal   int `json:"parkingTotal"`
+	PerUserParking int `json:"perUserParking"`
+}
+
+// UpdateBuildingHandler updates an existing building
+func (h BuildingHandler) UpdateBuildingHandler(w http.ResponseWriter, r *http.Request) {
+	// Get admin context and verify authorization
+	adminCtxt := middleware.GetUserCtx(r)
+	if adminCtxt == nil {
+		log.Println("[UpdateBuilding] no admin context found")
+		http.Error(w, "no admin context found", http.StatusUnauthorized)
+		return
+	}
+
+	// Get building ID from URL parameter
+	buildingIDStr := chi.URLParam(r, "id")
+	buildingID, err := strconv.ParseInt(buildingIDStr, 10, 64)
+	if err != nil {
+		log.Printf("[UpdateBuilding] error parsing building ID: %v", err)
+		http.Error(w, "Invalid building ID", http.StatusBadRequest)
+		return
+	}
+
+	// Decode request body
+	var updateReq UpdateBuildingRequest
+	if err := json.NewDecoder(r.Body).Decode(&updateReq); err != nil {
+		log.Printf("[UpdateBuilding] error decoding request body: %v", err)
+		http.Error(w, "Invalid request body", http.StatusBadRequest)
+		return
+	}
+
+	// Verify admin permissions
+	adminClerkID := adminCtxt.ID
+	adminUser, err := h.queries.GetUser(r.Context(), adminClerkID)
+	if err != nil {
+		log.Printf("[UpdateBuilding] cannot retrieve admin: %v", err)
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+	if adminUser.Role != db.RoleAdmin {
+		log.Printf("[UpdateBuilding] unauthorized user")
+		http.Error(w, "Unauthorized", http.StatusUnauthorized)
+		return
+	}
+
+	// Update the building directly (no need to fetch it first)
+	err = h.queries.UpdateBuilding(r.Context(), db.UpdateBuildingParams{
+		ID:             buildingID,
+		ParkingTotal:   pgtype.Int8{Int64: int64(updateReq.ParkingTotal), Valid: true},
+		PerUserParking: pgtype.Int8{Int64: int64(updateReq.PerUserParking), Valid: true},
+	})
+	if err != nil {
+		log.Printf("[UpdateBuilding] error updating building: %v", err)
+		http.Error(w, "Failed to update building", http.StatusInternalServerError)
+		return
+	}
+
+	// Return success response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	response := map[string]interface{}{
+		"message": fmt.Sprintf("Building %d updated successfully", buildingID),
+		"id":      buildingID,
+	}
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("[UpdateBuilding] error encoding response: %v", err)
+		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		return
+	}
 }

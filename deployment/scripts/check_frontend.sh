@@ -1,0 +1,1 @@
+ssh -o StrictHostKeyChecking=accept-new -i ~/.ssh/rentdaddy_key ec2-user@3.148.114.36 "docker ps && docker logs $(docker ps | grep frontend | awk "{print \$1}") | grep -A 20 \"Runtime Environment Variables\""

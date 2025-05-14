@@ -1,17 +1,62 @@
 version: "3"
 
-dotenv: ["../.env"]
+# Load environment from backend first, then try to load from project root if it exists
+#dotenv: [".env.development.local", ".env.production.local", ".env", "../.env"]
 
 vars:
   MPATH: "internal/db/migrations/"
-  PG_URL: postgresql://{{.POSTGRES_USER}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
-  DATABASE_URL: .PG_URL
+  # Using URL format without password to avoid exposing it in logs
+  PG_URL: postgresql://{{.POSTGRES_USER}}:{{.POSTGRES_PASSWORD}}@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable
+  DATABASE_URL: "{{.PG_URL}}"
 tasks:
-  seed-users:
-    desc: "Seed users into the database and syncs with Clerk"
+  # 🧑‍💻 Local Docker Compose: Default naming
+  seed:users:
+    desc: "Run user seeder inside local rentdaddy-backend container (Docker Compose)"
     cmds:
-      - go run scripts/seed_users.go
-      # - docker compose exec backend go run scripts/seed_users.go
+      - >
+        docker exec rentdaddy-backend sh -c "cd /app && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/seed_users_with_clerk/main.go scripts/cmd/seed_users_with_clerk/seed_users.go"
+    silent: false
+
+  seed:data:
+    desc: "Run complaints/work_orders seeder inside local rentdaddy-backend container (Docker Compose)"
+    cmds:
+      - >
+        docker exec rentdaddy-backend sh -c "cd /app && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go"
+    silent: false
+
+  # 🚀 Production-compatible: Explicit naming
+  seed:users:prod:
+    desc: "Run user seeder directly (ECS or inside backend container shell)"
+    cmds:
+      - >
+        cd backend && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/seed_users_with_clerk/main.go scripts/cmd/seed_users_with_clerk/seed_users.go
+    silent: false
+
+  seed:data:prod:
+    desc: "Run complaints/work_orders seeder directly (ECS or inside backend container shell)"
+    cmds:
+      - >
+        cd backend && 
+        SCRIPT_MODE=true 
+        ADMIN_FIRST_NAME='{{.ADMIN_FIRST_NAME | default \"First\"}}' 
+        ADMIN_LAST_NAME='{{.ADMIN_LAST_NAME | default \"Landlord\"}}' 
+        ADMIN_EMAIL='{{.ADMIN_EMAIL | default .SMTP_FROM | default \"ezra@gitfor.ge\"}}' 
+        go run scripts/cmd/complaintswork/main.go scripts/cmd/complaintswork/complaintsAndWork.go
     silent: false
 
   build:
@@ -32,43 +77,67 @@ tasks:
   migrate:up:
     desc: "Apply migrations to the database"
     cmds:
-      # The commented block prints credentials to the logs/command-line
-      # - |
-      #   PGPASSWORD="{{.POSTGRES_PASSWORD}}" psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'" > /dev/null 2>&1 "
-      #   WITH settings AS (
-      #   SELECT '{{.POSTGRES_USER}}' AS current_user,
-      #      '{{.POSTGRES_PASSWORD}}' AS current_password,
-      #      '{{.POSTGRES_DB}}' AS current_db) SELECT * FROM settings;" > /dev/null 2>&1
-      - psql -h postgres -U {{.POSTGRES_USER}} -d {{.POSTGRES_DB}} -c "SELECT 'Hidden'"
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up # > /dev/null 2>&1
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Running migrations with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
       - echo "Migrations applied!"
 
   migrate:down:
+    desc: "Roll back one migration version"
     cmds:
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Rolling back migration with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down 1
       - echo "Migrating down 1 version.."
 
   migrate:version:
+    desc: "Show current migration version"
     cmds:
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Checking migration version with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
 
   migrate:status:
     desc: "Check migration version and if database is dirty"
     cmds:
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Checking migration status with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose version
 
   migrate:fix-dirty:
     desc: "Fix a dirty database state by forcing last successful version"
     cmds:
       - echo "Checking migration status..."
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Fixing dirty migration state with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" force 1
       - echo "Database migration state reset!"
 
   migrate:reset:
     desc: "Reset database (wipe all data and re-run migrations)"
     cmds:
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
-      - migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
+      - |
+        # Set password as environment variable without printing to logs
+        export PGPASSWORD="{{.POSTGRES_PASSWORD}}"
+        # Use masked URL for logs with **** instead of actual password
+        echo "Resetting database with: postgresql://{{.POSTGRES_USER}}:****@{{.POSTGRES_HOST}}:{{.POSTGRES_PORT}}/{{.POSTGRES_DB}}?sslmode=disable"
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose down
+        migrate -path {{.MPATH}} -database "{{.PG_URL}}" -verbose up
   test:all:
     desc: "Test all in backend in container"
     cmds:
@@ -80,25 +149,39 @@ tasks:
       - chmod +x ./scripts/test-changed.sh
       - ./scripts/test-changed.sh
   db:connect:
-    desc: "Test changed files only in backend in container"
+    desc: "Connect to PostgreSQL database via psql"
     cmds:
       # Check if container is running
       - |
-        CONTAINER_NAME="rentdaddy-backend"
-          if ! docker ps | grep -q "$CONTAINER_NAME"; then 
+        CONTAINER_NAME="{{.CONTAINER_NAME | default "rentdaddy-backend"}}"
+        if ! docker ps | grep -q "$CONTAINER_NAME"; then 
           echo "Error: Container $CONTAINER_NAME is not running!"
-        exit 1
+          exit 1
         fi
-        echo "Running all tests in container: $CONTAINER_NAME..."
-        psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB
+        echo "Connecting to database: $POSTGRES_DB as user $POSTGRES_USER..."
+        # Set PGPASSWORD as env var to avoid exposing it in logs
+        export PGPASSWORD="${POSTGRES_PASSWORD}"
+        # Use the exported env var
+        psql -h $POSTGRES_HOST -U $POSTGRES_USER -d $POSTGRES_DB
   cron:expire-leases:
     desc: "Run lease expiration job manually in backend container"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default "rentdaddy-backend"}}'
     cmds:
-      - docker exec rentdaddy-backend /app/bin/expire-leases
+      - docker exec {{.CONTAINER_NAME}} /app/bin/expire-leases
   cron:test-expired-leases:
     desc: "Seed db with leases to expire"
+    vars:
+      CONTAINER_NAME: '{{.CONTAINER_NAME | default "rentdaddy-backend"}}'
     cmds:
-      - docker exec rentdaddy-backend sh -c "PGPASSWORD=$POSTGRES_PASSWORD psql -h postgres -U $POSTGRES_USER -d $POSTGRES_DB -f /app/internal/db/migrations/cron_test_seeder.sql"
+      # Using environment variable setting to avoid exposing password in logs
+      - |
+        docker exec {{.CONTAINER_NAME}} sh -c '
+          # Set password as environment variable
+          export PGPASSWORD="${POSTGRES_PASSWORD}"
+          # Execute psql with the environment variable set
+          psql -h "${POSTGRES_HOST}" -U "${POSTGRES_USER}" -d "${POSTGRES_DB}" -f /app/internal/db/migrations/cron_test_seeder.sql
+        '
 
   cron:test-status-update:
     desc: "Test the lease status update endpoint"
@@ -124,3 +207,18 @@ tasks:
     desc: "Test the lease expiration notification system"
     cmds:
       - bash ./scripts/test-lease-notify.sh
+
+  sqlc:generate:
+    desc: "Regenerate Go code from SQL queries"
+    cmds:
+      - cd backend && sqlc generate
+    silent: false
+
+  db:sync:
+    desc: "Run sqlc generate + apply migrations"
+    cmds:
+      - task: sqlc:generate
+      - task: migrate:up
+
+  # worker:run task removed - documenso-worker has been deprecated
+  # All email functionality is now handled directly in the main backend service

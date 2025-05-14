@@ -1,0 +1,75 @@
+# Build stage
+FROM golang:1.23-alpine AS builder
+
+# Install build dependencies
+RUN apk add --no-cache git make openssh-client wget ca-certificates bash
+
+WORKDIR /app
+
+# Copy go module files first for better layer caching
+COPY go.mod go.sum ./
+COPY vendor/ ./vendor/
+RUN go mod download
+
+# Download specific dependencies needed for scripts
+RUN go mod download github.com/bxcodec/faker/v4 && \
+    go mod download github.com/clerk/clerk-sdk-go/v2
+
+# Copy the rest of the application
+COPY . .
+
+# Install sqlc
+RUN wget https://github.com/sqlc-dev/sqlc/releases/download/v1.28.0/sqlc_1.28.0_linux_amd64.tar.gz && \
+    tar -xzf sqlc_1.28.0_linux_amd64.tar.gz -C /usr/local/bin sqlc && \
+    chmod +x /usr/local/bin/sqlc && \
+    rm sqlc_1.28.0_linux_amd64.tar.gz
+
+RUN sqlc generate
+
+# Build the Go application
+RUN CGO_ENABLED=0 GOOS=linux go build -o server -ldflags="-s -w" ./server.go
+
+# Final stage
+FROM alpine:latest
+
+# Install packages needed at runtime
+RUN apk add --no-cache ca-certificates tzdata postgresql-client wget git bash go
+
+WORKDIR /app
+
+# Install golang-migrate
+RUN wget -O migrate.tar.gz https://github.com/golang-migrate/migrate/releases/download/v4.18.2/migrate.linux-amd64.tar.gz && \
+    tar -xvf migrate.tar.gz && \
+    mv migrate /usr/local/bin/migrate && \
+    chmod +x /usr/local/bin/migrate && \
+    rm migrate.tar.gz
+
+# Install Task CLI
+RUN wget -O task.tar.gz https://github.com/go-task/task/releases/download/v3.33.1/task_linux_amd64.tar.gz && \
+    tar -xzvf task.tar.gz && \
+    mv task /usr/local/bin/task && \
+    chmod +x /usr/local/bin/task && \
+    rm task.tar.gz
+
+# Create runtime directories
+RUN mkdir -p /app/temp /app/config /go/pkg/mod /go/src/github.com/careecodes
+
+# Copy everything from the builder stage for a complete environment
+COPY --from=builder /app/ .
+
+# Copy the Go modules cache to ensure dependencies are available
+COPY --from=builder /go/pkg/mod/ /go/pkg/mod/
+
+# Make the entrypoint script executable
+RUN chmod +x /app/entrypoint-prod.sh
+
+# Set environment variables
+ENV PORT=8080
+ENV PG_URL=""
+ENV DOCUMENSO_API_URL="https://api.documenso.com/api/v1"
+ENV TEMP_DIR=/app/temp
+ENV PATH="/usr/local/go/bin:${PATH}"
+
+EXPOSE 8080
+
+ENTRYPOINT ["/app/entrypoint-prod.sh"]

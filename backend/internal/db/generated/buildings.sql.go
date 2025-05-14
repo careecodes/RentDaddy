@@ -62,3 +62,22 @@ func (q *Queries) GetBuilding(ctx context.Context, id int64) (Building, error) {
 	)
 	return i, err
 }
+
+const updateBuilding = `-- name: UpdateBuilding :exec
+UPDATE buildings
+SET parking_total = $2,
+    per_user_parking = $3,
+    updated_at = now()
+WHERE id = $1
+`
+
+type UpdateBuildingParams struct {
+	ID             int64       `json:"id"`
+	ParkingTotal   pgtype.Int8 `json:"parking_total"`
+	PerUserParking pgtype.Int8 `json:"per_user_parking"`
+}
+
+func (q *Queries) UpdateBuilding(ctx context.Context, arg UpdateBuildingParams) error {
+	_, err := q.db.Exec(ctx, updateBuilding, arg.ID, arg.ParkingTotal, arg.PerUserParking)
+	return err
+}

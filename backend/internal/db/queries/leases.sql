@@ -72,7 +72,8 @@ SELECT id, lease_number,
 FROM leases ORDER BY created_at DESC;
 
 -- name: GetLeaseByID :one
-SELECT lease_number,
+SELECT id,
+    lease_number,
     external_doc_id,
     lease_pdf_s3,
     tenant_id,
@@ -84,7 +85,9 @@ SELECT lease_number,
     status,
     created_by,
     updated_by,
-    previous_lease_id
+    previous_lease_id,
+    tenant_signing_url,
+    landlord_signing_url
 FROM leases
 WHERE id = $1;
 
@@ -240,7 +243,7 @@ SET
     availability = false,
     lease_id = (SELECT id FROM updated_lease),
     updated_at = now()
-WHERE id = (SELECT apartment_id FROM updated_lease WHERE apartment_id IS NOT NULL)
+WHERE id = (SELECT apartment_id FROM updated_lease)
 RETURNING 
     (SELECT json_build_object(
         'lease_id', ul.id,
@@ -279,3 +282,23 @@ SELECT * FROM leases
 WHERE tenant_id = $1
 AND status IN ('active', 'draft', 'pending_approval')
 ORDER BY id DESC;
+
+-- name: GetLeaseByExternalID :one
+SELECT id,
+    lease_number,
+    external_doc_id,
+    lease_pdf_s3,
+    tenant_id,
+    landlord_id,
+    apartment_id,
+    lease_start_date,
+    lease_end_date,
+    rent_amount,
+    status,
+    created_by,
+    updated_by,
+    previous_lease_id,
+    tenant_signing_url,
+    landlord_signing_url
+FROM leases
+WHERE external_doc_id = $1;

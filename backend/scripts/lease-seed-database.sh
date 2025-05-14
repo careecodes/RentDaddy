@@ -26,9 +26,9 @@ if [ -z "$CLERK_SECRET_KEY" ]; then
   exit 1
 fi
 
-# Use CLERK_LANDLORD_USER_ID from environment or fall back to a default
-CLERK_LANDLORD_USER_ID="${CLERK_LANDLORD_USER_ID:-user_2QANfT1DgWJy6F5GNuJ7rGQcLYR}"
-echo "Using Clerk landlord ID: $CLERK_LANDLORD_USER_ID"
+# Use ADMIN_CLERK_ID from environment or fall back to a default
+ADMIN_CLERK_ID="${ADMIN_CLERK_ID:-user_2QANfT1DgWJy6F5GNuJ7rGQcLYR}"
+echo "Using Clerk landlord ID: $ADMIN_CLERK_ID"
 echo "Step 0: Creating a Clerk session token..."
 
 # Try creating a session token using a different endpoint
@@ -36,7 +36,7 @@ session_response=$(curl -s -X POST \
   -H "Authorization: Bearer $CLERK_SECRET_KEY" \
   -H "Content-Type: application/json" \
   "https://api.clerk.com/v1/sign_in_tokens" \
-  -d "{\"user_id\": \"$CLERK_LANDLORD_USER_ID\", \"expires_in_seconds\": 3600}")
+  -d "{\"user_id\": \"$ADMIN_CLERK_ID\", \"expires_in_seconds\": 3600}")
 
 SESSION_TOKEN=$(echo "$session_response" | grep -o '"token":"[^"]*"' | cut -d'"' -f4)
 
@@ -52,12 +52,12 @@ fi
 # Fetch landlord (admin) user from Clerk
 admin_json=$(curl -s -X GET \
   -H "Authorization: Bearer $CLERK_SECRET_KEY" \
-  "https://api.clerk.com/v1/users/$CLERK_LANDLORD_USER_ID")
+  "https://api.clerk.com/v1/users/$ADMIN_CLERK_ID")
 
 echo "Admin metadata check:"
 curl -s -X GET \
   -H "Authorization: Bearer $CLERK_SECRET_KEY" \
-  "https://api.clerk.com/v1/users/$CLERK_LANDLORD_USER_ID/metadata" | grep -o '"public":{[^}]*}'
+  "https://api.clerk.com/v1/users/$ADMIN_CLERK_ID/metadata" | grep -o '"public":{[^}]*}'
 
 # Check if the API call succeeded
 if echo "$admin_json" | grep -q "error"; then
@@ -163,12 +163,12 @@ if [ "$USER_EXISTS" -eq "0" ]; then
   # Create the admin user with specified ID using the correct OVERRIDING SYSTEM VALUE syntax
   psql -h $PG_HOST -U $PG_USER -d $PG_DB -c "
   -- Delete existing user with the same clerk_id if it exists
-  DELETE FROM users WHERE clerk_id = '$CLERK_LANDLORD_USER_ID';
+  DELETE FROM users WHERE clerk_id = '$ADMIN_CLERK_ID';
   
   -- Create the admin user with the specified ID
   INSERT INTO users (id, clerk_id, first_name, last_name, email, phone, role, status) 
   OVERRIDING SYSTEM VALUE
-  VALUES ($admin_db_id, '$CLERK_LANDLORD_USER_ID', '$admin_first_name', '$admin_last_name', '$admin_email', '$admin_phone', 'admin', 'active');
+  VALUES ($admin_db_id, '$ADMIN_CLERK_ID', '$admin_first_name', '$admin_last_name', '$admin_email', '$admin_phone', 'admin', 'active');
   "
   echo "Created admin user with ID: $admin_db_id"
 else

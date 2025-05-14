@@ -4,12 +4,12 @@
 // IT IS CURRENTLY BOILERPLATE CODE AND NEEDS TO BE REPLACED WITH THE ACTUAL CONTENT. (3/2/2025 @ 1:40PM)
 
 import React from "react";
-import Icon, { AppstoreOutlined, BarChartOutlined, CloudOutlined, ShopOutlined, TeamOutlined, UploadOutlined, UserOutlined, VideoCameraOutlined } from "@ant-design/icons";
+import { AppstoreOutlined, BarChartOutlined, CloudOutlined, ShopOutlined, TeamOutlined, UploadOutlined, UserOutlined, VideoCameraOutlined } from "@ant-design/icons";
 import type { MenuProps } from "antd";
 import { Avatar, Divider, Layout, Menu, theme } from "antd";
 import { Link } from "react-router";
 
-const { Header, Content, Footer, Sider } = Layout;
+const { Content, Footer, Sider } = Layout;
 
 const siderStyle: React.CSSProperties = {
     overflow: "auto",

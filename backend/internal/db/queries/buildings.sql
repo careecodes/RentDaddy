@@ -13,3 +13,10 @@ INSERT INTO buildings (
     updated_at
   ) VALUES ($1, $2, $3, now(), now())
 RETURNING *;
+
+-- name: UpdateBuilding :exec
+UPDATE buildings
+SET parking_total = $2,
+    per_user_parking = $3,
+    updated_at = now()
+WHERE id = $1;

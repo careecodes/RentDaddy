@@ -1,4 +1,4 @@
-import { Button, Form, Input } from "antd";
+import { Form, Input, message, Space } from "antd";
 import React, { useState } from "react";
 import TableComponent from "../components/reusableComponents/TableComponent";
 import ButtonComponent from "../components/reusableComponents/ButtonComponent";
@@ -7,10 +7,9 @@ import ModalComponent from "../components/ModalComponent";
 import { useMutation } from "@tanstack/react-query";
 import PageTitleComponent from "../components/reusableComponents/PageTitleComponent";
 import { useAuth } from "@clerk/clerk-react";
+import { SERVER_API_URL } from "../utils/apiConfig";
 
-const DOMAIN_URL = import.meta.env.VITE_DOMAIN_URL;
-const PORT = import.meta.env.VITE_PORT;
-const API_URL = `${DOMAIN_URL}:${PORT}`.replace(/\/$/, ""); // :white_check_mark: Remove trailing slashes
+const absoluteServerUrl = SERVER_API_URL;
 
 // Make the Add Locations a Modal that adds a building, floor, and room number
 // The user can add multiple locations
@@ -30,7 +29,6 @@ type AdminSetup = {
 
 const AdminApartmentSetupAndDetailsManagement = () => {
     // State that holds the locations (building #, floor #s in that building, room numbers in that building)
-    // TODO: When no longer needed for development, delete the clear locations button and mock data
     const [locations, setLocations] = React.useState<{ building: number; floors: number; rooms: number }[]>([]);
     const { getToken } = useAuth();
 
@@ -45,6 +43,8 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         buildings: [],
     });
 
+    const [submitLoading, setSubmitLoading] = useState(false);
+
     console.log("adminSetupObject", adminSetupObject);
 
     console.log(editBuildingObj);
@@ -56,7 +56,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
 
             console.log("adminSetupObject", adminSetupObject);
 
-            const res = await fetch(`${API_URL}/admin/setup`, {
+            const res = await fetch(`${absoluteServerUrl}/admin/setup`, {
                 method: "POST",
                 headers: {
                     "Content-Type": "application/json",
@@ -82,19 +82,41 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         },
     });
 
+
     // console.log("Testing for Ryan, this is the adminApartmentSetup return from the Tanstack useMutation", adminApartmentSetup);
 
     const handleSendAdminSetup = () => {
         console.log("starting admin setup");
-        adminApartmentSetup(adminSetupObject);
+        setSubmitLoading(true);
 
-        // Reset the state
-        setAdminSetupObject({
-            parkingTotal: 0,
-            perUserParking: 0,
-            lockerCount: 0,
-            buildings: [],
-        });
+        try {
+            adminApartmentSetup(adminSetupObject, {
+                onSuccess: () => {
+                    message.success('Apartment setup completed successfully!');
+
+                    // Reset the apartment setup state
+                    setAdminSetupObject({
+                        parkingTotal: 0,
+                        perUserParking: 0,
+                        lockerCount: 0,
+                        buildings: [],
+                    });
+
+                    setLocations([]);
+                },
+                onError: (error: Error) => {
+                    message.error('Failed to complete apartment setup. Please try again.');
+                    console.error("Error in apartment setup:", error);
+                },
+                onSettled: () => {
+                    setSubmitLoading(false);
+                }
+            });
+        } catch (err) {
+            message.error('Failed to complete apartment setup. Please try again.');
+            console.error("Error in apartment setup:", err);
+            setSubmitLoading(false);
+        }
 
         console.log("adminSetupObject", adminSetupObject);
     };
@@ -103,12 +125,37 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     const { mutate: editLocations } = useMutation({
         mutationFn: async (buildingData: Building) => {
             console.log(editBuildingObj, "editBuildingObj in tanstack mutation");
-            // TODO: James, when you finish the backend route, change the variable endpoint to the right one.
-            const res = await fetch(`${API_URL}/admins/buildings/{id}`, {
+            // Use the admin/setup endpoint since there's no dedicated building endpoint
+            const token = await getToken();
+
+            // Format request to use the existing admin/setup endpoint
+            // We don't know the actual parking values, so use values from the building object if available
+            const setupData = {
+                buildings: [buildingData],
+                parkingTotal: adminSetupObject.parkingTotal || 0,
+                perUserParking: adminSetupObject.perUserParking || 0,
+                lockerCount: 0  // No new lockers needed for an update
+            };
+
+            const res = await fetch(`${absoluteServerUrl}/admin/setup`, {
+                method: "POST",  // Admin setup uses POST method
+                headers: {
+                    "Content-Type": "application/json",
+                    "Authorization": `Bearer ${token}`
+                },
+                body: JSON.stringify(setupData),
+            });
+
+            /* 
+            const res = await fetch(`${absoluteServerUrl}/admin/buildings/{id}`, {
                 method: "PUT",
-                headers: { "Content-Type": "application/json" },
+                headers: { 
+                    "Content-Type": "application/json",
+                    Authorization: `Bearer ${await getToken()}`,
+                },
                 body: JSON.stringify(buildingData),
             });
+            */
 
             if (!res.ok) {
                 throw new Error("Failed to update location");
@@ -131,6 +178,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
     };
 
     const handleFormValuesChange = (_: any, allValues: any) => {
+        // Update apartment setup object
         setAdminSetupObject((prev) => ({
             ...prev,
             parkingTotal: Number(allValues["parking-settings"][0]) || 0,
@@ -195,7 +243,7 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         {
             title: "Action",
             key: "action",
-            render: (text: string, record: { building: number; floors: number; rooms: number }) => (
+            render: (_: any, record: { building: number; floors: number; rooms: number }) => (
                 <div className="flex gap-2">
                     <ButtonComponent
                         title="Delete"
@@ -221,7 +269,14 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                             floorNumbers: record.floors,
                             numberOfRooms: record.rooms,
                         }}
-                        handleOkay={handleEditLocation}
+                        handleOkay={() => {
+                            handleEditLocation();
+                            return Promise.resolve();
+                        }}
+                        setUserId={() => { }}
+                        setAccessCode={() => { }}
+                        selectedUserId=""
+                        accessCode=""
                     />
                 </div>
             ),
@@ -232,6 +287,8 @@ const AdminApartmentSetupAndDetailsManagement = () => {
         <div className="container">
             {/* <h1 className="mb-3">Admin Apartment Setup And Details Management</h1> */}
             <PageTitleComponent title="Admin Apartment Setup and Details Management" />
+
+
             <Form
                 onFinish={handleSendAdminSetup}
                 onValuesChange={handleFormValuesChange}
@@ -284,6 +341,10 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         icon={<DeleteOutlined />}
                         onClick={() => {
                             setLocations([]);
+                            setAdminSetupObject(prev => ({
+                                ...prev,
+                                buildings: []
+                            }));
                         }}
                     />
                     {/* Add Location Button */}
@@ -324,6 +385,33 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         min={0}
                     />
                 </Form.Item>
+
+                {/* Submit button for Apartment Setup */}
+                <Space className="flex justify-end mt-4 mb-8">
+                    <ButtonComponent
+                        type="default"
+                        title="Cancel"
+                        onClick={() => {
+                            console.log("Cancel Apartment Setup");
+                            // Reset the apartment setup form
+                            setAdminSetupObject({
+                                parkingTotal: 0,
+                                perUserParking: 0,
+                                lockerCount: 0,
+                                buildings: [],
+                            });
+                            setLocations([]);
+                        }}
+                    />
+                    <ButtonComponent
+                        type="primary"
+                        title="Submit Apartment Setup"
+                        onClick={handleSendAdminSetup}
+                        loading={submitLoading}
+                    />
+                </Space>
+
+
                 {/* <Form.Item
                     name="smtp-settings"
                     label="SMTP Settings"
@@ -338,26 +426,6 @@ const AdminApartmentSetupAndDetailsManagement = () => {
                         <Input placeholder="Password" />
                     </div>
                 </Form.Item> */}
-                <div className="flex justify-content-end gap-2">
-                    {/* Cancel button */}
-                    <Form.Item name="cancel">
-                        <Button
-                            type="default"
-                            onClick={() => {
-                                console.log("Cancel");
-                            }}>
-                            Cancel
-                        </Button>
-                    </Form.Item>
-                    {/* Submit Button */}
-                    <Form.Item name="submit">
-                        <Button
-                            type="primary"
-                            htmlType="submit">
-                            Submit
-                        </Button>
-                    </Form.Item>
-                </div>
             </Form>
         </div>
     );
